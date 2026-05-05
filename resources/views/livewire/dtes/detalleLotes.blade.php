@@ -1,0 +1,46 @@
+<div wire:ignore.self class="modal fade" id="Detelles" tabindex="-1" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="Detelles">
+                </h5>
+                <h6 class="text-center"> Detalles de DTE</h6>
+            </div>
+            <div class="modal-body">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <th class="text-center">Codigo Control</th>
+                        <th class="text-center">Cdigo Generacion</th>
+                        <th class="text-center">Fecha Emision</th>
+                        <th class="text-center">Estado</th>
+                    </thead>
+                    <tbody>
+                        @foreach ( App\Models\lotedteDetalles::where('lote', $detalle)->get() as $d )
+                        @php
+                            $dt = App\Models\dte::find($d->dte);
+                        @endphp
+                        <tr>
+                            <td class="text-center">
+                                {{ $dt->numeroControl }}
+                            </td>
+                            <td class="text-center">
+                                {{ $dt->codigoGeneracion }}
+                            </td>
+                            <td class="text-center">
+                                {{ $dt->fecEmi }}
+                            </td>
+                            <td class="text-center">
+                                {{ $dt->estado }}
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" wire:click.prevent='resetUI()' class="btn btn-label-secondary"
+                    data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
