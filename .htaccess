@@ -1,0 +1,5 @@
+RewriteRule ^(.*)$ public/$1 [L]
+
+<FilesMatch \.php$>
+        SetHandler proxy:fcgi://sysprossv-php81
+</FilesMatch>
