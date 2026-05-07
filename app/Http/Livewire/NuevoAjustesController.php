@@ -408,7 +408,7 @@ class NuevoAjustesController extends Component
             //return Redirect::to('/ajustes');
         } catch (\Exception $e) {
             // Manejo de errores
-            $this->emit('error', 'Hubo un error al registrar el ajuste: ' . $e->getMessage());
+            $this->emit('item-error', 'Hubo un error al registrar el ajuste: ' . $e->getMessage());
         }
     }
     public function resetUI()
