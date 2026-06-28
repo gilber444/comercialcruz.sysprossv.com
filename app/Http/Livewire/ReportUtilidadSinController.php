@@ -40,6 +40,8 @@ class ReportUtilidadSinController extends Component
         $this->countDetails = 0;
         $this->reporteType = 0;
         $this->ventaId = 0;
+        $this->sucursal = 0;
+        $this->caja = 0;
 
         $this->facturadores = Facturadores::all();
     }
@@ -68,8 +70,7 @@ class ReportUtilidadSinController extends Component
         ->join('sucursales as s', 's.id', '=', 'ventas.sucursal')
         //->when($this->facturador != 0, fn($q) => $q->where('ventas.facturador', $this->facturador))
         ->whereBetween('ventas.fecha', [$from, $to])
-        ->where('ventas.estado', 'Cancelado')
-        ->whereNotIn('ventas.sucursal', [1, 12, 14]);
+        ->where('ventas.estado', 'Cancelado');
 
         if ($this->sucursal != 0) $base->where('ventas.sucursal', $this->sucursal);
         if ($this->caja != 0)     $base->where('ventas.caja', $this->caja);
@@ -101,8 +102,8 @@ class ReportUtilidadSinController extends Component
         // Totales globales desde el agregado
         $this->totalCosto     = $this->data->sum('total_costo');
         $this->totalSales     = $this->data->sum('total_venta');
-        // IMPORTANTE: sumar el MONTO de utilidad (utilidad_uni), no el %
-        $this->totalUtilidad  = $this->data->sum('total_utilidad_monto');
+        // utilidad como monto (venta - costo), no el %
+        $this->totalUtilidad  = $this->totalSales - $this->totalCosto;
     }
 
 

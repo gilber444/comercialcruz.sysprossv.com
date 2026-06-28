@@ -1287,7 +1287,7 @@ class ExportController extends Controller
 
         $totalSales = $data->sum('total_venta');
 
-        $totalUtilidad = $data->sum('total_utilidad');
+        $totalUtilidad = $totalSales - $totalCosto;
 
 
 
@@ -1307,9 +1307,9 @@ class ExportController extends Controller
 
 
 
-        // Retornar vista PDF
+        // Generar PDF vía DomPDF streaming
 
-        return view('pdf.pdfUtilidad', compact(
+        $pdf = PDF::loadView('pdf.pdfUtilidad', compact(
 
             'data',
 
@@ -1330,6 +1330,8 @@ class ExportController extends Controller
             'totalUtilidad'
 
         ));
+
+        return $pdf->stream('Reporte_de_Utilidad.pdf');
 
     }
 
@@ -1383,9 +1385,7 @@ class ExportController extends Controller
 
             ->whereBetween('ventas.fecha', [$from, $to])
 
-            ->where('ventas.estado', 'Cancelado')
-
-            ->whereNotIn('ventas.sucursal', [11, 12, 14]);
+            ->where('ventas.estado', 'Cancelado');
 
 
 
@@ -1437,9 +1437,7 @@ class ExportController extends Controller
 
                 SUM(ventas_detalles.total)         as total_venta,
 
-                SUM(ventas_detalles.cantidad)      as total_cantidad,
-
-                SUM(ventas_detalles.utilidad_uni)  as total_utilidad_monto
+                SUM(ventas_detalles.cantidad)      as total_cantidad
 
             ',
 
@@ -1461,9 +1459,9 @@ class ExportController extends Controller
 
         $totalSales = $data->sum('total_venta');
 
-        // IMPORTANTE: sumar el MONTO de utilidad (utilidad_uni), no el %
+        // utilidad como monto (venta - costo)
 
-        $totalUtilidad = $data->sum('total_utilidad_monto');
+        $totalUtilidad = $totalSales - $totalCosto;
 
 
 
@@ -1479,9 +1477,11 @@ class ExportController extends Controller
 
 
 
-        // Retornar vista PDF
+        // Generar PDF vía DomPDF streaming
 
-        return view('pdf.pdfUtilidadSin', compact('data', 'dateFrom', 'dateTo', 'sucursal', 'imagenUrl', 'empresa', 'totalCosto', 'totalSales', 'totalUtilidad'));
+        $pdf = PDF::loadView('pdf.pdfUtilidadSin', compact('data', 'dateFrom', 'dateTo', 'sucursal', 'imagenUrl', 'empresa', 'totalCosto', 'totalSales', 'totalUtilidad'));
+
+        return $pdf->stream('Reporte_de_Utilidad_Sintetizado.pdf');
 
     }
 

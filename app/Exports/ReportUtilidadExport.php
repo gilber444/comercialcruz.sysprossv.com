@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\Ventas;
 use App\Models\VentasDetalles;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +10,6 @@ use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -51,45 +49,65 @@ class ReportUtilidadExport implements FromCollection, WithHeadings, WithTitle, W
         if ($this->caja != 0) $query->where('ventas.caja', $this->caja);
         if ($this->facturador != 0) $query->where('ventas.facturador', $this->facturador);
 
-        $data = $query->select(
+        $rows = $query->select(
             's.nombre as sucursal',
             'f.facturador as facturador',
+            'p.codebar3 as codebar',
             'p.nombreProducto',
             'ventas_detalles.cantidad',
-            'ventas_detalles.costo as costo',
-            'ventas_detalles.costo_total',
-            'ventas_detalles.precio as precio',
+            'ventas_detalles.costo',
+            DB::raw('(ventas_detalles.cantidad * ventas_detalles.costo) as costo_total'),
+            'ventas_detalles.precio',
             'ventas_detalles.total as total_venta',
-            'ventas_detalles.utilidad_uni as utilidad_uni',
-            'ventas_detalles.utilidad as total_utilidad'
+            DB::raw('(ventas_detalles.total - (ventas_detalles.cantidad * ventas_detalles.costo)) as utilidad_monto'),
+            DB::raw('CASE WHEN (ventas_detalles.cantidad * ventas_detalles.costo) > 0
+                THEN ROUND(((ventas_detalles.total - (ventas_detalles.cantidad * ventas_detalles.costo)) / (ventas_detalles.cantidad * ventas_detalles.costo)) * 100, 2)
+                ELSE 0 END as utilidad_porcentaje')
         )
-            //->groupBy('s.nombre', 'f.facturador', 'p.nombreProducto')
             ->orderBy('s.nombre', 'asc')
+            ->orderBy('p.nombreProducto', 'asc')
             ->get();
 
-        // Puedes agregar una fila total si lo deseas
-        $total = [
-            'sucursal'        => '',
-            'facturador'      => '',
-            'nombreProducto'  => 'TOTALES:',
-            'cantidad'        => '',
-            'costo'           => '',
-            'total_costo'     => ($data->sum('costo_total') * 1.13),
-            'precio'          => '',
-            'total_venta'     => $data->sum('total_venta'),
-            'utilidad_uni'    => '',
-            'total_utilidad'  => ($data->sum('total_venta') - ($data->sum('costo_total') * 1.13)),
-        ];
+        $mapped = $rows->map(function ($d) {
+            return [
+                'sucursal'           => $d->sucursal,
+                'facturador'         => $d->facturador,
+                'codebar'            => $d->codebar,
+                'nombreProducto'     => $d->nombreProducto,
+                'cantidad'           => $d->cantidad,
+                'costo'              => round($d->costo, 4),
+                'costo_total'        => round($d->costo_total, 2),
+                'precio'             => round($d->precio, 4),
+                'total_venta'        => round($d->total_venta, 2),
+                'utilidad_monto'     => round($d->utilidad_monto, 2),
+                'utilidad_porcentaje'=> $d->utilidad_porcentaje,
+            ];
+        });
 
-        $data->push((object) $total);
+        $totalCosto  = $rows->sum('costo_total');
+        $totalVentas = $rows->sum('total_venta');
 
-        return $data;
+        $mapped->push([
+            'sucursal'           => '',
+            'facturador'         => '',
+            'codebar'            => '',
+            'nombreProducto'     => 'TOTALES:',
+            'cantidad'           => '',
+            'costo'              => '',
+            'costo_total'        => round($totalCosto, 2),
+            'precio'             => '',
+            'total_venta'        => round($totalVentas, 2),
+            'utilidad_monto'     => round($totalVentas - $totalCosto, 2),
+            'utilidad_porcentaje'=> $totalCosto > 0 ? round((($totalVentas - $totalCosto) / $totalCosto) * 100, 2) : 0,
+        ]);
+
+        return $mapped;
     }
 
 
     public function headings(): array
     {
-        return ["Codebar", "Producto", "Fecha", "Cantidad", "Costo", "Total Costo", "Precio", "Total Precio", "Utilidad U.", "Utilidad T."];
+        return ["Sucursal", "Facturador", "Codebar", "Producto", "Cantidad", "Costo U.", "Total Costo", "Precio U.", "Total Venta", "Utilidad", "% Utilidad"];
     }
 
     public function startCell(): string
@@ -99,7 +117,7 @@ class ReportUtilidadExport implements FromCollection, WithHeadings, WithTitle, W
 
     public function styles(Worksheet $sheet)
     {
-        $sheet->getStyle('A2:J2')->applyFromArray([
+        $sheet->getStyle('A2:K2')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['argb' => 'FFFFFFFF'],
@@ -121,22 +139,22 @@ class ReportUtilidadExport implements FromCollection, WithHeadings, WithTitle, W
             ],
         ]);
 
-        // Formatear la columna de a 4 decimales
-        $sheet->getStyle('E')->getNumberFormat()->setFormatCode('"$"#,##0.0000');
+        // Formato moneda / porcentaje
         $sheet->getStyle('F')->getNumberFormat()->setFormatCode('"$"#,##0.0000');
-        $sheet->getStyle('G')->getNumberFormat()->setFormatCode('"$"#,##0.0000');
+        $sheet->getStyle('G')->getNumberFormat()->setFormatCode('"$"#,##0.00');
         $sheet->getStyle('H')->getNumberFormat()->setFormatCode('"$"#,##0.0000');
-        $sheet->getStyle('I')->getNumberFormat()->setFormatCode('"$"#,##0.0000');
-        $sheet->getStyle('J')->getNumberFormat()->setFormatCode('"$"#,##0.0000');
+        $sheet->getStyle('I')->getNumberFormat()->setFormatCode('"$"#,##0.00');
+        $sheet->getStyle('J')->getNumberFormat()->setFormatCode('"$"#,##0.00');
+        $sheet->getStyle('K')->getNumberFormat()->setFormatCode('0.00"%"');
 
         // Ajustar el ancho de las columnas
-        foreach (range('A', 'J') as $columnID) {
+        foreach (range('A', 'K') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
 
         // Aplicar bordes a todas las celdas de datos
         $lastRow = $sheet->getHighestRow();
-        $sheet->getStyle('A3:J' . $lastRow)->applyFromArray([
+        $sheet->getStyle('A3:K' . $lastRow)->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
@@ -145,12 +163,11 @@ class ReportUtilidadExport implements FromCollection, WithHeadings, WithTitle, W
             ],
         ]);
 
-        // Centrar la columna de fecha y items
-        $sheet->getStyle('C3:C' . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('F3:F' . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        // Centrar cantidad
+        $sheet->getStyle('E3:E' . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         return [
-            4 => ['font' => ['bold' => true]],
+            $lastRow => ['font' => ['bold' => true]],
         ];
     }
 

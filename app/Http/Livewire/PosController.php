@@ -975,9 +975,11 @@ class PosController extends Component
                         'esenario' => 1,
                         'uni' => $product->medida,
                         'costo' => $product->costociva,
-                        'costo_total' => $product->costociva,
-                        'utilidad_uni' => $product->utilidad,
-                        'utilidad' => $product->utilidad,
+                        'costo_total' => $product->costociva * $cant,
+                        'utilidad_uni' => ($sub * $cant) - ($product->costociva * $cant),
+                        'utilidad' => ($product->costociva * $cant) > 0
+                            ? ((($sub * $cant) - ($product->costociva * $cant)) / ($product->costociva * $cant)) * 100
+                            : 0,
                     ]);
                     //$this->CantiUpdate($product->id, $tmp->id, $barcode);
                 }
@@ -1019,9 +1021,11 @@ class PosController extends Component
                         'empresa' => session('empresa'),
                         'esenario' => 1,
                         'costo' => $product->costosiva,
-                        'costo_total' => $product->costosiva,
-                        'utilidad_uni' => $product->utilidad,
-                        'utilidad' => $product->utilidad,
+                        'costo_total' => $product->costosiva * $cant,
+                        'utilidad_uni' => ($sub * $cant) - ($product->costosiva * $cant),
+                        'utilidad' => ($product->costosiva * $cant) > 0
+                            ? ((($sub * $cant) - ($product->costosiva * $cant)) / ($product->costosiva * $cant)) * 100
+                            : 0,
                     ]);
                     //$this->CantiUpdate($product->id, $tmp->id, $barcode);
                 }
@@ -1143,9 +1147,11 @@ class PosController extends Component
             'empresa' => session('empresa'),
             'esenario' => 1,
             'costo' => $product->costociva,
-            'costo_total' => $product->costociva,
-            'utilidad_uni' => $product->utilidad,
-            'utilidad' => $product->utilidad,
+            'costo_total' => $product->costociva * $cant,
+            'utilidad_uni' => ($sub * $cant) - ($product->costociva * $cant),
+            'utilidad' => ($product->costociva * $cant) > 0
+                ? ((($sub * $cant) - ($product->costociva * $cant)) / ($product->costociva * $cant)) * 100
+                : 0,
         ]);
 
         // Actualizar carrito
@@ -2263,9 +2269,11 @@ class PosController extends Component
                             'iva'          => $ivaUnit * $item->quantity,
                             'total'        => ($ttUnit + $ivaUnit) * $item->quantity,
                             'costo'        => $item->costo,
-                            'costo_total'  => $item->costo_total,
-                            'utilidad_uni' => $item->utilidad_uni,
-                            'utilidad'     => $item->utilidad,
+                            'costo_total'  => $item->costo * $item->quantity,
+                            'utilidad_uni' => (($ttUnit + $ivaUnit) * $item->quantity) - ($item->costo * $item->quantity),
+                            'utilidad'     => ($item->costo * $item->quantity) > 0
+                                ? (((($ttUnit + $ivaUnit) * $item->quantity) - ($item->costo * $item->quantity)) / ($item->costo * $item->quantity)) * 100
+                                : 0,
                             'sincro_id'      => Str::uuid(),
                             'created_at'   => $now,
                             'updated_at'   => $now,

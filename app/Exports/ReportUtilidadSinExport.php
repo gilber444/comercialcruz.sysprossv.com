@@ -47,8 +47,7 @@ class ReportUtilidadSinExport implements FromCollection, WithHeadings, WithTitle
                     ->where('precios.cantidad', '=', 1);
             })*/
             ->whereBetween('ventas.fecha', [$from, $to])
-            ->where('ventas.estado', 'Cancelado')
-            ->whereNotIn('ventas.sucursal', [11, 12, 14]);
+            ->where('ventas.estado', 'Cancelado');
 
         if ($this->sucursal != 0) $base->where('ventas.sucursal', $this->sucursal);
         if ($this->caja != 0)     $base->where('ventas.caja', $this->caja);
@@ -85,7 +84,7 @@ class ReportUtilidadSinExport implements FromCollection, WithHeadings, WithTitle
                 'Total Ventas' => round($row->total_venta, 2),
                 'Total Costo'  => round($row->total_costo, 2),
                 'Utilidad'     => round(($row->total_venta - $row->total_costo), 2),
-                '%Utilidad'     => round((($row->total_venta - $row->total_costo) / $row->total_venta), 4),
+                '%Utilidad'     => $row->total_costo > 0 ? round((($row->total_venta - $row->total_costo) / $row->total_costo) * 100, 2) : 0,
             ];
         });
 
@@ -97,7 +96,9 @@ class ReportUtilidadSinExport implements FromCollection, WithHeadings, WithTitle
             'Total Ventas' => round($data->sum('total_venta'), 2),
             'Total Costo'  => round($data->sum('total_costo'), 2),
             'Utilidad'     => round($data->sum('total_venta') - $data->sum('total_costo'), 2),
-            '%Utilidad'     => round(($data->sum('total_venta') - $data->sum('total_costo')) / $data->sum('total_venta'), 4),
+            '%Utilidad'     => $data->sum('total_costo') > 0
+                ? round((($data->sum('total_venta') - $data->sum('total_costo')) / $data->sum('total_costo')) * 100, 2)
+                : 0,
         ]);
 
         return $mapped;

@@ -40,6 +40,9 @@ class ReportUtilidadController extends Component
         $this->countDetails = 0;
         $this->reporteType = 0;
         $this->ventaId = 0;
+        $this->sucursal = 0;
+        $this->caja = 0;
+        $this->facturador = 0;
 
         $this->facturadores = Facturadores::all();
     }
@@ -108,7 +111,8 @@ class ReportUtilidadController extends Component
 
         $this->totalCosto = $this->data->sum('costo_total');
         $this->totalSales = $this->data->sum('total_venta');
-        $this->totalUtilidad = $this->data->sum('total_utilidad');
+        // utilidad como monto (venta - costo), no el % guardado en ventas_detalles.utilidad
+        $this->totalUtilidad = $this->totalSales - $this->totalCosto;
     }
 
 
