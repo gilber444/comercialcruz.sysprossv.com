@@ -621,13 +621,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('reportsUtilidad', ReportUtilidadController::class)->can('ReportUtilidad_Index')->name('reportsUtilidad');
 
-    Route::get('report/pdfUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1?}/{f2?}', [ExportController::class, 'reportPDFUtilidad'])->can('ReportUtilidadPDF_Print');
+    Route::get('report/pdfUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1?}/{f2?}', [ExportController::class, 'pdfUtilidad'])->can('ReportUtilidadPDF_Print');
+    Route::get('report/generarPdfUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1?}/{f2?}', [ExportController::class, 'generarPdfUtilidad'])->can('ReportUtilidadPDF_Print');
 
     Route::get('report/excelUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1}/{f2}', [ExportController::class, 'reportExcelUtilidad'])->can('ReportUtilidadEXCEL_Print');
 
     Route::get('reportsUtilidadSintetizado', ReportUtilidadSinController::class)->can('ReportUtilidadSintetizado_Index')->name('reportsUtilidadSintetizado');
 
-    Route::get('report/pdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'reportUtilidadesSinPDF'])->can('ReportUtilidadSinPDF_Print');
+    Route::get('report/pdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'pdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
+    Route::get('report/generarPdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'generarPdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
 
     Route::get('report/excelUtilidadSin/{sucursal}/{caja}/{type}/{f1}/{f2}', [ExportController::class, 'reportExcelUtilidadSinExcel'])->can('ReportUtilidadSinEXCEL_Print');
 

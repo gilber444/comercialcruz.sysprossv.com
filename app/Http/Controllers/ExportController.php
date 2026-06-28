@@ -1177,7 +1177,10 @@ class ExportController extends Controller
 
 
 
-    public function reportPDFUtilidad($sucur, $caja, $reportType, $facturador, $dateFrom = null, $dateTo = null)
+    /**
+     * Vista previa HTML del reporte de utilidad detallado.
+     */
+    public function pdfUtilidad($sucur, $caja, $reportType, $facturador, $dateFrom = null, $dateTo = null)
 
     {
 
@@ -1309,9 +1312,148 @@ class ExportController extends Controller
 
             : Sucursales::find($sucur)?->nombre ?? 'Sucursal desconocida';
 
+        $sucurId = $sucur;
 
 
-        // Generar PDF vía DomPDF streaming
+
+        return view('pdf.pdfUtilidad', compact(
+
+            'data',
+
+            'dateFrom',
+
+            'dateTo',
+
+            'sucursal',
+
+            'imagenUrl',
+
+            'empresa',
+
+            'totalCosto',
+
+            'totalSales',
+
+            'totalUtilidad',
+
+            'sucurId',
+
+            'caja',
+
+            'reportType',
+
+            'facturador'
+
+        ));
+
+    }
+
+
+
+    /**
+     * Generar PDF stream del reporte de utilidad detallado.
+     */
+    public function generarPdfUtilidad($sucur, $caja, $reportType, $facturador, $dateFrom = null, $dateTo = null)
+
+    {
+
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_detallado')) {
+
+            abort(403, 'Funcionalidad no disponible.');
+
+        }
+
+        // Definir fechas según tipo de reporte
+
+        if ($reportType == 0) {
+
+            $from = Carbon::now()->format('Y-m-d');
+
+            $to = Carbon::now()->format('Y-m-d');
+
+        } else {
+
+            $from = $dateFrom;
+
+            $to = $dateTo;
+
+        }
+
+
+
+        $query = VentasDetalles::join('ventas', 'ventas.id', 'ventas_detalles.venta')
+
+            ->join('sucursales as s', 's.id', 'ventas.sucursal')
+
+            ->join('facturadores as f', 'f.id', 'ventas.facturador')
+
+            ->join('productos as p', 'p.id', 'ventas_detalles.producto')
+
+            ->whereBetween('ventas.fecha', [$from, $to])
+
+            ->where('ventas.estado', 'Cancelado');
+
+
+
+        if ($sucur != 0) $query->where('ventas.sucursal', $sucur);
+
+        if ($caja != 0) $query->where('ventas.caja', $caja);
+
+        if ($facturador != 0) $query->where('ventas.facturador', $facturador);
+
+
+
+        $data = $query->select(
+
+            's.nombre as sucursal',
+
+            'f.facturador as facturador',
+
+            'p.nombreProducto',
+
+            'ventas_detalles.cantidad',
+
+            'ventas_detalles.costo',
+
+            DB::raw('(ventas_detalles.cantidad * ventas_detalles.costo) as costo_total'),
+
+            'ventas_detalles.precio as precio',
+
+            'ventas_detalles.total as total_venta',
+
+            'ventas_detalles.utilidad_uni as utilidad_uni',
+
+            'ventas_detalles.utilidad as total_utilidad'
+
+        )
+
+            ->orderBy('s.nombre')
+
+            ->get();
+
+
+
+        $totalCosto = $data->sum('costo_total');
+
+        $totalSales = $data->sum('total_venta');
+
+        $totalUtilidad = $totalSales - $totalCosto;
+
+
+
+        $user = Auth::user();
+
+        $empresa = Empresas::find($user->empresa);
+
+        $imagenUrl = asset('logo/' . $empresa->image);
+
+        $sucursal = ($sucur == 0)
+
+            ? 'Todas las Sucursales'
+
+            : Sucursales::find($sucur)?->nombre ?? 'Sucursal desconocida';
+
+
 
         $pdf = PDF::loadView('pdf.pdfUtilidad', compact(
 
@@ -1357,7 +1499,10 @@ class ExportController extends Controller
 
 
 
-    public function reportUtilidadesSinPDF($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
+    /**
+     * Vista previa HTML del reporte de utilidad sintetizado.
+     */
+    public function pdfUtilidadSin($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
 
     {
 
@@ -1485,11 +1630,124 @@ class ExportController extends Controller
 
         $imagenUrl = asset('logo/' . $empresa->image);
 
+        $sucursalNombre = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
+
+        $sucursalId = $sucursal;
+
+
+
+        return view('pdf.pdfUtilidadSin', compact('data', 'dateFrom', 'dateTo', 'sucursal', 'imagenUrl', 'empresa', 'totalCosto', 'totalSales', 'totalUtilidad', 'sucursalId', 'caja', 'reportType'));
+
+        // nota: $sucursal queda con el nombre por compatibilidad con la vista
+
+    }
+
+
+
+    /**
+     * Generar PDF stream del reporte de utilidad sintetizado.
+     */
+    public function generarPdfUtilidadSin($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
+
+    {
+
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado')) {
+
+            abort(403, 'Funcionalidad no disponible.');
+
+        }
+
+        if ($reportType == 0) {
+
+            $dateFrom = now()->format('Y-m-d');
+
+            $dateTo = now()->format('Y-m-d');
+
+        }
+
+
+
+        $from = $dateFrom;
+
+        $to = $dateTo;
+
+
+
+        $base = VentasDetalles::query()
+
+            ->join('ventas', 'ventas.id', '=', 'ventas_detalles.venta')
+
+            ->join('sucursales as s', 's.id', '=', 'ventas.sucursal')
+
+            ->whereBetween('ventas.fecha', [$from, $to])
+
+            ->where('ventas.estado', 'Cancelado');
+
+
+
+        if ($sucursal != 0) {
+
+            $base->where('ventas.sucursal', $sucursal);
+
+        }
+
+        if ($caja != 0) {
+
+            $base->where('ventas.caja', $caja);
+
+        }
+
+
+
+        $data = (clone $base)
+
+            ->selectRaw(
+
+            '
+
+                s.nombre as nombre_sucursal,
+
+                ventas.sucursal,
+
+                ventas.caja,
+
+                SUM(ventas_detalles.costo * ventas_detalles.descargar)   as total_costo,
+
+                SUM(ventas_detalles.total)         as total_venta,
+
+                SUM(ventas_detalles.cantidad)      as total_cantidad
+
+            ',
+
+            )
+
+            ->groupBy('s.nombre', 'ventas.sucursal', 'ventas.caja')
+
+            ->orderBy('s.nombre')
+
+            ->orderBy('ventas.caja')
+
+            ->get();
+
+
+
+        $totalCosto = $data->sum('total_costo');
+
+        $totalSales = $data->sum('total_venta');
+
+        $totalUtilidad = $totalSales - $totalCosto;
+
+
+
+        $user = Auth::user();
+
+        $empresa = Empresas::find($user->empresa);
+
+        $imagenUrl = asset('logo/' . $empresa->image);
+
         $sucursal = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
 
 
-
-        // Generar PDF vía DomPDF streaming
 
         $pdf = PDF::loadView('pdf.pdfUtilidadSin', compact('data', 'dateFrom', 'dateTo', 'sucursal', 'imagenUrl', 'empresa', 'totalCosto', 'totalSales', 'totalUtilidad'));
 

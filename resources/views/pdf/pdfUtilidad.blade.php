@@ -65,6 +65,14 @@
         </tr>
     </table>
 
+    {{-- BOTÓN GENERAR PDF --}}
+    <div style="text-align:right; margin: 8px 0;">
+        <a href="{{ url('report/generarPdfUtilidad/' . ($sucurId ?? 0) . '/' . ($caja ?? 0) . '/' . ($reportType ?? 0) . '/' . ($facturador ?? 0) . '/' . ($dateFrom ?: now()->format('Y-m-d')) . '/' . ($dateTo ?: now()->format('Y-m-d'))) }}"
+           style="background:#dc3545; color:#fff; padding:6px 12px; border-radius:4px; text-decoration:none; font-size:10px; font-weight:bold;">
+            <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+        </a>
+    </div>
+
     @php
         $utilidadTotal = $totalSales - $totalCosto;
         $margenTotal   = $totalCosto > 0 ? round(($utilidadTotal / $totalCosto) * 100, 2) : 0;

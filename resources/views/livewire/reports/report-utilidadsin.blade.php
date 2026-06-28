@@ -77,6 +77,10 @@
                     $f2 = ($reporteType == 1 && $dateTo)   ? $dateTo   : now()->format('Y-m-d');
                 @endphp
                 <a href="{{ url('report/pdfUtilidadSin/' . ($sucursal ?: 0) . '/' . ($caja ?: 0) . '/' . ($reporteType ?: 0) . '/' . $f1 . '/' . $f2) }}"
+                    class="btn btn-sm btn-label-primary rounded-pill px-3" target="_blank">
+                    <i class="fa-solid fa-eye me-1"></i> Ver
+                </a>
+                <a href="{{ url('report/generarPdfUtilidadSin/' . ($sucursal ?: 0) . '/' . ($caja ?: 0) . '/' . ($reporteType ?: 0) . '/' . $f1 . '/' . $f2) }}"
                     class="btn btn-sm btn-label-danger rounded-pill px-3" target="_blank">
                     <i class="fa-solid fa-file-pdf me-1"></i> PDF
                 </a>
