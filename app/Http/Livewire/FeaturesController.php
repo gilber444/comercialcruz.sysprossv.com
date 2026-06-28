@@ -85,25 +85,15 @@ class FeaturesController extends Component
             ->section('content');
     }
 
-    public function Store()
-    {
-        $this->validate();
-
-        Feature::create([
-            'version'     => $this->version,
-            'descripcion' => $this->descripcion,
-            'activo'      => true,
-            'produccion'  => false,
-        ]);
-
-        $this->resetUI();
-        $this->emit('noty', ['msg' => 'Versión registrada correctamente.', 'title' => 'OK', 'type' => 'success']);
-        $this->emit('close-modal', 'modalFeature');
-    }
-
     public function Edit($id)
     {
         $feature = Feature::findOrFail($id);
+
+        if ($feature->produccion) {
+            $this->emit('noty', ['msg' => 'No se puede editar una versión liberada a producción.', 'title' => 'Atención', 'type' => 'warning']);
+            return;
+        }
+
         $this->selected_id = $feature->id;
         $this->version     = $feature->version;
         $this->descripcion = $feature->descripcion;
@@ -118,6 +108,12 @@ class FeaturesController extends Component
         ]);
 
         $feature = Feature::findOrFail($this->selected_id);
+
+        if ($feature->produccion) {
+            $this->emit('noty', ['msg' => 'No se puede editar una versión liberada a producción.', 'title' => 'Atención', 'type' => 'warning']);
+            return;
+        }
+
         $feature->update([
             'version'     => $this->version,
             'descripcion' => $this->descripcion,
@@ -130,7 +126,14 @@ class FeaturesController extends Component
 
     public function Destroy($id)
     {
-        Feature::findOrFail($id)->delete();
+        $feature = Feature::findOrFail($id);
+
+        if ($feature->produccion) {
+            $this->emit('noty', ['msg' => 'No se puede eliminar una versión liberada a producción.', 'title' => 'Atención', 'type' => 'warning']);
+            return;
+        }
+
+        $feature->delete();
         $this->resetUI();
         $this->emit('noty', ['msg' => 'Versión eliminada.', 'title' => 'OK', 'type' => 'success']);
     }
@@ -138,6 +141,12 @@ class FeaturesController extends Component
     public function toggleActivo($id)
     {
         $feature = Feature::findOrFail($id);
+
+        if ($feature->produccion) {
+            $this->emit('noty', ['msg' => 'No se puede cambiar el estado de una versión liberada a producción.', 'title' => 'Atención', 'type' => 'warning']);
+            return;
+        }
+
         $feature->activo = !$feature->activo;
         $feature->save();
 
@@ -147,10 +156,18 @@ class FeaturesController extends Component
     public function toggleProduccion($id)
     {
         $feature = Feature::findOrFail($id);
-        $feature->produccion = !$feature->produccion;
+
+        // Solo se permite liberar (pasar a producción). Una vez liberada, no se puede revertir.
+        if ($feature->produccion) {
+            $this->emit('noty', ['msg' => 'La versión ya está liberada a producción y no se puede revertir.', 'title' => 'Atención', 'type' => 'warning']);
+            return;
+        }
+
+        $feature->produccion = true;
+        $feature->activo     = true;
         $feature->save();
 
-        $this->emit('noty', ['msg' => "Feature {$feature->version} " . ($feature->produccion ? 'liberado a produccion' : 'pasado a pruebas'), 'title' => 'OK', 'type' => 'success']);
+        $this->emit('noty', ['msg' => "Feature {$feature->version} liberado a produccion", 'title' => 'OK', 'type' => 'success']);
     }
 
     public function resetUI()

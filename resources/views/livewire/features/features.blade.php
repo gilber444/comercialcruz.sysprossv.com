@@ -11,9 +11,10 @@
                         <div style="font-size:11px; opacity:.8; margin-top:1px;">Gestión de versiones, pruebas y liberaciones</div>
                     </div>
                 </div>
-                <button class="btn btn-sm btn-light rounded-pill px-3" wire:click="resetUI" data-bs-toggle="modal" data-bs-target="#modalFeature">
-                    <i class="fa-solid fa-plus me-1"></i> Nueva versión
-                </button>
+                <span class="badge bg-white text-primary px-3 py-2">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    Las versiones se generan automáticamente desde el código
+                </span>
             </div>
         </div>
 
@@ -92,30 +93,35 @@
                                     {{-- Acciones --}}
                                     <div class="col-md-3 col-lg-2">
                                         <div class="d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
-                                            {{-- Toggle activo --}}
-                                            <div class="form-check form-switch m-0">
-                                                <input class="form-check-input" type="checkbox" role="switch"
-                                                    wire:click="toggleActivo({{ $feature->id }})"
-                                                    {{ $feature->activo ? 'checked' : '' }}>
-                                            </div>
+                                            @if($feature->produccion)
+                                                {{-- Versión liberada: bloqueada --}}
+                                                <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Bloqueado</span>
+                                            @else
+                                                {{-- Toggle activo --}}
+                                                <div class="form-check form-switch m-0">
+                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                        wire:click="toggleActivo({{ $feature->id }})"
+                                                        {{ $feature->activo ? 'checked' : '' }}>
+                                                </div>
 
-                                            {{-- Liberar / a pruebas --}}
-                                            <button class="btn btn-sm {{ $feature->produccion ? 'btn-warning' : 'btn-success' }} rounded-pill px-3"
-                                                wire:click="toggleProduccion({{ $feature->id }})"
-                                                title="{{ $feature->produccion ? 'Pasar a pruebas' : 'Liberar a producción' }}">
-                                                <i class="fa-solid {{ $feature->produccion ? 'fa-flask' : 'fa-rocket' }}"></i>
-                                                <span class="d-none d-lg-inline ms-1">{{ $feature->produccion ? 'Pruebas' : 'Liberar' }}</span>
-                                            </button>
+                                                {{-- Liberar a producción --}}
+                                                <button class="btn btn-sm btn-success rounded-pill px-3"
+                                                    wire:click="toggleProduccion({{ $feature->id }})"
+                                                    title="Liberar a producción">
+                                                    <i class="fa-solid fa-rocket"></i>
+                                                    <span class="d-none d-lg-inline ms-1">Liberar</span>
+                                                </button>
 
-                                            {{-- Editar --}}
-                                            <button class="btn btn-sm btn-info rounded-pill px-3" wire:click="Edit({{ $feature->id }})" data-bs-toggle="modal" data-bs-target="#modalFeature">
-                                                <i class="fa-solid fa-pen"></i>
-                                            </button>
+                                                {{-- Editar --}}
+                                                <button class="btn btn-sm btn-info rounded-pill px-3" wire:click="Edit({{ $feature->id }})" data-bs-toggle="modal" data-bs-target="#modalFeature">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </button>
 
-                                            {{-- Eliminar --}}
-                                            <button class="btn btn-sm btn-danger rounded-pill px-3" onclick="confirmDelete({{ $feature->id }}, '{{ $feature->version }}')">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
+                                                {{-- Eliminar --}}
+                                                <button class="btn btn-sm btn-danger rounded-pill px-3" onclick="confirmDelete({{ $feature->id }}, '{{ $feature->version }}')">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
