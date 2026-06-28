@@ -49,7 +49,11 @@ class ReportUtilidadController extends Component
 
     public function render()
     {
-        //$this->SalesByDate();
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_detallado')) {
+            return view('livewire.features.disabled')
+                ->extends('layouts.theme.app')
+                ->section('content');
+        }
 
         return view('livewire.reports.report-utilidad', ['sucursales' => Sucursales::orderBy('id', 'asc')->get()])
             ->extends('layouts.theme.app')

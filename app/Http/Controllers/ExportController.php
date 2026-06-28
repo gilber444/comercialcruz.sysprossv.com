@@ -1181,6 +1181,10 @@ class ExportController extends Controller
 
     {
 
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_detallado')) {
+            abort(403, 'Funcionalidad no disponible.');
+        }
+
         // Definir fechas según tipo de reporte
 
         if ($reportType == 0) {
@@ -1341,6 +1345,10 @@ class ExportController extends Controller
 
     {
 
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_detallado')) {
+            abort(403, 'Funcionalidad no disponible.');
+        }
+
         $reportName = 'Reporte_de_Utilidad_' . uniqid() . '.xlsx';
 
         return Excel::download(new ReportUtilidadExport($sucursal, $caja, $reportType, $facturador, $dateFrom, $dateTo), $reportName);
@@ -1352,6 +1360,10 @@ class ExportController extends Controller
     public function reportUtilidadesSinPDF($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
 
     {
+
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado')) {
+            abort(403, 'Funcionalidad no disponible.');
+        }
 
         if ($reportType == 0) {
 
@@ -1490,6 +1502,10 @@ class ExportController extends Controller
     public function reportExcelUtilidadSinExcel($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
 
     {
+
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado')) {
+            abort(403, 'Funcionalidad no disponible.');
+        }
 
         $reportName = 'Reporte_de_Utilidad_Sintetico_' . uniqid() . '.xlsx';
 

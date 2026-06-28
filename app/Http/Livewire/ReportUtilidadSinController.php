@@ -48,7 +48,11 @@ class ReportUtilidadSinController extends Component
 
     public function render()
     {
-        //$this->SalesByDate();
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado')) {
+            return view('livewire.features.disabled')
+                ->extends('layouts.theme.app')
+                ->section('content');
+        }
 
         return view('livewire.reports.report-utilidadsin', ['sucursales' => Sucursales::orderBy('id', 'asc')->get()])
             ->extends('layouts.theme.app')

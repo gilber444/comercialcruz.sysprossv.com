@@ -1511,31 +1511,23 @@
                 @endcan
 
                 @can('ReportUtilidad_Index')
-
+                    @if(\App\Models\Feature::isEnabled('reporte_utilidad_detallado'))
                     <li class="menu-item {{ request::is('reportsUtilidad') ? 'active' : '' }}">
-
                         <a href="{{ url('reportsUtilidad') }}" class="menu-link">
-
                             <div data-i18n="Reporte de Utilidad">Reporte de Utilidad</div>
-
                         </a>
-
                     </li>
-
+                    @endif
                 @endcan
 
                 @can('ReportUtilidadSintetizado_Index')
-
+                    @if(\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado'))
                     <li class="menu-item {{ request::is('reportsUtilidadSintetizado') ? 'active' : '' }}">
-
                         <a href="{{ url('reportsUtilidadSintetizado') }}" class="menu-link">
-
                             <div data-i18n="Report. Utilidad Sintetizado">Report. Utilidad Sintetizado</div>
-
                         </a>
-
                     </li>
-
+                    @endif
                 @endcan
 
                 @can('ReportCompras_Index')
