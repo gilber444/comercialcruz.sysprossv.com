@@ -4,109 +4,144 @@
     <meta charset="UTF-8">
     <title>Reporte de Utilidades Sintetizado</title>
     <style>
-        body  { font-family: sans-serif; font-size: 10px; margin: 0; padding: 0; }
+        body  { font-family: sans-serif; font-size: 10px; margin: 0; padding: 0; color: #333; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 3px 5px; }
-        .header-table td { padding: 0; vertical-align: middle; }
-        .title    { font-size: 13px; font-weight: bold; text-align: center; margin: 6px 0 2px; text-transform: uppercase; }
-        .subtitle { font-size: 10px; text-align: center; margin-bottom: 6px; color: #444; }
-        thead th  { background-color: #233446; color: #fff; font-size: 10px; text-align: center; padding: 5px; }
-        tbody tr:nth-child(even) { background: #f5f5f5; }
+        th, td { padding: 4px 6px; }
+
+        /* Header oscuro */
+        .header { background: #233446; color: #fff; padding: 12px 15px; border-radius: 6px; margin-bottom: 10px; }
+        .header td { color: #fff; vertical-align: middle; padding: 0; }
+        .header .logo { width: 70px; text-align: center; }
+        .header .logo img { width: 60px; height: 60px; object-fit: contain; border-radius: 6px; background: #fff; padding: 3px; }
+        .header .company { font-size: 11px; line-height: 1.4; }
+        .header .company strong { font-size: 14px; display: block; margin-bottom: 3px; }
+        .header .title-section { text-align: right; }
+        .header .title-section .title { font-size: 15px; font-weight: bold; letter-spacing: .5px; }
+        .header .title-section .subtitle { font-size: 10px; opacity: .9; margin-top: 4px; }
+
+        /* KPIs */
+        .kpi-container { margin-bottom: 12px; }
+        .kpi-box { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; text-align: center; background: #fafafa; }
+        .kpi-box .label { font-size: 9px; color: #777; text-transform: uppercase; letter-spacing: .5px; }
+        .kpi-box .value { font-size: 15px; font-weight: bold; color: #233446; margin-top: 3px; }
+        .kpi-box.ventas .value { color: #28a745; }
+        .kpi-box.utilidad .value { color: #4a90d9; }
+        .kpi-box.margen .value { color: #fd7e14; }
+
+        /* Tabla */
+        .table-wrapper { border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; }
+        thead th { background: #233446; color: #fff; font-size: 9px; text-align: center; padding: 6px; font-weight: 600; }
+        tbody tr:nth-child(even) { background: #f7f7f7; }
+        tbody td { font-size: 9px; border-bottom: 1px solid #eee; }
         .text-right  { text-align: right; }
         .text-center { text-align: center; }
-        .total-row   { background: #233446; color: #fff; font-weight: bold; }
-        .total-row td { padding: 4px 5px; }
-        hr { border: none; border-top: 1px solid #233446; margin: 4px 0; }
-        .kpi-table td { padding: 4px 10px; font-size: 10px; }
-        .kpi-label    { color: #555; }
-        .kpi-value    { font-weight: bold; font-size: 12px; color: #233446; }
+        tfoot td { background: #233446; color: #fff; font-weight: bold; font-size: 10px; padding: 6px; }
     </style>
 </head>
 <body>
 
-    {{-- ENCABEZADO --}}
-    <table class="header-table">
+    {{-- HEADER --}}
+    <table class="header">
         <tr>
-            <td width="15%">
-                <img src="{{ $imagenUrl }}" alt="" width="100" height="55">
+            <td class="logo" width="70">
+                <img src="{{ $imagenUrl }}" alt="">
             </td>
-            <td width="85%">
-                <div style="font-size:12px; font-weight:bold;">{{ $empresa->razon }}</div>
+            <td class="company" width="55%">
+                <strong>{{ $empresa->razon }}</strong>
                 <div>NIT: {{ $empresa->nit }} — NCR: {{ $empresa->registro }}</div>
                 <div>{{ $empresa->direccion }} | Tel. {{ $empresa->telefono }}</div>
             </td>
+            <td class="title-section" width="35%">
+                <div class="title">REPORTE DE UTILIDADES SINTETIZADO</div>
+                <div class="subtitle">
+                    Sucursal: <b>{{ $sucursal }}</b><br>
+                    @if($dateFrom && $dateTo)
+                        Período: {{ $dateFrom }} al {{ $dateTo }}
+                    @else
+                        Ventas del día
+                    @endif
+                </div>
+            </td>
         </tr>
     </table>
-    <hr>
 
-    <div class="title">Reporte de Utilidades Sintetizado</div>
-    <div class="subtitle">
-        Sucursal: <b>{{ $sucursal }}</b>
-        @if($dateFrom && $dateTo)
-        &nbsp;|&nbsp; Período: <b>{{ $dateFrom }}</b> al <b>{{ $dateTo }}</b>
-        @endif
-    </div>
-    <hr>
+    @php
+        $utilidadTotal = $totalSales - $totalCosto;
+        $margenTotal   = $totalCosto > 0 ? round(($utilidadTotal / $totalCosto) * 100, 2) : 0;
+    @endphp
 
-    {{-- RESUMEN KPIs --}}
-    @php $utilidadTotal = $totalSales - $totalCosto; $margenTotal = $totalCosto > 0 ? round(($utilidadTotal / $totalCosto) * 100, 2) : 0; @endphp
-    <table class="kpi-table" style="margin-bottom:6px;">
+    {{-- KPIs --}}
+    <table class="kpi-container">
         <tr>
-            <td class="kpi-label">Total Ventas:</td>
-            <td class="kpi-value" style="color:#1a7a3a;">$ {{ number_format($totalSales, 2) }}</td>
-            <td width="20"></td>
-            <td class="kpi-label">Total Costo:</td>
-            <td class="kpi-value">$ {{ number_format($totalCosto, 2) }}</td>
-            <td width="20"></td>
-            <td class="kpi-label">Utilidad:</td>
-            <td class="kpi-value" style="color:#1a7a3a;">$ {{ number_format($utilidadTotal, 2) }}</td>
-            <td width="20"></td>
-            <td class="kpi-label">Margen:</td>
-            <td class="kpi-value">{{ $margenTotal }} %</td>
+            <td width="25%">
+                <div class="kpi-box ventas">
+                    <div class="label">Total Ventas</div>
+                    <div class="value">$ {{ number_format($totalSales, 2) }}</div>
+                </div>
+            </td>
+            <td width="25%">
+                <div class="kpi-box">
+                    <div class="label">Total Costo</div>
+                    <div class="value">$ {{ number_format($totalCosto, 2) }}</div>
+                </div>
+            </td>
+            <td width="25%">
+                <div class="kpi-box utilidad">
+                    <div class="label">Utilidad</div>
+                    <div class="value">$ {{ number_format($utilidadTotal, 2) }}</div>
+                </div>
+            </td>
+            <td width="25%">
+                <div class="kpi-box margen">
+                    <div class="label">Margen</div>
+                    <div class="value">{{ $margenTotal }} %</div>
+                </div>
+            </td>
         </tr>
     </table>
-    <hr>
 
     {{-- TABLA --}}
-    <table>
-        <thead>
-            <tr>
-                <th style="width:30%;">Sucursal</th>
-                <th class="text-center" style="width:15%;">Caja</th>
-                <th class="text-right" style="width:15%;">Total Ventas</th>
-                <th class="text-right" style="width:15%;">Total Costo</th>
-                <th class="text-right" style="width:15%;">Utilidad</th>
-                <th class="text-right" style="width:10%;">% Utilidad</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($data as $row)
-            @php
-                $venta    = $row->total_venta;
-                $costo    = $row->total_costo;
-                $utilidad = $venta - $costo;
-                $porcent  = $costo > 0 ? round(($utilidad / $costo) * 100, 2) : 0;
-            @endphp
-            <tr>
-                <td>{{ $row->nombre_sucursal }}</td>
-                <td class="text-center">{{ $row->caja }}</td>
-                <td class="text-right">$ {{ number_format($venta, 2) }}</td>
-                <td class="text-right">$ {{ number_format($costo, 2) }}</td>
-                <td class="text-right">$ {{ number_format($utilidad, 2) }}</td>
-                <td class="text-right">{{ $porcent }} %</td>
-            </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td colspan="2" class="text-right">TOTAL GENERAL</td>
-                <td class="text-right">$ {{ number_format($totalSales, 2) }}</td>
-                <td class="text-right">$ {{ number_format($totalCosto, 2) }}</td>
-                <td class="text-right">$ {{ number_format($utilidadTotal, 2) }}</td>
-                <td class="text-right">{{ $margenTotal }} %</td>
-            </tr>
-        </tfoot>
-    </table>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:30%;">Sucursal</th>
+                    <th style="width:12%;" class="text-center">Caja</th>
+                    <th style="width:14%;" class="text-right">Total Ventas</th>
+                    <th style="width:14%;" class="text-right">Total Costo</th>
+                    <th style="width:15%;" class="text-right">Utilidad</th>
+                    <th style="width:15%;" class="text-right">% Utilidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($data as $row)
+                @php
+                    $venta    = $row->total_venta;
+                    $costo    = $row->total_costo;
+                    $utilidad = $venta - $costo;
+                    $porcent  = $costo > 0 ? round(($utilidad / $costo) * 100, 2) : 0;
+                @endphp
+                <tr>
+                    <td>{{ $row->nombre_sucursal }}</td>
+                    <td class="text-center">{{ $row->caja }}</td>
+                    <td class="text-right">$ {{ number_format($venta, 2) }}</td>
+                    <td class="text-right">$ {{ number_format($costo, 2) }}</td>
+                    <td class="text-right">$ {{ number_format($utilidad, 2) }}</td>
+                    <td class="text-right">{{ $porcent }} %</td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2" class="text-right">TOTALES</td>
+                    <td class="text-right">$ {{ number_format($totalSales, 2) }}</td>
+                    <td class="text-right">$ {{ number_format($totalCosto, 2) }}</td>
+                    <td class="text-right">$ {{ number_format($utilidadTotal, 2) }}</td>
+                    <td class="text-right">{{ $margenTotal }} %</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
 
 </body>
 </html>
