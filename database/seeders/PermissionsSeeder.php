@@ -32,6 +32,7 @@ class PermissionsSeeder extends Seeder
             'Empresa_Index',
             'Sucursales_Index',
             'Parametros_Index',
+            'Features_Index',
             'User_Create',
             'User_Update',
             'User_Destroy',
