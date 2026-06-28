@@ -23,6 +23,7 @@
                     <label class="form-label fw-semibold small mb-1">Sucursal</label>
                     <select class="form-select form-select-sm" wire:model="sucursal" wire:change="getCaja">
                         <option value="" disabled selected>Elegir</option>
+                        <option value="0">Todas</option>
                         @foreach ($sucursales as $s)
                             <option value="{{ $s->id }}">{{ $s->nombre }}</option>
                         @endforeach
@@ -32,6 +33,7 @@
                     <label class="form-label fw-semibold small mb-1">Caja</label>
                     <select class="form-select form-select-sm" wire:model="caja">
                         <option value="" disabled selected>Elegir</option>
+                        <option value="0">Todas</option>
                         @foreach ($cajas as $c)
                             <option value="{{ $c->id }}">{{ $c->caja }}</option>
                         @endforeach
@@ -41,6 +43,7 @@
                     <label class="form-label fw-semibold small mb-1">Facturador</label>
                     <select class="form-select form-select-sm" wire:model="facturador">
                         <option value="" disabled selected>Elegir</option>
+                        <option value="0">Todos</option>
                         @foreach ($facturadores as $f)
                             <option value="{{ $f->id }}">{{ $f->facturador }}</option>
                         @endforeach

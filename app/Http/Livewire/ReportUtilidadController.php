@@ -43,6 +43,8 @@ class ReportUtilidadController extends Component
         $this->sucursal = '';
         $this->caja = '';
         $this->facturador = '';
+        $this->dateFrom = '';
+        $this->dateTo = '';
 
         $this->facturadores = Facturadores::all();
     }
@@ -90,9 +92,9 @@ class ReportUtilidadController extends Component
             ->whereBetween('ventas.fecha', [$from, $to])
             ->where('ventas.estado', 'Cancelado');
 
-        if (!empty($this->sucursal)) $query->where('ventas.sucursal', $this->sucursal);
-        if (!empty($this->caja)) $query->where('ventas.caja', $this->caja);
-        if (!empty($this->facturador)) $query->where('ventas.facturador', $this->facturador);
+        if ($this->sucursal != 0) $query->where('ventas.sucursal', $this->sucursal);
+        if ($this->caja != 0) $query->where('ventas.caja', $this->caja);
+        if ($this->facturador != 0) $query->where('ventas.facturador', $this->facturador);
 
         $this->data = $query->select(
             's.nombre as sucursal',

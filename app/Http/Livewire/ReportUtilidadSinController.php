@@ -76,13 +76,13 @@ class ReportUtilidadSinController extends Component
         ->whereBetween('ventas.fecha', [$from, $to])
         ->where('ventas.estado', 'Cancelado');
 
-        if (!empty($this->sucursal)) $base->where('ventas.sucursal', $this->sucursal);
-        if (!empty($this->caja))     $base->where('ventas.caja', $this->caja);
+        if ($this->sucursal != 0) $base->where('ventas.sucursal', $this->sucursal);
+        if ($this->caja != 0)     $base->where('ventas.caja', $this->caja);
 
         $groupCols = [];
-        if (!empty($this->caja)) {
+        if ($this->caja != 0) {
             $groupCols = ['ventas.caja'];
-        } elseif (!empty($this->sucursal)) {
+        } elseif ($this->sucursal != 0) {
             $groupCols = ['ventas.caja'];
         } else {
             $groupCols = ['ventas.sucursal', 'ventas.caja'];
