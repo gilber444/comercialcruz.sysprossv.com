@@ -17,7 +17,20 @@
                 {{$empresa->razon}}
             @endif
         </a>
-        <a href="#" class="footer-link d-none d-sm-inline-block">V {{ config('version.current', '1.0.0') }}</a>
+        <a href="#" class="footer-link d-none d-sm-inline-block">
+            @php
+                try {
+                    $version = \App\Models\Feature::where('activo', true)
+                        ->where('produccion', true)
+                        ->orderByDesc('id')
+                        ->value('version');
+                } catch (\Throwable $e) {
+                    $version = null;
+                }
+                $version = $version ?: config('version.current', '1.0.0');
+            @endphp
+            V {{ $version }}
+        </a>
       </div>
     </div>
 </footer>
