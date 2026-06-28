@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Copy-Item \"c:\\\\laragon\\\\www\\\\supermercadojosue.sysprossv.com\\\\app\\\\Http\\\\Livewire\\\\NuevoAjustesController.php\" \"c:\\\\laragon\\\\www\\\\comercialcruz.sysprossv.com\\\\app\\\\Http\\\\Livewire\\\\NuevoAjustesController.php\" -Force)",
+      "PowerShell(Copy-Item \"c:\\\\laragon\\\\www\\\\supermercadojosue.sysprossv.com\\\\app\\\\Http\\\\Livewire\\\\EditarAjusteController.php\" \"c:\\\\laragon\\\\www\\\\comercialcruz.sysprossv.com\\\\app\\\\Http\\\\Livewire\\\\EditarAjusteController.php\" -Force)"
+    ],
+    "additionalDirectories": [
+      "c:\\laragon\\www\\supermercadojosue.sysprossv.com\\app\\Http\\Livewire"
+    ]
+  }
+}
