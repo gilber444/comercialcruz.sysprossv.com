@@ -1,0 +1,10 @@
+
+/vendor
+/node_modules
+/public/storage
+/storage/*.key
+/bootstrap
+/config
+/tests
+.env
+agency-agents/

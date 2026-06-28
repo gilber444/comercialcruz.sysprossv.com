@@ -1,0 +1,87 @@
+[09-Jan-2025 06:01:21 UTC] PHP Warning:  require_once(/home/sysprossv/supermercadojosue.sysprossv.com/public/../bootstrap/app.php): Failed to open stream: No such file or directory in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php on line 47
+[09-Jan-2025 06:01:21 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sysprossv/supermercadojosue.sysprossv.com/public/../bootstrap/app.php' (include_path='.:/opt/remi/php82/root/usr/share/pear:/opt/remi/php82/root/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php:47
+Stack trace:
+#0 {main}
+  thrown in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php on line 47
+[09-Jan-2025 06:09:19 UTC] PHP Warning:  require_once(/home/sysprossv/supermercadojosue.sysprossv.com/public/../bootstrap/app.php): Failed to open stream: No such file or directory in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php on line 47
+[09-Jan-2025 06:09:19 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sysprossv/supermercadojosue.sysprossv.com/public/../bootstrap/app.php' (include_path='.:/opt/remi/php82/root/usr/share/pear:/opt/remi/php82/root/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php:47
+Stack trace:
+#0 {main}
+  thrown in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php on line 47
+[09-Jan-2025 06:12:04 UTC] PHP Warning:  require_once(/home/sysprossv/supermercadojosue.sysprossv.com/public/../bootstrap/app.php): Failed to open stream: No such file or directory in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php on line 47
+[09-Jan-2025 06:12:04 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/sysprossv/supermercadojosue.sysprossv.com/public/../bootstrap/app.php' (include_path='.:/opt/remi/php82/root/usr/share/pear:/opt/remi/php82/root/usr/share/php:/usr/share/pear:/usr/share/php') in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php:47
+Stack trace:
+#0 {main}
+  thrown in /home/sysprossv/supermercadojosue.sysprossv.com/public/index.php on line 47
+[15-Jan-2025 22:29:05 America/El_Salvador] PHP Fatal error:  Cannot use empty array elements in arrays in /home/sysprossv/supermercadojosue.sysprossv.com/app/Http/Livewire/EditarProductoController.php on line 550
+[15-Jan-2025 22:29:06 America/El_Salvador] PHP Fatal error:  Cannot use empty array elements in arrays in /home/sysprossv/supermercadojosue.sysprossv.com/app/Http/Livewire/EditarProductoController.php on line 550
+[15-Jan-2025 22:29:06 America/El_Salvador] PHP Fatal error:  Cannot use empty array elements in arrays in /home/sysprossv/supermercadojosue.sysprossv.com/app/Http/Livewire/EditarProductoController.php on line 550
+[15-Jan-2025 22:29:08 America/El_Salvador] PHP Fatal error:  Cannot use empty array elements in arrays in /home/sysprossv/supermercadojosue.sysprossv.com/app/Http/Livewire/EditarProductoController.php on line 550
+[31-Jan-2025 21:49:14 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\NumeroControlTrait" not found in /home/sysprossv/supermercadojosue.sysprossv.com/app/Http/Livewire/PosController.php on line 75
+[06-Oct-2025 23:56:35 America/El_Salvador] PHP Fatal error:  Cannot redeclare App\Models\User::booted() in /home/sysprossv/comercialcruz.sysprossv.com/app/Models/User.php on line 79
+[07-Oct-2025 21:02:26 America/El_Salvador] PHP Fatal error:  A function with return type must return a value in /home/sysprossv/comercialcruz.sysprossv.com/app/Services/DailyTokenService.php on line 90
+[17-Nov-2025 16:27:46 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:27:57 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:28:01 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:28:05 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:28:10 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:28:14 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:28:28 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:32:46 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:42:44 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:49:46 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 16:56:25 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:05:53 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:17:06 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:26:44 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:26:56 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:27:19 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:27:39 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:29:35 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:29:35 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:29:40 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 17:29:43 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:01:56 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:02:50 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:06:11 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:06:17 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:09:13 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:18:47 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:18:52 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:19:06 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:01 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:04 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:07 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:11 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:12 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:16 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:20:25 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:31:16 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:32:07 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:32:10 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:32:13 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:34:05 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:34:38 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:34:41 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:34:46 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:44:30 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:45:16 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:45:20 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:45:23 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:46:39 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:46:44 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:47:14 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:47:17 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:48:25 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:48:28 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:48:30 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[17-Nov-2025 18:48:33 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[22-Nov-2025 21:19:31 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[01-Dec-2025 22:14:35 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[01-Dec-2025 22:14:38 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[01-Dec-2025 22:14:41 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[01-Dec-2025 22:14:45 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[01-Dec-2025 22:14:49 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[01-Dec-2025 22:35:41 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[11-Dec-2025 15:09:52 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonNota" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/NotaCreditoController.php on line 12
+[19-Feb-2026 21:44:28 America/El_Salvador] PHP Fatal error:  Maximum execution time of 30 seconds exceeded in /home/sysprossv/comercialcruz.sysprossv.com/vendor/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Collection/Cells.php on line 395

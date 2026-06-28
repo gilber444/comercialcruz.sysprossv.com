@@ -1,0 +1,6 @@
+[19-Mar-2025 15:24:09 UTC] PHP Deprecated:  Using ${var} in strings is deprecated, use {$var} instead in phar:///usr/local/bin/composer/src/Composer/Autoload/AutoloadGenerator.php on line 879
+[19-Mar-2025 15:24:09 UTC] PHP Deprecated:  Using ${var} in strings is deprecated, use {$var} instead in phar:///usr/local/bin/composer/src/Composer/Autoload/AutoloadGenerator.php on line 884
+[19-Mar-2025 15:24:25 UTC] PHP Deprecated:  Using ${var} in strings is deprecated, use {$var} instead in phar:///usr/local/bin/composer/src/Composer/Autoload/AutoloadGenerator.php on line 879
+[19-Mar-2025 15:24:25 UTC] PHP Deprecated:  Using ${var} in strings is deprecated, use {$var} instead in phar:///usr/local/bin/composer/src/Composer/Autoload/AutoloadGenerator.php on line 884
+[17-Feb-2026 18:27:02 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\GeneraJsonS" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/SujetoExcluidosController.php on line 18
+[02-May-2026 21:52:03 America/El_Salvador] PHP Fatal error:  Trait "App\Traits\RecepcionDTEC" not found in /home/sysprossv/comercialcruz.sysprossv.com/app/Http/Livewire/PosController.php on line 84
