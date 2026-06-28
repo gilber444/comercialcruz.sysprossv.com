@@ -162,6 +162,12 @@
                         @error('version') <span class="text-danger small">{{ $message }}</span> @enderror
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Código de feature</label>
+                        <input type="text" wire:model="codigo" class="form-control" placeholder="Ej. pos_cobro_tarjeta_saldo_cuenta">
+                        <div class="form-text small">Identificador único para usar en el código con <code>Feature::isEnabled('codigo')</code>.</div>
+                        @error('codigo') <span class="text-danger small">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Descripción</label>
                         <textarea wire:model="descripcion" class="form-control" rows="4" placeholder="Resumen de cambios..."></textarea>
                         @error('descripcion') <span class="text-danger small">{{ $message }}</span> @enderror

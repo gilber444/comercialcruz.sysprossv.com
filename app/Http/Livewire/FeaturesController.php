@@ -16,6 +16,7 @@ class FeaturesController extends Component
     public $componentName = 'Features';
 
     public $version = '';
+    public $codigo = '';
     public $descripcion = '';
     public $selected_id = 0;
 
@@ -27,12 +28,14 @@ class FeaturesController extends Component
 
     protected $rules = [
         'version'     => 'required|max:20',
+        'codigo'      => 'nullable|max:100|unique:features,codigo',
         'descripcion' => 'required|max:500',
     ];
 
     protected $messages = [
         'version.required'     => 'La versión es obligatoria.',
         'descripcion.required' => 'La descripción es obligatoria.',
+        'codigo.unique'        => 'Ese código de feature ya existe.',
     ];
 
     public function paginationView()
@@ -96,6 +99,7 @@ class FeaturesController extends Component
 
         $this->selected_id = $feature->id;
         $this->version     = $feature->version;
+        $this->codigo      = $feature->codigo;
         $this->descripcion = $feature->descripcion;
         $this->emit('show-modal', 'modalFeature');
     }
@@ -114,8 +118,15 @@ class FeaturesController extends Component
             return;
         }
 
+        $this->validate([
+            'version'     => 'required|max:20',
+            'codigo'      => 'nullable|max:100|unique:features,codigo,' . $feature->id,
+            'descripcion' => 'required|max:500',
+        ]);
+
         $feature->update([
             'version'     => $this->version,
+            'codigo'      => $this->codigo ?: null,
             'descripcion' => $this->descripcion,
         ]);
 
@@ -175,6 +186,7 @@ class FeaturesController extends Component
         $this->resetPage();
         $this->search = '';
         $this->version = '';
+        $this->codigo = '';
         $this->descripcion = '';
         $this->selected_id = 0;
         $this->resetValidation();
