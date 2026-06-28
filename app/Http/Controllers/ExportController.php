@@ -1357,6 +1357,10 @@ class ExportController extends Controller
 
     {
 
+        set_time_limit(180);
+
+        ini_set('memory_limit', '512M');
+
         if (!\App\Models\Feature::isEnabled('reporte_utilidad_detallado')) {
 
             abort(403, 'Funcionalidad no disponible.');
@@ -1630,15 +1634,13 @@ class ExportController extends Controller
 
         $imagenUrl = $this->logoBase64($empresa->image);
 
-        $sucursalNombre = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
-
         $sucursalId = $sucursal;
+
+        $sucursal = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
 
 
 
         return view('pdf.pdfUtilidadSin', compact('data', 'dateFrom', 'dateTo', 'sucursal', 'imagenUrl', 'empresa', 'totalCosto', 'totalSales', 'totalUtilidad', 'sucursalId', 'caja', 'reportType'));
-
-        // nota: $sucursal queda con el nombre por compatibilidad con la vista
 
     }
 
@@ -1650,6 +1652,10 @@ class ExportController extends Controller
     public function generarPdfUtilidadSin($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
 
     {
+
+        set_time_limit(180);
+
+        ini_set('memory_limit', '512M');
 
         if (!\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado')) {
 
