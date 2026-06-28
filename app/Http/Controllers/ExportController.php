@@ -142,7 +142,7 @@ class ExportController extends Controller
 
 
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -301,7 +301,7 @@ class ExportController extends Controller
 
 
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -485,7 +485,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -549,7 +549,7 @@ class ExportController extends Controller
 
         $user      = Auth::user();
         $empresa   = Empresas::find($user->empresa);
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
         $pdf = PDF::loadView('pdf.pdfCompras', compact(
             'data', 'reportType', 'proveedores', 'empresa', 'imagenUrl',
@@ -643,7 +643,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -763,7 +763,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find(session('empresa'));
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -853,7 +853,7 @@ class ExportController extends Controller
 
 
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -945,7 +945,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find(session('empresa'));
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -1007,7 +1007,7 @@ class ExportController extends Controller
 
 
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -1143,7 +1143,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -1304,7 +1304,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
         $sucursal = ($sucur == 0)
 
@@ -1445,7 +1445,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
         $sucursal = ($sucur == 0)
 
@@ -1628,7 +1628,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
         $sucursalNombre = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
 
@@ -1743,7 +1743,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
         $sucursal = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
 
@@ -1861,7 +1861,7 @@ class ExportController extends Controller
 
         $empresa = Empresas::find($user->empresa);
 
-        $imagenUrl = asset('logo/' . $empresa->image);
+        $imagenUrl = $this->logoBase64($empresa->image);
 
 
 
@@ -1898,6 +1898,48 @@ class ExportController extends Controller
         $reportName = 'Reporte_de_Ventas_Sintetizado' . uniqid() . '.xlsx';
 
         return Excel::download(new ReportVentasSintetizadoExport($sucursal, $type, $facturador, $f1, $f2), $reportName);
+
+    }
+
+
+
+    /**
+     * Devuelve el logo de la empresa como data URI base64 para evitar
+     * que DomPDF haga peticiones HTTP externas al generar PDFs.
+     */
+    private function logoBase64($imageName)
+
+    {
+
+        $path = public_path('logo/' . $imageName);
+
+        if (!file_exists($path)) {
+
+            return asset('logo/' . $imageName);
+
+        }
+
+
+
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        $mime = match ($ext) {
+
+            'png'  => 'image/png',
+
+            'jpg', 'jpeg' => 'image/jpeg',
+
+            'gif'  => 'image/gif',
+
+            'svg'  => 'image/svg+xml',
+
+            default => 'image/png',
+
+        };
+
+
+
+        return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
 
     }
 
