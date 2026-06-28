@@ -27,7 +27,7 @@
                     <label class="form-label fw-semibold small mb-1">Sucursal</label>
                     <select class="form-select form-select-sm" wire:model="sucursal" wire:change="getCaja"
                         @if(auth()->user()->profile === 'Gerente') disabled @endif>
-                        <option value="0" selected>-- Elegir --</option>
+                        <option value="" disabled selected>Elegir</option>
                         @foreach ($sucursales as $s)
                             <option value="{{ $s->id }}">{{ $s->nombre }}</option>
                         @endforeach
@@ -36,7 +36,7 @@
                 <div class="col-sm-6 col-md-2">
                     <label class="form-label fw-semibold small mb-1">Caja</label>
                     <select class="form-select form-select-sm" wire:model="caja">
-                        <option value="0">-- Elegir --</option>
+                        <option value="" disabled selected>Elegir</option>
                         @foreach ($cajas as $c)
                             <option value="{{ $c->id }}">{{ $c->caja }}</option>
                         @endforeach
@@ -74,11 +74,11 @@
                     $f1 = ($reporteType == 1 && $dateFrom) ? $dateFrom : now()->format('Y-m-d');
                     $f2 = ($reporteType == 1 && $dateTo)   ? $dateTo   : now()->format('Y-m-d');
                 @endphp
-                <a href="{{ url('report/pdfUtilidadSin/' . ($sucursal ?? 0) . '/' . ($caja ?? 0) . '/' . ($reporteType ?? 0) . '/' . $f1 . '/' . $f2) }}"
+                <a href="{{ url('report/pdfUtilidadSin/' . ($sucursal ?: 0) . '/' . ($caja ?: 0) . '/' . ($reporteType ?: 0) . '/' . $f1 . '/' . $f2) }}"
                     class="btn btn-sm btn-label-danger rounded-pill px-3" target="_blank">
                     <i class="fa-solid fa-file-pdf me-1"></i> PDF
                 </a>
-                <a href="{{ url('report/excelUtilidadSin/' . ($sucursal ?? 0) . '/' . ($caja ?? 0) . '/' . ($reporteType ?? 0) . '/' . $f1 . '/' . $f2) }}"
+                <a href="{{ url('report/excelUtilidadSin/' . ($sucursal ?: 0) . '/' . ($caja ?: 0) . '/' . ($reporteType ?: 0) . '/' . $f1 . '/' . $f2) }}"
                     class="btn btn-sm btn-label-success rounded-pill px-3" target="_blank">
                     <i class="fa-solid fa-file-excel me-1"></i> Excel
                 </a>

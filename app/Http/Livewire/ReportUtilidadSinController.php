@@ -40,8 +40,8 @@ class ReportUtilidadSinController extends Component
         $this->countDetails = 0;
         $this->reporteType = 0;
         $this->ventaId = 0;
-        $this->sucursal = 0;
-        $this->caja = 0;
+        $this->sucursal = '';
+        $this->caja = '';
 
         $this->facturadores = Facturadores::all();
     }
@@ -76,13 +76,13 @@ class ReportUtilidadSinController extends Component
         ->whereBetween('ventas.fecha', [$from, $to])
         ->where('ventas.estado', 'Cancelado');
 
-        if ($this->sucursal != 0) $base->where('ventas.sucursal', $this->sucursal);
-        if ($this->caja != 0)     $base->where('ventas.caja', $this->caja);
+        if (!empty($this->sucursal)) $base->where('ventas.sucursal', $this->sucursal);
+        if (!empty($this->caja))     $base->where('ventas.caja', $this->caja);
 
         $groupCols = [];
-        if ($this->caja != 0) {
+        if (!empty($this->caja)) {
             $groupCols = ['ventas.caja'];
-        } elseif ($this->sucursal != 0) {
+        } elseif (!empty($this->sucursal)) {
             $groupCols = ['ventas.caja'];
         } else {
             $groupCols = ['ventas.sucursal', 'ventas.caja'];
