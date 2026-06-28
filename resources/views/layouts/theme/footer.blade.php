@@ -16,9 +16,8 @@
             @if ($empresa)
                 {{$empresa->razon}}
             @endif
-
         </a>
-        <a href="#" class="footer-link d-none d-sm-inline-block">V 2.0 LV</a>
+        <a href="#" class="footer-link d-none d-sm-inline-block">V {{ config('version.current', '1.0.0') }}</a>
       </div>
     </div>
 </footer>
