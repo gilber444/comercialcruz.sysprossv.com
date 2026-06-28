@@ -7,6 +7,22 @@ define('LARAVEL_START', microtime(true));
 
 /*
 |--------------------------------------------------------------------------
+| PHP Error Log Outside Document Root
+|--------------------------------------------------------------------------
+|
+| Force PHP errors to be written to storage/logs/ instead of the document
+| root, preventing exposed error_log files and potential information leaks.
+|
+*/
+
+$logDir = __DIR__.'/../storage/logs';
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0755, true);
+}
+ini_set('error_log', $logDir.'/php_errors.log');
+
+/*
+|--------------------------------------------------------------------------
 | Check If The Application Is Under Maintenance
 |--------------------------------------------------------------------------
 |

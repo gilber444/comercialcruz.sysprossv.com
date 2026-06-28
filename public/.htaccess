@@ -19,3 +19,8 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Force PHP errors to storage/logs/ (fallback when ini_set is not enough)
+<IfModule mod_php.c>
+    php_value error_log "../storage/logs/php_errors.log"
+</IfModule>

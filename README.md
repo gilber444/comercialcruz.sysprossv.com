@@ -1,66 +1,152 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema ERP Comercial Cruz
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de gestión comercial orientado a supermercados, abarroteras y comercios con múltiples sucursales. Desarrollado con **Laravel 10**, permite administrar inventario, compras, ventas, facturación electrónica (DTE) de El Salvador, cajas, cortes, cuentas por pagar y la sincronización de datos entre un VPS central y las bases de datos locales de cada sucursal.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## ¿Qué hace el sistema?
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Módulos principales
+- **Inventario:** control de existencias por sucursal, kardex, ajustes, toma física y hojas de inventario.
+- **Compras:** registro de compras a proveedores, detalles de compra y cuentas por pagar.
+- **Ventas:** punto de venta (POS), cajas, cortes X/Z, remesas y reportes de ventas.
+- **Facturación electrónica (DTE):** emisión de facturas, tickets, notas de crédito/débito y envío al Ministerio de Hacienda de El Salvador (MH).
+- **Sincronización:** replicación incremental de datos entre el VPS central (`vpsmysql`) y cada sucursal local (`localmysql`).
+- **Correos:** envío automático y manual de DTEs procesados a los clientes.
+- **Reportes:** utilidades, inventarios, arqueos, compras, ventas y más.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Arquitectura
+- **VPS (nube):** base de datos central que concentra la información de todas las sucursales.
+- **Local (sucursal):** cada sucursal opera con su propia base de datos local.
+- **Sync:** comandos Artisan programados en un scheduler permiten sincronizar compras, ventas, inventarios, productos, clientes, DTEs y otros datos en ambas direcciones.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Requisitos
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- PHP >= 8.1
+- Composer
+- MySQL / MariaDB
+- Node.js + NPM (para compilar assets con Vite)
+- Servidor web con Apache/Nginx y soporte para `mod_rewrite`
+- Acceso programado a la base de datos del VPS (solo para sincronización)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Instalación
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/gilber444/comercialcruz.sysprossv.com.git
+cd comercialcruz.sysprossv.com
 
-### Premium Partners
+# 2. Instalar dependencias
+composer install
+npm install && npm run build
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+# 3. Configurar variables de entorno
+cp .env.example .env
+php artisan key:generate
 
-## Contributing
+# 4. Crear las bases de datos local y (si aplica) sincronizar con el VPS
+php artisan migrate --force
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 5. Configurar permisos de carpetas necesarias
+chmod -R 775 storage bootstrap/cache
+```
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Configuración del entorno
 
-## Security Vulnerabilities
+Editar `.env` según el modo de ejecución:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```dotenv
+# Modo de ejecución: 'local' para sucursales, 'vps' para el servidor central
+APP_MODO=local
+APP_SUCURSAL_ID=1
 
-## License
+# Base de datos local de la sucursal
+DB_CONNECTION=localmysql
+DB_HOST_LOCAL=127.0.0.1
+DB_PORT_LOCAL=3306
+DB_DATABASE_LOCAL=sysprossv_comercialcruz
+DB_USERNAME_LOCAL=usuario_local
+DB_PASSWORD_LOCAL=contraseña_local
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Base de datos central en el VPS (solo para sincronización)
+DB_HOST_VPS=130.51.180.91
+DB_PORT_VPS=3306
+DB_DATABASE_VPS=sysprossv_comercialcruz
+DB_USERNAME_VPS=sysprossv_sincro
+DB_PASSWORD_VPS=Sincro2025
+```
+
+---
+
+## Comandos Artisan principales
+
+```bash
+# Sincronizar datos del VPS hacia la base local
+php artisan sync:vps-local
+
+# Sincronizar datos de la base local hacia el VPS
+php artisan sync:local-vps
+
+# Reconciliar estados de DTEs rechazados contra el VPS
+php artisan sync:dtes-estado --limit=500
+
+# Procesar DTEs pendientes (firma y envío a MH)
+php artisan dte:procesar-pendientes
+
+# Enviar correos de DTEs procesados manualmente
+php artisan dte:enviar-correo-wm --limit=10
+
+# Limpiar logs antiguos
+php artisan logs:limpiar --dias=5 --max-mb=20
+```
+
+---
+
+## Scheduler (tareas programadas)
+
+En Windows se recomienda ejecutar `run-scheduler.bat` cada minuto con el Programador de Tareas:
+
+```batch
+run-scheduler.bat
+```
+
+Esto ejecuta `php artisan schedule:run`, que dispara los comandos configurados en `app/Console/Kernel.php`:
+
+- Sincronización VPS ↔ local
+- Reconciliación de DTEs
+- Procesamiento de DTEs pendientes
+- Limpieza de logs
+
+---
+
+## Sincronización multi-sucursal
+
+El sistema usa las columnas `sincro_id` e `id_vps` para reconciliar registros entre el VPS y las sucursales sin depender de los IDs autoincrementales locales. Esto evita colisiones cuando varias sucursales crean registros simultáneamente.
+
+### Tablas sincronizadas principales
+- `productos`, `inventarios`, `kardexes`
+- `clientes`, `proveedores`
+- `compras`, `compras_detalles`, `cuentas_pagars`, `pagos`
+- `ventas`, `ventas_detalles`, `cajas`, `cortes`, `remesas`
+- `dtes`, `resumen_dtes`, `firmadors`, `recepcion_dtes`
+
+---
+
+## Notas de seguridad
+
+- Nunca subir el archivo `.env` al repositorio.
+- Los scripts de administración local (`.bat`) se mantienen fuera del directorio web; en el VPS no deben existir.
+- Los logs de PHP se redirigen a `storage/logs/php_errors.log` mediante `public/index.php` y `.htaccess`, evitando archivos `error_log` expuestos en la raíz o en `public/`.
+- Los archivos de respaldo (`.bak`, `.zip`, `.sql`) y temporales deben eliminarse del servidor de producción.
+
+---
+
+## Licencia
+
+Proyecto privado. Uso exclusivo de Comercial Cruz / Sysprossv.

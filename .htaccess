@@ -3,3 +3,8 @@ RewriteRule ^(.*)$ public/$1 [L]
 <FilesMatch \.php$>
         SetHandler proxy:fcgi://sysprossv-php81
 </FilesMatch>
+
+# Force PHP errors to storage/logs/ (fallback when ini_set is not enough)
+<IfModule mod_php.c>
+    php_value error_log "storage/logs/php_errors.log"
+</IfModule>
