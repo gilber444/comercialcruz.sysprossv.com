@@ -5,6 +5,15 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.11] - 2026-06-30
+
+### Corregido
+- `NuevoAjustesController`: unificado el cálculo de tipo de ajuste (Ingreso/Egreso) mediante `getTipoLogica()`.
+- La columna "Existencia Ajustada" en el carrito ahora refleja correctamente egresos para `Gastos`, `Producto Dañado`, `Producto Vencido` y `Egreso`.
+- Inicialización por defecto de `$tipo = 'Ingreso'` en `mount()` para evitar valor vacío al cargar el formulario.
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.10] - 2026-06-30
 
 ### Corregido

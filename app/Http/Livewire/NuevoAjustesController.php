@@ -32,10 +32,10 @@ class NuevoAjustesController extends Component
         $user_id = Auth::user()->id;
         //$this->clearCart();
         $this->fecha = date('Y-m-d');
+        $this->tipo = 'Ingreso';
         $acti = Actividades::where('user', $user_id)->whereDate('created_at', Carbon::today())->where('status', 'Activo')->first();
         if ($acti) {
             $this->sucursal = $acti->sucursal;
-            $this->tipo = 'Ingreso';
         }
         $this->Carrito();
     }
@@ -78,7 +78,8 @@ class NuevoAjustesController extends Component
                 }
                 // Guardar existencia actual y ajustada por ID de producto temporal
                 $this->existenciaActual[$c->id] = $existencia;
-                if ($this->tipo == 'Egreso') {
+                $tipoLogica = $this->getTipoLogica($this->tipo);
+                if ($tipoLogica === 'Egreso') {
                     $this->existenciaAjustada[$c->id] = $existencia - $c->ingreso;
                 } else {
                     $this->existenciaAjustada[$c->id] = $c->ingreso + $existencia;
@@ -327,6 +328,20 @@ class NuevoAjustesController extends Component
         $tmp = tmpAjuste::where('usuario', $user_id)->delete();
         $this->Carrito();
     }
+    /**
+     * Determina si un tipo de ajuste es lógicamente un Ingreso o un Egreso de inventario.
+     */
+    private function getTipoLogica(?string $tipo): string
+    {
+        $tiposIngreso = [
+            'Ingreso Fac. Comercial',
+            'Ingreso por Traslado',
+            'Ingreso',
+        ];
+
+        return in_array(trim($tipo ?? ''), $tiposIngreso, true) ? 'Ingreso' : 'Egreso';
+    }
+
     public function Store()
     {
         $user = Auth::user();
@@ -353,12 +368,7 @@ class NuevoAjustesController extends Component
         }
 
         $tipo = trim($this->tipo);
-        $tiposIngreso = [
-            'Ingreso Fac. Comercial',
-            'Ingreso por Traslado',
-            'Ingreso',
-        ];
-        $tipo_logica = in_array($tipo, $tiposIngreso, true) ? 'Ingreso' : 'Egreso';
+        $tipo_logica = $this->getTipoLogica($tipo);
 
         // =================================================================
         // VALIDACIÓN EXHAUSTIVA PREVIA: si falla UN SOLO producto, NO se

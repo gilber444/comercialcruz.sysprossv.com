@@ -5,7 +5,7 @@
 - Proyecto Laravel 10.x desplegado en VPS y usado desde PCs locales.
 - Repositorio GitHub: `https://github.com/gilber444/comercialcruz.sysprossv.com.git`, rama `main`.
 - VPS FTP: configurado en `.vscode/sftp.json` (host, usuario, contraseña, remotePath).
-- Versión actual del sistema: `1.0.10` (ver `config/version.php` y `.env` `APP_VERSION`).
+- Versión actual del sistema: `1.0.11` (ver `config/version.php` y `.env` `APP_VERSION`).
 
 ## Flujo de trabajo obligatorio para cada cambio
 
