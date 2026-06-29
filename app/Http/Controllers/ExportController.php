@@ -1513,7 +1513,120 @@ class ExportController extends Controller
 
 
 
+    /**
+     * Generar PDF stream del reporte de utilidad sintetizado.
+     */
+    public function generarPdfUtilidadSin($sucursal, $caja, $reportType, $dateFrom = null, $dateTo = null)
 
+    {
+
+        set_time_limit(180);
+
+        ini_set('memory_limit', '512M');
+
+        if (!\App\Models\Feature::isEnabled('reporte_utilidad_sintetizado')) {
+
+            abort(403, 'Funcionalidad no disponible.');
+
+        }
+
+        if ($reportType == 0) {
+
+            $dateFrom = now()->format('Y-m-d');
+
+            $dateTo = now()->format('Y-m-d');
+
+        }
+
+
+
+        $from = $dateFrom;
+
+        $to = $dateTo;
+
+
+
+        $base = VentasDetalles::query()
+
+            ->join('ventas', 'ventas.id', '=', 'ventas_detalles.venta')
+
+            ->join('sucursales as s', 's.id', '=', 'ventas.sucursal')
+
+            ->whereBetween('ventas.fecha', [$from, $to])
+
+            ->where('ventas.estado', 'Cancelado');
+
+
+
+        if ($sucursal != 0) {
+
+            $base->where('ventas.sucursal', $sucursal);
+
+        }
+
+        if ($caja != 0) {
+
+            $base->where('ventas.caja', $caja);
+
+        }
+
+
+
+        $data = (clone $base)
+
+            ->selectRaw(
+
+            '
+
+                s.nombre as nombre_sucursal,
+
+                ventas.sucursal,
+
+                ventas.caja,
+
+                SUM(ventas_detalles.costo * ventas_detalles.descargar)   as total_costo,
+
+                SUM(ventas_detalles.total)         as total_venta,
+
+                SUM(ventas_detalles.cantidad)      as total_cantidad
+
+            ',
+
+            )
+
+            ->groupBy('s.nombre', 'ventas.sucursal', 'ventas.caja')
+
+            ->orderBy('s.nombre')
+
+            ->orderBy('ventas.caja')
+
+            ->get();
+
+
+
+        $totalCosto = $data->sum('total_costo');
+
+        $totalSales = $data->sum('total_venta');
+
+        $totalUtilidad = $totalSales - $totalCosto;
+
+
+
+        $user = Auth::user();
+
+        $empresa = Empresas::find($user->empresa);
+
+        $imagenUrl = $this->logoBase64($empresa->image);
+
+        $sucursal = $sucursal == 0 ? 'Todas las Sucursales' : Sucursales::find($sucursal)?->nombre ?? 'todas las sucursales';
+
+
+
+        $pdf = PDF::loadView('pdf.pdfUtilidadSin', compact('data', 'dateFrom', 'dateTo', 'sucursal', 'imagenUrl', 'empresa', 'totalCosto', 'totalSales', 'totalUtilidad'));
+
+        return $pdf->stream('Reporte_de_Utilidad_Sintetizado.pdf');
+
+    }
 
 
 

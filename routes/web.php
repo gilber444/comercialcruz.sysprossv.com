@@ -628,6 +628,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('reportsUtilidadSintetizado', ReportUtilidadSinController::class)->can('ReportUtilidadSintetizado_Index')->name('reportsUtilidadSintetizado');
 
     Route::get('report/pdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'pdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
+    Route::get('report/generarPdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'generarPdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
 
     Route::get('report/excelUtilidadSin/{sucursal}/{caja}/{type}/{f1}/{f2}', [ExportController::class, 'reportExcelUtilidadSinExcel'])->can('ReportUtilidadSinEXCEL_Print');
 
