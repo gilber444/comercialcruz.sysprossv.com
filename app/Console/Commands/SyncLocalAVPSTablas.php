@@ -197,7 +197,8 @@ class SyncLocalAVPSTablas extends Command
         $connVps   = (string) $this->option('vps');
         $limit     = (int) $this->option('limit');
         $direction = (string) $this->option('direction');
-        $sucursalBitacora = 'Nueva Belen'; // etiqueta para bitácora
+        $sucursalInventarios = (int) $this->option('sucursal-inventarios');
+        $sucursalBitacora = $sucursalInventarios ? "Sucursal {$sucursalInventarios}" : 'Nueva Belen'; // etiqueta para bitácora
         // Orden por defecto (padres→hijos)
         $defaultOrder = [
             'remesas',
@@ -247,7 +248,7 @@ class SyncLocalAVPSTablas extends Command
             }
             $this->info("→ Tabla: {$table}");
             try {
-                $res = $this->syncTable($table, $limit, $connLocal, $connVps, $direction);
+                $res = $this->syncTable($table, $limit, $connLocal, $connVps, $direction, $sucursalInventarios);
                 $this->line("   • {$table}: {$res['count']} filas (ins: {$res['ins']}, upd: {$res['upd']}). WM → {$res['wm_ts']} / {$res['wm_id']}");
                 // Bitácora OK
                 if (Schema::connection($connLocal)->hasTable('bitacora_sincronizacions')) {
@@ -296,7 +297,7 @@ class SyncLocalAVPSTablas extends Command
         return self::SUCCESS;
     }
     // ========== Núcleo por tabla ==========
-    protected function syncTable(string $table, int $limit, string $connLocal, string $connVps, string $direction): array
+    protected function syncTable(string $table, int $limit, string $connLocal, string $connVps, string $direction, int $sucursalInventarios = 0): array
     {
         $plan  = $this->plans[$table] ?? ['ts' => 'updated_at', 'fk' => []];
         $tsCol = $plan['ts'];
@@ -307,6 +308,12 @@ class SyncLocalAVPSTablas extends Command
         // 2) Query incremental
         $cutoff = now();
         $q = DB::connection($connLocal)->table($table);
+
+        // 🔒 Filtro por sucursal: la PC local solo debe subir datos de su sucursal asignada
+        if ($sucursalInventarios > 0) {
+            $this->aplicarFiltroSucursalLocalVPS($q, $table, $connLocal, $sucursalInventarios);
+        }
+
         if ($wmTs) {
             // pre-check rápido
             $precheck = DB::connection($connLocal)->table($table)
@@ -426,6 +433,172 @@ class SyncLocalAVPSTablas extends Command
             'wm_id' => (int)$lastId,
         ];
     }
+    /**
+     * Filtra la query de sync local→VPS para que solo se suban registros de la sucursal asignada.
+     * Aplica a inventarios, ajustes, compras, solicitudes, ventas, DTEs y sus detalles.
+     */
+    protected function aplicarFiltroSucursalLocalVPS($query, string $table, string $connLocal, int $sucursalId): void
+    {
+        $schema = DB::connection($connLocal)->getSchemaBuilder();
+        $cols   = $schema->getColumnListing($table);
+
+        switch ($table) {
+            case 'inventarios':
+            case 'ajustes':
+            case 'compras':
+            case 'ventas':
+            case 'dtes':
+            case 'resumen_dtes':
+            case 'firmadors':
+            case 'recepcion_dtes':
+            case 'tockens':
+                if (in_array('sucursal', $cols, true)) {
+                    $query->where('sucursal', $sucursalId);
+                }
+                break;
+
+            case 'solicitudes':
+                if (in_array('sucursal', $cols, true)) {
+                    $query->where('sucursal', $sucursalId);
+                } elseif (in_array('destino', $cols, true)) {
+                    $query->where('destino', $sucursalId);
+                }
+                break;
+
+            case 'ajustes_detalles':
+                $fkCol = $this->primeraColumnaExistente(['ajuste_id', 'ajuste'], $cols);
+                if ($fkCol && $schema->hasTable('ajustes')) {
+                    $ids = DB::connection($connLocal)
+                        ->table('ajustes')
+                        ->where('sucursal', $sucursalId)
+                        ->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn($fkCol, $ids);
+                    } else {
+                        $query->whereRaw('1 = 0'); // no hay padres; omitir todo
+                    }
+                }
+                break;
+
+            case 'compras_detalles':
+                $fkCol = $this->primeraColumnaExistente(['compra_id', 'compra'], $cols);
+                if ($fkCol && $schema->hasTable('compras')) {
+                    $ids = DB::connection($connLocal)
+                        ->table('compras')
+                        ->where('sucursal', $sucursalId)
+                        ->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn($fkCol, $ids);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+                break;
+
+            case 'solicitudes_detalles':
+                $fkCol = $this->primeraColumnaExistente(['solicitud_id', 'solicitud'], $cols);
+                if ($fkCol && $schema->hasTable('solicitudes')) {
+                    $ids = DB::connection($connLocal)
+                        ->table('solicitudes')
+                        ->where(function ($q) use ($sucursalId) {
+                            $q->where('sucursal', $sucursalId)
+                              ->orWhere('destino', $sucursalId);
+                        })
+                        ->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn($fkCol, $ids);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+                break;
+
+            case 'ventas_detalles':
+                $fkCol = $this->primeraColumnaExistente(['venta_id', 'venta'], $cols);
+                if ($fkCol && $schema->hasTable('ventas')) {
+                    $ids = DB::connection($connLocal)
+                        ->table('ventas')
+                        ->where('sucursal', $sucursalId)
+                        ->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn($fkCol, $ids);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+                break;
+
+            case 'kardexes':
+            case 'kardexes2':
+                if (in_array('sucursal', $cols, true)) {
+                    $query->where('sucursal', $sucursalId);
+                } elseif (in_array('inventario', $cols, true) && $schema->hasTable('inventarios')) {
+                    $ids = DB::connection($connLocal)
+                        ->table('inventarios')
+                        ->where('sucursal', $sucursalId)
+                        ->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn('inventario', $ids);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+                break;
+
+            case 'cuentas_pagars':
+                if (in_array('sucursal', $cols, true)) {
+                    $query->where('sucursal', $sucursalId);
+                } elseif ($schema->hasTable('compras')) {
+                    $ids = DB::connection($connLocal)
+                        ->table('compras')
+                        ->where('sucursal', $sucursalId)
+                        ->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn('compra', $ids);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+                break;
+
+            case 'pagos':
+                if (in_array('sucursal', $cols, true)) {
+                    $query->where('sucursal', $sucursalId);
+                } elseif ($schema->hasTable('cuentas_pagars')) {
+                    $cpCols = $schema->getColumnListing('cuentas_pagars');
+                    $cpQuery = DB::connection($connLocal)->table('cuentas_pagars');
+                    if (in_array('sucursal', $cpCols, true)) {
+                        $cpQuery->where('sucursal', $sucursalId);
+                    }
+                    $ids = $cpQuery->pluck('id');
+                    if ($ids->isNotEmpty()) {
+                        $query->whereIn('cuenta_pagar', $ids);
+                    } else {
+                        $query->whereRaw('1 = 0');
+                    }
+                }
+                break;
+
+            case 'cajas':
+                // cajas no tiene sucursal directa; se deja sin filtro para no romper flujo de caja
+                break;
+
+            default:
+                // Tablas sin sucursal (productos, clientes, etc.) no se filtran
+                break;
+        }
+    }
+
+    protected function primeraColumnaExistente(array $candidatas, array $colsTabla): ?string
+    {
+        foreach ($candidatas as $c) {
+            if (in_array($c, $colsTabla, true)) {
+                return $c;
+            }
+        }
+        return null;
+    }
+
     // ========== Utilidades DB ==========
     protected function tableExists(string $conn, string $table): bool
     {
