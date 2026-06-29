@@ -1,7 +1,7 @@
 <?php
 namespace App\Traits;
 
-use App\Http\Controllers\ExportController;
+use App\Http\Controllers\ExportDteController;
 use App\Models\dte;
 use App\Models\Empresas;
 use App\Models\Ventas;
@@ -19,7 +19,7 @@ trait enviarCorreoDTE
         $imagenUrl = asset('logo/' . $empresa->image);
 
         // Generar el PDF
-        $exportController = new ExportController();
+        $exportController = new ExportDteController();
         $pdfContent = $exportController->generarPDF($id);
         // Convertir el DTE a formato JSON
         //$jsonContent = $dte->jsonDte;

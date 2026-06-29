@@ -2,7 +2,24 @@
 
 
 
-use App\Http\Controllers\ExportController;
+use App\Http\Controllers\ExportArqueoController;
+
+use App\Http\Controllers\ExportCompraController;
+
+use App\Http\Controllers\ExportCorteZController;
+
+use App\Http\Controllers\ExportCotizacionController;
+
+use App\Http\Controllers\ExportDteController;
+
+use App\Http\Controllers\ExportInventarioController;
+
+use App\Http\Controllers\ExportSolicitudController;
+
+use App\Http\Controllers\ExportUtilidadController;
+
+use App\Http\Controllers\ExportVentaController;
+
 
 use App\Http\Controllers\LibroContribuyente;
 
@@ -409,7 +426,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/json/download/{id}', [DteController::class, 'download'])->name('json.download');
 
-    Route::get('report/pdf/{id}', [ExportController::class, 'reportPDF'])->name('reportPDF');
+    Route::get('report/pdf/{id}', [ExportDteController::class, 'reportPDF'])->name('reportPDF');
 
     Route::get('invalidaciones', InvalidacionesDTEController::class)->name('invalidaciones')->can('Invalidaciones_Index');
 
@@ -439,69 +456,69 @@ Route::middleware(['auth'])->group(function () {
 
     ////Reportes Ventas//////
 
-    Route::get('report/pdfVentas/{sucursal}/{type}/{f1}/{f2}', [ExportController::class, 'reportPDFVentas'])->can('ReportVentasPDF_Print');
+    Route::get('report/pdfVentas/{sucursal}/{type}/{f1}/{f2}', [ExportVentaController::class, 'reportPDFVentas'])->can('ReportVentasPDF_Print');
 
-    Route::get('report/pdfVentas/{sucursal}/{type}', [ExportController::class, 'reportPDFVentas'])->can('ReportVentasPDF_Print');
+    Route::get('report/pdfVentas/{sucursal}/{type}', [ExportVentaController::class, 'reportPDFVentas'])->can('ReportVentasPDF_Print');
 
 
 
-    Route::get('report/excelVentas/{sucursal}/{type}/{f1}/{f2}', [ExportController::class, 'reportExcelVentas'])->can('ReportVentasEXCEL_Print');
+    Route::get('report/excelVentas/{sucursal}/{type}/{f1}/{f2}', [ExportVentaController::class, 'reportExcelVentas'])->can('ReportVentasEXCEL_Print');
 
-    Route::get('report/excelVentas/{sucursal}/{type}', [ExportController::class, 'reportExcelVentas'])->can('ReportVentasEXCEL_Print');
+    Route::get('report/excelVentas/{sucursal}/{type}', [ExportVentaController::class, 'reportExcelVentas'])->can('ReportVentasEXCEL_Print');
 
 
 
     ////Reportes Compras//////
 
-    Route::get('report/pdfCompras/{proveedor}/{type}/{f1}/{f2}', [ExportController::class, 'reportPDFCompras'])->can('ReportComprasPDF_Print');
+    Route::get('report/pdfCompras/{proveedor}/{type}/{f1}/{f2}', [ExportCompraController::class, 'reportPDFCompras'])->can('ReportComprasPDF_Print');
 
-    // Route::get('report/pdfCompras/{proveedor}/{type}', [ExportController::class, 'reportPDFCompras'])->can('ReportComprasPDF_Print');
+    // Route::get('report/pdfCompras/{proveedor}/{type}', [ExportCompraController::class, 'reportPDFCompras'])->can('ReportComprasPDF_Print');
 
 
 
-    Route::get('report/excelCompras/{proveedor}/{type}/{f1}/{f2}', [ExportController::class, 'reportExcelCompras'])->can('ReportComprasEXCEL_Print');
+    Route::get('report/excelCompras/{proveedor}/{type}/{f1}/{f2}', [ExportCompraController::class, 'reportExcelCompras'])->can('ReportComprasEXCEL_Print');
 
-    //Route::get('report/excelCompras/{proveedor}/{type}', [ExportController::class, 'reportExcelCompras'])->can('ReportComprasEXCEL_Print');
+    //Route::get('report/excelCompras/{proveedor}/{type}', [ExportCompraController::class, 'reportExcelCompras'])->can('ReportComprasEXCEL_Print');
 
 
 
     //////////Reporte Inventario///////////////////
 
-    Route::get('report/pdfInventario/{sucursal}', [ExportController::class, 'reportPDFInventario'])->can('ReportInventarioPDF_Print');
+    Route::get('report/pdfInventario/{sucursal}', [ExportInventarioController::class, 'reportPDFInventario'])->can('ReportInventarioPDF_Print');
 
 
 
-    Route::get('report/excelInventario/{sucursal}', [ExportController::class, 'reportExcelInventario'])->can('ReportInventarioEXCEL_Print');
+    Route::get('report/excelInventario/{sucursal}', [ExportInventarioController::class, 'reportExcelInventario'])->can('ReportInventarioEXCEL_Print');
 
 
 
     //////////Reporte de Inventario por Categorias/////////////
 
-    Route::get('report/pdfInventarioCategoria/{sucursal}/{categoria}', [ExportController::class, 'reportPDFInventarioCategoria'])->can('ReporteInventarioCategoriaPDF_Print');
+    Route::get('report/pdfInventarioCategoria/{sucursal}/{categoria}', [ExportInventarioController::class, 'reportPDFInventarioCategoria'])->can('ReporteInventarioCategoriaPDF_Print');
 
 
 
-    Route::get('report/excelInventarioCategoria/{sucursal}/{categoria}', [ExportController::class, 'reportExcelInventarioCategoria'])->can('ReporteInventarioCategoriaEXCEL_Print');
+    Route::get('report/excelInventarioCategoria/{sucursal}/{categoria}', [ExportInventarioController::class, 'reportExcelInventarioCategoria'])->can('ReporteInventarioCategoriaEXCEL_Print');
 
 
 
     //////Reporte Arqueos/////////////
 
-    Route::get('report/pdfArqueos/{sucursal}/{caja}/{user}/{f1}/{f2}', [ExportController::class, 'reportPDFArqueos'])->can('ReportArqueosPDF_Print')->name('pdfArqueos');
+    Route::get('report/pdfArqueos/{sucursal}/{caja}/{user}/{f1}/{f2}', [ExportArqueoController::class, 'reportPDFArqueos'])->can('ReportArqueosPDF_Print')->name('pdfArqueos');
 
 
 
-    Route::get('report/excelArqueos/{sucursal}/{caja}/{user}/{f1}/{f2}', [ExportController::class, 'reportExcelArqueos'])->can('ReportArqueosEXCEL_Print')->name('ExcelArqueos');
+    Route::get('report/excelArqueos/{sucursal}/{caja}/{user}/{f1}/{f2}', [ExportArqueoController::class, 'reportExcelArqueos'])->can('ReportArqueosEXCEL_Print')->name('ExcelArqueos');
 
 
 
     ////Reporte CortesZ////////////////////////////
 
-    Route::get('report/pdfCorteZ/{sucursal}/{caja}/{f1}/{f2}', [ExportController::class, 'reportPDFCorteZ'])->can('ReportCorteZPDF_Print')->name('pdfCorteZ');
+    Route::get('report/pdfCorteZ/{sucursal}/{caja}/{f1}/{f2}', [ExportCorteZController::class, 'reportPDFCorteZ'])->can('ReportCorteZPDF_Print')->name('pdfCorteZ');
 
 
 
-    Route::get('report/excelCorteZ/{sucursal}/{caja}/{f1}/{f2}', [ExportController::class, 'reportExcelCorteZ'])->can('ReportCorteZEXCEL_Print')->name('ExcelCorteZ');
+    Route::get('report/excelCorteZ/{sucursal}/{caja}/{f1}/{f2}', [ExportCorteZController::class, 'reportExcelCorteZ'])->can('ReportCorteZEXCEL_Print')->name('ExcelCorteZ');
 
 
 
@@ -543,9 +560,9 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    //Route::get('report/pdf/{id}', [ExportController::class, 'reportCotizacion'])->name('reportCotizacion')->can('Cotizaciones_Print');
+    //Route::get('report/pdf/{id}', [ExportCotizacionController::class, 'reportCotizacion'])->name('reportCotizacion')->can('Cotizaciones_Print');
 
-    Route::get('report/pdf/cotizacion/{id}', [ExportController::class, 'reportCotizacion'])
+    Route::get('report/pdf/cotizacion/{id}', [ExportCotizacionController::class, 'reportCotizacion'])
 
         ->name('reportCotizacion')
 
@@ -613,7 +630,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    Route::get('existencias/pdf/{id}', [ExportController::class, 'ReportSolicitud'])->can('Solicitudes_Print');
+    Route::get('existencias/pdf/{id}', [ExportSolicitudController::class, 'ReportSolicitud'])->can('Solicitudes_Print');
 
 
 
@@ -621,16 +638,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('reportsUtilidad', ReportUtilidadController::class)->can('ReportUtilidad_Index')->name('reportsUtilidad');
 
-    Route::get('report/pdfUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1?}/{f2?}', [ExportController::class, 'pdfUtilidad'])->can('ReportUtilidadPDF_Print');
+    Route::get('report/pdfUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1?}/{f2?}', [ExportUtilidadController::class, 'pdfUtilidad'])->can('ReportUtilidadPDF_Print');
 
-    Route::get('report/excelUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1}/{f2}', [ExportController::class, 'reportExcelUtilidad'])->can('ReportUtilidadEXCEL_Print');
+    Route::get('report/excelUtilidad/{sucursal}/{caja}/{type}/{facturador}/{f1}/{f2}', [ExportUtilidadController::class, 'reportExcelUtilidad'])->can('ReportUtilidadEXCEL_Print');
 
     Route::get('reportsUtilidadSintetizado', ReportUtilidadSinController::class)->can('ReportUtilidadSintetizado_Index')->name('reportsUtilidadSintetizado');
 
-    Route::get('report/pdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'pdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
-    Route::get('report/generarPdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportController::class, 'generarPdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
+    Route::get('report/pdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportUtilidadController::class, 'pdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
+    Route::get('report/generarPdfUtilidadSin/{sucursal}/{caja}/{type}/{f1?}/{f2?}', [ExportUtilidadController::class, 'generarPdfUtilidadSin'])->can('ReportUtilidadSinPDF_Print');
 
-    Route::get('report/excelUtilidadSin/{sucursal}/{caja}/{type}/{f1}/{f2}', [ExportController::class, 'reportExcelUtilidadSinExcel'])->can('ReportUtilidadSinEXCEL_Print');
+    Route::get('report/excelUtilidadSin/{sucursal}/{caja}/{type}/{f1}/{f2}', [ExportUtilidadController::class, 'reportExcelUtilidadSinExcel'])->can('ReportUtilidadSinEXCEL_Print');
 
     //////////////////////libros de ventas y contribuyentes////////////////////
 
@@ -682,15 +699,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('reportsVentasSintetizado', ReportVentasSintetizadoController::class)->can('ReportVentas_Index')->name('reportsVentasSintetizado');
 
-    Route::get('report/pdfVentasSintetizado/{sucursal}/{type}/{facturador}/{f1?}/{f2?}', [ExportController::class, 'reportPDFVentasSintetizado'])->can('ReportVentasPDF_Print');
+    Route::get('report/pdfVentasSintetizado/{sucursal}/{type}/{facturador}/{f1?}/{f2?}', [ExportVentaController::class, 'reportPDFVentasSintetizado'])->can('ReportVentasPDF_Print');
 
-    Route::get('report/excelVentasSintetizado/{sucursal}/{type}/{facturador}/{f1?}/{f2?}', [ExportController::class, 'reportExcelVentasSintetizado'])->can('ReportVentasEXCEL_Print');
+    Route::get('report/excelVentasSintetizado/{sucursal}/{type}/{facturador}/{f1?}/{f2?}', [ExportVentaController::class, 'reportExcelVentasSintetizado'])->can('ReportVentasEXCEL_Print');
 
 });
 
 
 
-Route::get('report/pdf/{id}', [ExportController::class, 'reportPDF'])->name('reportPDF');
+Route::get('report/pdf/{id}', [ExportDteController::class, 'reportPDF'])->name('reportPDF');
 
-Route::get('report/pdf/cotizacion/{id}', [ExportController::class, 'reportCotizacion'])->name('reportCotizacion');
+Route::get('report/pdf/cotizacion/{id}', [ExportCotizacionController::class, 'reportCotizacion'])->name('reportCotizacion');
 
