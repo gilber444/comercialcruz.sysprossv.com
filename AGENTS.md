@@ -10,11 +10,12 @@
 ## Flujo de trabajo obligatorio para cada cambio
 
 1. **Realizar el cambio** en el código local.
-2. **Actualizar la versión** con:
+2. **Actualizar la versión** (sin pasar a producción):
    ```bash
-   php artisan version:release "Descripcion del cambio" --prod
+   php artisan version:release "Descripcion del cambio"
    ```
-   - Si la BD local no está disponible, actualizar manualmente `config/version.php` y `.env`, y registrar después en el VPS con el mismo comando usando `/usr/bin/php82`.
+   - Esto registra el cambio en `features` con `activo=1` y `produccion=0` (estado de prueba).
+   - Si la BD local no está disponible, actualizar manualmente `config/version.php` y `.env`, y registrar después en el VPS con el mismo comando usando `/usr/bin/php82` **sin `--prod`**.
 3. **Actualizar el CHANGELOG.md** con la nueva versión y los cambios realizados.
 4. **Hacer commit y push** a GitHub:
    ```bash
@@ -28,20 +29,26 @@
    - Usuario: `sysprossv`
    - Contraseña: `@Dmin#2023`
    - Ruta remota: `comercialcruz.sysprossv.com/`
-6. **En el VPS** ejecutar:
+6. **En el VPS** ejecutar (agente / desarrollo):
    ```bash
    /usr/bin/php82 artisan config:clear
    /usr/bin/php82 artisan view:clear
    /usr/bin/php82 composer dump-autoload
    /usr/bin/php82 artisan migrate        # si hay migraciones nuevas
+   /usr/bin/php82 artisan version:release "Descripcion del cambio"
+   ```
+7. **Solo el usuario decide el paso a producción.** Cuando el usuario apruebe la prueba, él ejecuta:
+   ```bash
    /usr/bin/php82 artisan version:release "Descripcion del cambio" --prod
    ```
+   O directamente actualiza el registro en la tabla `features` poniendo `produccion = 1`.
 
 ## Feature flags
 
 - Las funcionalidades nuevas/mejordas deben ir detrás de feature flags en la tabla `features`.
 - **Solo el usuario/owner del sistema libera y activa las pruebas de los features.**
-- El agente puede crear el feature flag con `codigo`, `descripcion`, `version`, etc., pero debe dejarlo en estado que requiera liberación por parte del usuario.
+- El agente registra versiones y features con `activo=1` y `produccion=0` (prueba).
+- El agente **NUNCA** usa `--prod` en `version:release` sin autorización expresa del usuario.
 - Para que un feature se vea en producción debe tener:
   - `activo = 1`
   - `produccion = 1`
@@ -66,6 +73,6 @@
 
 ## Notas de seguridad
 
-- Nunca subir `.env` al VPS por FTP si puede sobreescribir configuración del servidor.
+- Subir `.env` al VPS solo cuando sea estrictamente necesario (por ejemplo, para actualizar `APP_VERSION`). Antes de hacerlo, confirmar que no sobreescribirá credenciales u otra configuración crítica del servidor.
 - No ejecutar comandos destructivos en BD del VPS sin confirmación del usuario.
 - No hacer `git push --force` ni rebases sin autorización expresa.

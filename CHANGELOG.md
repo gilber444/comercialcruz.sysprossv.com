@@ -11,6 +11,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `sync:local-vps` ahora aborta si se ejecuta en VPS (`APP_MODO=vps`).
 - Validación en `Kernel.php` reforzada: los comandos de sincronización local↔VPS solo corren en modo `local`; los comandos del VPS solo corren en modo `vps`.
 
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.7] - 2026-06-29
 
 ### Agregado
