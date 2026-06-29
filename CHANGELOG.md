@@ -5,6 +5,12 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.8] - 2026-06-29
+
+### Corregido
+- `sync:local-vps` ahora aborta si se ejecuta en VPS (`APP_MODO=vps`).
+- Validación en `Kernel.php` reforzada: los comandos de sincronización local↔VPS solo corren en modo `local`; los comandos del VPS solo corren en modo `vps`.
+
 ## [1.0.7] - 2026-06-29
 
 ### Agregado
@@ -19,7 +25,6 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   - Ahora cada PC solo sube datos de su `APP_SUCURSAL_ID`.
   - Si no se especifica `--sucursal-inventarios` ni `APP_SUCURSAL_ID`, el comando aborta.
   - Ninguna PC con `APP_SUCURSAL_ID != 2` puede subir inventario/ajustes de la sucursal 2.
-- `sync:local-vps` aborta si se ejecuta en VPS (`APP_MODO=vps`).
 
 ## [1.0.6] - 2026-06-29
 
