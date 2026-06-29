@@ -708,3 +708,9 @@ Route::middleware(['auth'])->group(function () {
 
 
 
+
+
+// PDFs accesibles públicamente para clientes (escaneo de QR / enlaces)
+Route::get('report/pdf/{id}', [ExportDteController::class, 'reportPDF'])->name('reportPDF');
+
+Route::get('report/pdf/cotizacion/{id}', [ExportCotizacionController::class, 'reportCotizacion'])->name('reportCotizacion');
