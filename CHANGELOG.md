@@ -5,6 +5,21 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.7] - 2026-06-29
+
+### Agregado
+- Archivo `AGENTS.md` con instrucciones para agentes de código:
+  - Flujo de trabajo: cambio → `version:release` → `CHANGELOG.md` → commit/push → subir al VPS por FTP.
+  - Regla: solo el usuario libera y activa las pruebas de los features.
+  - Datos de FTP en `.vscode/sftp.json`.
+- Archivo `CHANGELOG.md` para control de versiones.
+
+### Corregido
+- Filtro de sucursal en `sync:local-vps` reforzado:
+  - Ahora cada PC solo sube datos de su `APP_SUCURSAL_ID`.
+  - Si no se especifica `--sucursal-inventarios` ni `APP_SUCURSAL_ID`, el comando aborta.
+  - Ninguna PC con `APP_SUCURSAL_ID != 2` puede subir inventario/ajustes de la sucursal 2.
+
 ## [1.0.6] - 2026-06-29
 
 ### Agregado
@@ -36,8 +51,6 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Corregido
 - Timeout de DomPDF al generar PDFs: logo convertido a base64 y CSS simplificado.
-- Filtro de sucursal en `sync:local-vps`: ahora cada PC solo sube datos de su `APP_SUCURSAL_ID`, evitando que una sucursal sobrescriba el inventario de otra.
-- `sync:local-vps` aborta si no se especifica `--sucursal-inventarios` ni `APP_SUCURSAL_ID`.
 - Nombre de sucursal en reporte de utilidades sintetizado.
 
 ### Seguridad
