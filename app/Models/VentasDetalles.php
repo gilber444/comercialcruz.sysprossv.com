@@ -31,7 +31,11 @@ class VentasDetalles extends Model
         'sincro_id', // opcionalmente lo agregas al fillable
 
 
-    ];// Genera sincro_id si no viene seteado
+    ];
+
+    protected $hidden = ['costo', 'costo_total', 'utilidad_uni', 'utilidad'];
+
+    // Genera sincro_id si no viene seteado
     protected static function booted()
     {
         static::creating(function ($model) {

@@ -424,7 +424,6 @@ class NuevoAjustesController extends Component
                 'tipo' => $tipo,
                 'tipo_logica' => $tipo_logica,
                 'items_count' => $items->count(),
-                'items' => $items->toArray(),
                 'sucursal' => $this->sucursal,
                 'user_id' => $user_id,
             ]);
@@ -503,14 +502,16 @@ class NuevoAjustesController extends Component
                         'sincro_id' => (string) \Illuminate\Support\Str::uuid(),
                     ];
 
-                    \Log::info('Insertando detalle', $detalleData);
+                    \Log::info('Insertando detalle', [
+                        'ajuste_id' => $ajuste->id ?? null,
+                        'producto_id' => $item->producto ?? null,
+                    ]);
 
                     $detalleCreado = AjustesDetalles::create($detalleData);
 
                     \Log::info('Resultado create detalle', [
                         'detalle_creado' => $detalleCreado ? 'SI' : 'NO',
                         'detalle_id' => $detalleCreado->id ?? 'NULL',
-                        'detalle_attributes' => $detalleCreado ? $detalleCreado->toArray() : null,
                     ]);
 
                     if (!$detalleCreado || !$detalleCreado->id) {
@@ -599,7 +600,6 @@ class NuevoAjustesController extends Component
             $this->emit('ajuste-procesado', 'Ajuste procesado con exito');
         } catch (\Throwable $e) {
             \Log::error('Error en Store NuevoAjuste: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
                 'user' => $user_id,
                 'sucursal' => $this->sucursal,
                 'tipo' => $this->tipo,

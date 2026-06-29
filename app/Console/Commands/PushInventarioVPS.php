@@ -139,17 +139,8 @@ class PushInventarioVPS extends Command
         } catch (Throwable $e) {
             DB::connection($connVps)->rollBack();
             $this->error('Error: ' . $e->getMessage());
-            $this->error('File: ' . $e->getFile() . ':' . $e->getLine());
-            $this->error('Trace: ' . $e->getTraceAsString());
-            // Log executed queries
-            $localQueries = DB::connection($connLocal)->getQueryLog();
-            $vpsQueries   = DB::connection($connVps)->getQueryLog();
             \Illuminate\Support\Facades\Log::error('PushInventarioVPS FAILED', [
-                'message'      => $e->getMessage(),
-                'file'         => $e->getFile() . ':' . $e->getLine(),
-                'trace'        => $e->getTraceAsString(),
-                'local_queries' => $localQueries,
-                'vps_queries'   => $vpsQueries,
+                'message' => $e->getMessage(),
             ]);
             return self::FAILURE;
         }

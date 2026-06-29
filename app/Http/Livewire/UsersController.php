@@ -128,7 +128,8 @@ class UsersController extends Component
         $this->profile = $user->profile;
         $this->status = $user->status;
         $this->email = $user->email;
-        $this->password = $user->password2;
+        // No cargar la contraseña existente al frontend por seguridad
+        $this->password = '';
         $this->usuario = $user->user;
         $this->empresa = $user->empresa;
         $this->sucursal = $user->sucursal;
@@ -205,7 +206,7 @@ class UsersController extends Component
             'name' => 'required|min:3',
             'status' => 'required|not_in:Elegir',
             'profile' => 'required|not_in:Elegir',
-            'password' => 'required|min:3',
+            'password' => 'nullable|min:3',
             'empresa' => 'required|not_in:Elegir',
             'sucursal' => 'required|not_in:Elegir',
         ];
@@ -230,18 +231,23 @@ class UsersController extends Component
         $this->validate($rules, $messages);
 
         $user = User::find($this->selected_id);
-        $user->update([
+        $data = [
             'name' => $this->name,
             'user' => $this->usuario,
             'email' => $this->email,
             'phone' => $this->phone,
             'status' => $this->status,
             'profile' => $this->profile,
-            'password' => bcrypt($this->password),
-            'password2' => $this->password,
             'empresa' => $this->empresa,
             'sucursal' => $this->sucursal,
-        ]);
+        ];
+
+        if (!empty($this->password)) {
+            $data['password'] = bcrypt($this->password);
+            $data['password2'] = $this->password;
+        }
+
+        $user->update($data);
 
         $user->syncRoles($this->profile);
 

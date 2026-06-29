@@ -22,6 +22,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 use Dompdf\Dompdf;
 
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 use App\Traits\HasLogoBase64;
@@ -42,7 +44,36 @@ class ExportDteController extends Controller
 
     {
 
-        $dte = dte::join('modelo_facturacions as mf', 'mf.id', 'dtes.tipoModelo')->join('tipo_transmisions as tt', 'tt.id', 'dtes.tipoOperacion')->select('dtes.*', 'mf.valor as modelo', 'tt.valor as tipo')->where('dtes.codigoGeneracion', $id)->orWhere('dtes.id', $id)->first();
+        // Solo se permite acceso por UUID (codigoGeneracion); rechazar IDs secuenciales
+        if (!Str::isUuid($id)) {
+            abort(403, 'Identificador no válido.');
+        }
+
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'No autenticado.');
+        }
+
+        $canViewAll = $user->profile === 'Super'
+            || $user->profile === 'Administrador'
+            || $user->can('DTE_ViewAll');
+
+        $dte = dte::join('modelo_facturacions as mf', 'mf.id', 'dtes.tipoModelo')
+            ->join('tipo_transmisions as tt', 'tt.id', 'dtes.tipoOperacion')
+            ->select('dtes.*', 'mf.valor as modelo', 'tt.valor as tipo')
+            ->where('dtes.codigoGeneracion', $id)
+            ->first();
+
+        if (!$dte) {
+            abort(404, 'DTE no encontrado.');
+        }
+
+        // Verificar propiedad: Super/Admin/DTE_ViewAll pueden ver cualquiera; el resto solo de su empresa/sucursal
+        if (!$canViewAll) {
+            if ((int) $dte->empresa !== (int) $user->empresa || (int) $dte->sucursal !== (int) $user->sucursal) {
+                abort(403, 'No tiene permiso para ver este DTE.');
+            }
+        }
 
 
 

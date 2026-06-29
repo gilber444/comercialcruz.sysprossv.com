@@ -136,7 +136,8 @@ class EmpresaController extends Component
         $this->actividadSelectId = $empresa->actividad;
         $this->actividadSelectName = $empresa->desActividad;
         $this->correo = $empresa->correo;
-        $this->apiPassword = $empresa->apiPassword;
+        // No cargar la contraseña de API al frontend por seguridad
+        $this->apiPassword = '';
         $this->depto = $empresa->departamento;
         $this->muni = $empresa->municipio;
         $this->distrito = $empresa->distrito;
@@ -176,7 +177,9 @@ class EmpresaController extends Component
         $empresas->nit = $this->nit;
         $empresas->tipoContribuyente = $this->tipoContribuyente;
         $empresas->correo = $this->correo;
-        $empresas->apiPassword = $this->apiPassword;
+        if (!empty($this->apiPassword)) {
+            $empresas->apiPassword = $this->apiPassword;
+        }
         $empresas->departamento = $this->depto;
         $empresas->municipio = $this->muni;
         $empresas->distrito = $this->distrito;
@@ -230,7 +233,7 @@ class EmpresaController extends Component
     public function Destroy(Empresas $empresa)
     {
 
-        dd($sucursalesCount = Empresas::find($empresa->id)->sucursales->count());
+        $sucursalesCount = Empresas::find($empresa->id)->sucursales->count();
 
         if($sucursalesCount > 0)
         {

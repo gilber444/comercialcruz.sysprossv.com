@@ -31,6 +31,8 @@ class Proveedores extends Model
         'sincro_id',
     ];
 
+    protected $hidden = ['nit', 'direccion', 'telefono', 'correo'];
+
     // Genera sincro_id si no viene seteado
     protected static function booted()
     {

@@ -4,6 +4,35 @@ RewriteRule ^(.*)$ public/$1 [L]
         SetHandler proxy:fcgi://sysprossv-php81
 </FilesMatch>
 
+# Proteger archivos y directorios sensibles
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^\.env - [F,L]
+    RewriteRule ^\.git/ - [F,L]
+    RewriteRule ^storage/logs/ - [F,L]
+    RewriteRule \.(key|pem|sql|bak|old)$ - [F,L]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "\.(key|pem|sql|bak|old)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\.">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "\.(key|pem|sql|bak|old)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
 # Force PHP errors to storage/logs/ (fallback when ini_set is not enough)
 <IfModule mod_php.c>
     php_value error_log "storage/logs/php_errors.log"

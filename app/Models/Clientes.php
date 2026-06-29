@@ -16,6 +16,8 @@ class Clientes extends Model
     protected $fillable = ['nombreCliente', 'tipoPersona', 'dui', 'nit', 'homologado', 'registro', 'giro',
     'departamento', 'municipio', 'distrito', 'email', 'celular', 'actividad', 'direccion', 'telefono', 'idenReceptor', 'homologado', 'desActividad','sincro_id'];
 
+    protected $hidden = ['dui', 'nit', 'email', 'celular', 'direccion', 'telefono'];
+
     // Genera sincro_id si no viene seteado
     protected static function booted()
     {

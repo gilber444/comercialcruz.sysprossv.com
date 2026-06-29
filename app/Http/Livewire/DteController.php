@@ -259,8 +259,6 @@ class DteController extends Component
             \Log::error('Error en DteController::FirmarDTE', [
                 'dte_id' => $id,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
             ]);
 
             $this->emit('item-errorr', 'Error al procesar el DTE: ' . $e->getMessage());
@@ -315,8 +313,6 @@ class DteController extends Component
             \Log::error('Error en DteController::GenerarDTE', [
                 'dte_id' => $id,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
             ]);
 
             $this->emit('item-errorr', 'Error al procesar el DTE: ' . $e->getMessage());
@@ -341,6 +337,28 @@ class DteController extends Component
 
 
 
+    /**
+     * Verifica que el usuario autenticado pueda acceder al DTE.
+     * Super/Admin/DTE_ViewAll pueden ver cualquiera; el resto solo de su empresa/sucursal.
+     */
+    protected function authorizeDteAccess(dte $dte): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'No autenticado.');
+        }
+
+        $canViewAll = $user->profile === 'Super'
+            || $user->profile === 'Administrador'
+            || $user->can('DTE_ViewAll');
+
+        if (!$canViewAll) {
+            if ((int) $dte->empresa !== (int) $user->empresa || (int) $dte->sucursal !== (int) $user->sucursal) {
+                abort(403, 'No tiene permiso para acceder a este DTE.');
+            }
+        }
+    }
+
     public function show($id)
 
     {
@@ -348,6 +366,8 @@ class DteController extends Component
         // Recupera el registro de la base de datos
 
         $rec = dte::findOrFail($id);
+
+        $this->authorizeDteAccess($rec);
 
         $json = $this->inflateJson($rec->jsonDte);
 
@@ -386,6 +406,8 @@ class DteController extends Component
     {
 
         $rec  = Dte::findOrFail($id);
+
+        $this->authorizeDteAccess($rec);
 
         // 🔹 OJO: usar el mismo campo jsonDte (no json_field)
 

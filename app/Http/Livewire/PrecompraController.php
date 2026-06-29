@@ -249,7 +249,7 @@ class PrecompraController extends Component
         } catch (Exception $e) {
             // Manejo de errores
             $this->emit('item-error', 'Se produjo un error al procesar el archivo JSON. ' . $e->getMessage());
-            Log::error('Error al procesar JSON: ' . json_encode($data) . ' - Mensaje: ' . $e->getMessage());
+            Log::error('Error al procesar JSON: ' . ($data['identificacion']['numeroControl'] ?? 'sin-control') . ' - Mensaje: ' . $e->getMessage());
         }
     }
 

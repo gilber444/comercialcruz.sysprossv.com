@@ -42,6 +42,8 @@ class Ventas extends Model
 
     ];
 
+    protected $hidden = ['costociva', 'totalcosto'];
+
     // Genera sincro_id si no viene seteado
     protected static function booted()
     {

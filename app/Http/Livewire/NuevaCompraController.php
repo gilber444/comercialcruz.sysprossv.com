@@ -716,9 +716,6 @@ class NuevaCompraController extends Component
             DB::rollback();
             \Log::error('ERROR Store Compra', [
                 'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
             ]);
             $this->emit('scan-notfound', $e->getMessage());
         }

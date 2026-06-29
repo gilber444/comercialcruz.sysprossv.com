@@ -4579,8 +4579,6 @@ class PosController extends Component
             \Log::error('Error en PosController::GenerarDTE', [
                 'dte_id' => $id,
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
             ]);
 
             $this->emit('item-errorr', 'Error al procesar el DTE: ' . $e->getMessage());

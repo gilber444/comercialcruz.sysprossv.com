@@ -5,7 +5,7 @@
 - Proyecto Laravel 10.x desplegado en VPS y usado desde PCs locales.
 - Repositorio GitHub: `https://github.com/gilber444/comercialcruz.sysprossv.com.git`, rama `main`.
 - VPS FTP: configurado en `.vscode/sftp.json` (host, usuario, contraseña, remotePath).
-- Versión actual del sistema: `1.0.8` (ver `config/version.php` y `.env` `APP_VERSION`).
+- Versión actual del sistema: `1.0.9` (ver `config/version.php` y `.env` `APP_VERSION`).
 
 ## Flujo de trabajo obligatorio para cada cambio
 
@@ -76,3 +76,9 @@
 - Subir `.env` al VPS solo cuando sea estrictamente necesario (por ejemplo, para actualizar `APP_VERSION`). Antes de hacerlo, confirmar que no sobreescribirá credenciales u otra configuración crítica del servidor.
 - No ejecutar comandos destructivos en BD del VPS sin confirmación del usuario.
 - No hacer `git push --force` ni rebases sin autorización expresa.
+- Después de cualquier deploy, verificar en el VPS:
+  - `APP_DEBUG=false` y `APP_ENV=production` en `.env`.
+  - `LOG_LEVEL=error` o `warning` en producción.
+  - Logs rotados/borrados periódicamente (`storage/logs/laravel.log`, `procesar_dtes_pendientes.log`, etc.).
+  - Credenciales de BD/Hacienda rotadas si hubo exposición previa en logs.
+- Nunca almacenar contraseñas en texto plano en el frontend ni en propiedades Livewire públicas.

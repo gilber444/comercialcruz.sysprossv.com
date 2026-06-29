@@ -18,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 use Dompdf\Dompdf;
 
+use Illuminate\Support\Facades\Auth;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 use App\Traits\HasLogoBase64;
@@ -38,7 +39,26 @@ class ExportCotizacionController extends Controller
 
     {
 
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'No autenticado.');
+        }
+
         $cotizacion = Cotizaciones::with('Rcliente')->find($id);
+
+        if (!$cotizacion) {
+            abort(404, 'Cotización no encontrada.');
+        }
+
+        $canViewAll = $user->profile === 'Super'
+            || $user->profile === 'Administrador'
+            || $user->can('Cotizaciones_ViewAll');
+
+        if (!$canViewAll) {
+            if ((int) $cotizacion->empresa !== (int) $user->empresa || (int) $cotizacion->sucursal !== (int) $user->sucursal) {
+                abort(403, 'No tiene permiso para ver esta cotización.');
+            }
+        }
 
 
 

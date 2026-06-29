@@ -20,6 +20,8 @@ class Bancos extends Model
 
     ];
 
+    protected $hidden = ['cuenta'];
+
     // Genera sincro_id si no viene seteado
     protected static function booted()
     {

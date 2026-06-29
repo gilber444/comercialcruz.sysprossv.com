@@ -127,7 +127,6 @@ trait RecepcionDTEC
         } catch (\Throwable $e) {
             Log::warning('No se pudo enviar el correo del DTE', [
                 'dte_id' => $id,
-                'error' => $e->getMessage(),
             ]);
         }
     }

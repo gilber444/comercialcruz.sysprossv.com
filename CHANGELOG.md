@@ -5,6 +5,28 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.9] - 2026-06-30
+
+### Seguridad
+- Eliminadas rutas públicas duplicadas de PDFs (`report/pdf/{id}` y `report/pdf/cotizacion/{id}`); ahora requieren autenticación y permiso.
+- Verificación de propiedad en `ExportDteController::reportPDF` (solo UUID, filtro por empresa/sucursal).
+- Verificación de propiedad en `ExportCotizacionController::reportCotizacion`.
+- Verificación de propiedad en `DteController::show`/`download` (prevención de IDOR).
+- Endpoint `/api/user` ahora retorna solo campos públicos, sin credenciales.
+- `password2` agregado a `$hidden` en modelo `User` y ya no se carga en propiedades Livewire.
+- `apiPassword` de empresa ya no se carga en propiedades Livewire; solo se actualiza si se ingresa un nuevo valor.
+- Agregado `$hidden` en modelos: `Empresas`, `Parametros`, `Bancos`, `Clientes`, `Proveedores`, `Ventas`, `VentasDetalles`, `Precios`.
+- Sanitización de logs: removidos `getTraceAsString`, queries completas, payloads JSON y datos de items en logs de errores.
+- Eliminados `dd()` activos en `EmpresaController` y `ModalSolicitud`.
+- Eliminados archivos de copia/backup (`* copy.php`, `*_OLD.blade.php`, `app/Traits/bak/`).
+- Endurecidos `.htaccess` raíz y `public/.htaccess` para bloquear `.env`, `.git/`, `storage/logs/` y archivos `.key/.pem/.sql/.bak/.old`.
+
+### Cambiado
+- `.env.example` ahora usa `APP_ENV=production`, `APP_DEBUG=false` y `LOG_LEVEL=error` por defecto.
+- `app/Exceptions/Handler.php` retorna respuestas JSON genéricas en producción cuando `app.debug` es falso.
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.8] - 2026-06-29
 
 ### Corregido

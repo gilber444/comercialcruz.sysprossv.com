@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Proteger archivos y directorios sensibles
+    RewriteRule ^\.env - [F,L]
+    RewriteRule ^\.git/ - [F,L]
+    RewriteRule ^storage/logs/ - [F,L]
+    RewriteRule \.(key|pem|sql|bak|old)$ - [F,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -18,6 +24,26 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "\.(key|pem|sql|bak|old)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\.">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "\.(key|pem|sql|bak|old)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
 </IfModule>
 
 # Force PHP errors to storage/logs/ (fallback when ini_set is not enough)

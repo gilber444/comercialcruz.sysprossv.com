@@ -80,7 +80,6 @@ class SyncExistenciasVPS extends Command
                     $this->warn("   Excepción producto_id={$productoLocalId}: " . $e->getMessage());
                     Log::channel('daily')->error("[sync:existencias-vps] Excepción producto_id={$productoLocalId}", [
                         'message' => $e->getMessage(),
-                        'trace'   => $e->getTraceAsString(),
                     ]);
                 }
             }

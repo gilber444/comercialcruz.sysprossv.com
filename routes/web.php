@@ -707,7 +707,4 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-Route::get('report/pdf/{id}', [ExportDteController::class, 'reportPDF'])->name('reportPDF');
-
-Route::get('report/pdf/cotizacion/{id}', [ExportCotizacionController::class, 'reportCotizacion'])->name('reportCotizacion');
 

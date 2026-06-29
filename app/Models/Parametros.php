@@ -13,6 +13,8 @@ class Parametros extends Model
     use HasFactory;
     use SoftDeletes;
 
+    protected $hidden = ['token'];
+
     protected $fillable = [
         'empresa',
         'sucursal',

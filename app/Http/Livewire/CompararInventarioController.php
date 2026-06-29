@@ -114,7 +114,7 @@ class CompararInventarioController extends Component
         } catch (Throwable $e) {
             $this->mensaje     = 'Error: ' . $e->getMessage();
             $this->tipoMensaje = 'danger';
-            \Illuminate\Support\Facades\Log::error('confirmarPush FAILED', ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            \Illuminate\Support\Facades\Log::error('confirmarPush FAILED', ['msg' => $e->getMessage()]);
         }
 
         $this->pushProductoId = null;

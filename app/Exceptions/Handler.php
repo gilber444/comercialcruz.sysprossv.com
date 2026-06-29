@@ -44,6 +44,21 @@ class Handler extends ExceptionHandler
             // Reemplaza 'errors.403' con el nombre de tu vista personalizada
         }
 
+        // En peticiones JSON y sin debug, nunca exponer stack traces ni mensajes internos
+        if ($request->expectsJson() && !config('app.debug')) {
+            $status = method_exists($exception, 'getStatusCode')
+                ? $exception->getStatusCode()
+                : 500;
+
+            $message = $status >= 500
+                ? 'Error interno del servidor.'
+                : 'Solicitud no válida.';
+
+            return response()->json([
+                'message' => $message,
+            ], $status);
+        }
+
         return parent::render($request, $exception);
     }
 }
