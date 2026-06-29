@@ -5,6 +5,14 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.12] - 2026-06-30
+
+### Corregido
+- `HojaInventario::abrirInventario`: validación atómica con `lockForUpdate` para evitar aperturas duplicadas cuando dos PCs tienen la pantalla abierta.
+- Si ya existe una apertura abierta para la misma empresa, sucursal y fecha, el sistema muestra error y no permite crear otra.
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.11] - 2026-06-30
 
 ### Corregido

@@ -498,16 +498,42 @@ class HojaInventario extends Component
     {
         $usuario = Auth::user();
 
-        $apertura = AperturaInventario::create([
-            'empresa' => $usuario->empresa,
-            'sucursal' => $this->sucursal,
-            'user' => $validador->id,
-            'responsable' => $validador->name,
-            'observacion' => $this->observacionApertura,
-            'fecha_apertura' => now()->toDateString(),
-            'hora_apertura' => now()->format('H:i:s'),
-            'estado' => 'Abierto',
-        ]);
+        try {
+            $apertura = DB::transaction(function () use ($usuario, $validador) {
+                // Re-verificar en BD para evitar aperturas duplicadas si otra PC abrió una mientras
+                // esta pantalla estaba cargada (Livewire mantiene $aperturaActiva en memoria).
+                $yaExiste = AperturaInventario::where('empresa', $usuario->empresa)
+                    ->where('sucursal', $this->sucursal)
+                    ->where('estado', 'Abierto')
+                    ->whereDate('fecha_apertura', now()->toDateString())
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($yaExiste) {
+                    $this->aperturaActiva = $yaExiste;
+                    $this->emit('item-error', 'Ya existe una apertura de inventario abierta para esta sucursal el día de hoy. Actualice la página.');
+                    return null;
+                }
+
+                return AperturaInventario::create([
+                    'empresa' => $usuario->empresa,
+                    'sucursal' => $this->sucursal,
+                    'user' => $validador->id,
+                    'responsable' => $validador->name,
+                    'observacion' => $this->observacionApertura,
+                    'fecha_apertura' => now()->toDateString(),
+                    'hora_apertura' => now()->format('H:i:s'),
+                    'estado' => 'Abierto',
+                ]);
+            });
+        } catch (\Throwable $e) {
+            $this->emit('item-error', 'Error al abrir inventario: ' . $e->getMessage());
+            return;
+        }
+
+        if (!$apertura) {
+            return;
+        }
 
         return redirect()->route('hoja_inventarios');
     }
