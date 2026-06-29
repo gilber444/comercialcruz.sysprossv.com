@@ -19,6 +19,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   - Ahora cada PC solo sube datos de su `APP_SUCURSAL_ID`.
   - Si no se especifica `--sucursal-inventarios` ni `APP_SUCURSAL_ID`, el comando aborta.
   - Ninguna PC con `APP_SUCURSAL_ID != 2` puede subir inventario/ajustes de la sucursal 2.
+- `sync:local-vps` aborta si se ejecuta en VPS (`APP_MODO=vps`).
 
 ## [1.0.6] - 2026-06-29
 

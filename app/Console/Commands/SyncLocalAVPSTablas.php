@@ -193,6 +193,11 @@ class SyncLocalAVPSTablas extends Command
     ];
     public function handle()
     {
+        if (config('app.modo', 'local') === 'vps') {
+            $this->error('❌ sync:local-vps NO debe ejecutarse en VPS (APP_MODO=vps). Abortando.');
+            return self::FAILURE;
+        }
+
         $connLocal = (string) $this->option('local');
         $connVps   = (string) $this->option('vps');
         $limit     = (int) $this->option('limit');
