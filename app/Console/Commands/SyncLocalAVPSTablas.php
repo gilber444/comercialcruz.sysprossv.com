@@ -197,8 +197,14 @@ class SyncLocalAVPSTablas extends Command
         $connVps   = (string) $this->option('vps');
         $limit     = (int) $this->option('limit');
         $direction = (string) $this->option('direction');
-        $sucursalInventarios = (int) $this->option('sucursal-inventarios');
-        $sucursalBitacora = $sucursalInventarios ? "Sucursal {$sucursalInventarios}" : 'Nueva Belen'; // etiqueta para bitácora
+        $sucursalInventarios = (int) ($this->option('sucursal-inventarios') ?: config('app.sucursal_id', 0));
+
+        if ($sucursalInventarios <= 0) {
+            $this->error('❌ No se especificó --sucursal-inventarios ni APP_SUCURSAL_ID. Abortando para evitar subir datos de todas las sucursales.');
+            return self::FAILURE;
+        }
+
+        $sucursalBitacora = "Sucursal {$sucursalInventarios}"; // etiqueta para bitácora
         // Orden por defecto (padres→hijos)
         $defaultOrder = [
             'remesas',
