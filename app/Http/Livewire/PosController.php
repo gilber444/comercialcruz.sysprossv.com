@@ -222,10 +222,14 @@ class PosController extends Component
 
 
 
-        // 🔹 Validar si el usuario tiene una actividad activa hoy
+        // 🔹 Validar si el usuario tiene una actividad activa hoy para la caja en sesión.
+        // Se valida contra la sesión (que es lo que fija ActividadesController al aperturar)
+        // y no contra las columnas del usuario, porque la actividad se crea con la
+        // empresa/sucursal de la caja y no siempre coinciden con las del usuario.
         $actividadActiva = Actividades::where('user', $user->id)
-            ->where('empresa', $user->empresa)
-            ->where('sucursal', $user->sucursal)
+            ->where('empresa', $this->empresa)
+            ->where('sucursal', $this->sucursal)
+            ->where('caja', $this->caja)
             ->whereDate('created_at', Carbon::today()) // Actividad del día de hoy
             ->where('status', 'Activo')
             ->exists();
@@ -4579,6 +4583,8 @@ class PosController extends Component
             \Log::error('Error en PosController::GenerarDTE', [
                 'dte_id' => $id,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             $this->emit('item-errorr', 'Error al procesar el DTE: ' . $e->getMessage());

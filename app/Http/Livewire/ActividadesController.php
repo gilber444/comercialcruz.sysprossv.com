@@ -13,7 +13,7 @@ class ActividadesController extends Component
 
     public function mount()
     {
-        $this->checkActiveActivityForToday();
+        return $this->checkActiveActivityForToday();
     }
 
     public function render()
@@ -85,27 +85,40 @@ class ActividadesController extends Component
     private function checkActiveActivityForToday()
     {
         $user = Auth::user();
-        $today = now()->startOfDay();
 
         $activeActivity = Actividades::where('user', $user->id)
             ->where('status', 'Activo')
             ->whereDate('created_at', now()->toDateString())
+            ->latest('id')
             ->first();
 
-        if ($activeActivity) {
-            $caja = Parametros::with('sucursales')->find($activeActivity->caja);
-            $this->setUserSession($caja, $activeActivity->id);
-            return redirect()->route('pos');
+        if (!$activeActivity) {
+            return;
         }
+
+        $caja = Parametros::with('sucursales')->find($activeActivity->caja);
+
+        // Si la caja de la actividad ya no existe, no se puede reanudar: se cierra
+        // la actividad para no dejar al usuario rebotando entre actividad y pos.
+        if (!$caja || !$caja->sucursales) {
+            $activeActivity->status = 'Cerrado';
+            $activeActivity->save();
+
+            return;
+        }
+
+        $this->setUserSession($caja, $activeActivity);
+
+        return redirect()->route('pos');
     }
 
-    private function setUserSession($caja, $activityId)
+    private function setUserSession($caja, $actividad)
     {
         session([
-            'empresa' => $caja->sucursales->empresa,
-            'sucursal' => $caja->sucursal,
-            'caja' => $caja->id,
-            'actividad' => $activityId
+            'empresa' => $actividad->empresa,
+            'sucursal' => $actividad->sucursal,
+            'caja' => $actividad->caja,
+            'actividad' => $actividad->id
         ]);
     }
 }
