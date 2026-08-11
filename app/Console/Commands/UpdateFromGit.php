@@ -20,9 +20,10 @@ class UpdateFromGit extends Command
     protected $description = 'Actualiza el proyecto desde GitHub y ejecuta mantenimiento (Composer + Artisan).';
 
     /**
-     * Ruta del binario de PHP que quieres usar (8.2).
+     * Ruta del binario de PHP que quieres usar (8.2 en VPS, el actual en Windows).
+     * Se puede forzar con UPDATE_PHP_BINARY en el .env.
      */
-    protected string $phpBinary = '/usr/bin/php82';
+    protected string $phpBinary;
 
     /**
      * Archivo de log específico para este comando.
@@ -34,6 +35,8 @@ class UpdateFromGit extends Command
      */
     public function handle(): int
     {
+        $this->phpBinary = $this->resolverPhpBinary();
+
         $this->logInfo('===== Inicio de app:update-from-git =====');
 
         $projectPath = base_path();
@@ -90,14 +93,9 @@ class UpdateFromGit extends Command
         $this->logInfo('Código actualizado desde origin/main correctamente.');
         $this->logInfo('Ejecutando mantenimiento (Composer + Artisan)...');
 
-        // 4) Ejecutar Composer con PHP 8.2
-        $composerBin = trim(shell_exec('which composer')) ?: '/usr/bin/composer';
-
-        $composerCmd = sprintf(
-            '%s %s install --no-dev --prefer-dist --optimize-autoloader',
-            $this->phpBinary,
-            $composerBin
-        );
+        // 4) Ejecutar Composer con el PHP resuelto
+        $composerCmd = $this->resolverComposerCmd()
+            . ' install --no-dev --prefer-dist --optimize-autoloader';
 
         $this->logInfo("Ejecutando Composer: {$composerCmd}");
 
@@ -121,7 +119,7 @@ class UpdateFromGit extends Command
         ];
 
         foreach ($artisanCommands as $cmd) {
-            $fullCmd = $this->phpBinary . ' ' . $cmd;
+            $fullCmd = $this->quote($this->phpBinary) . ' ' . $cmd;
             $this->logInfo("Ejecutando: {$fullCmd}");
 
             [$exitArtisan, $outArtisan] = $this->runShellCommand($fullCmd, $projectPath);
@@ -153,12 +151,96 @@ class UpdateFromGit extends Command
         $exitCode = 0;
 
         if ($cwd) {
-            $command = 'cd ' . escapeshellarg($cwd) . ' && ' . $command;
+            // En Windows hace falta /d por si el proyecto está en otra unidad.
+            $cd = $this->esWindows() ? 'cd /d ' : 'cd ';
+            $command = $cd . $this->quote($cwd) . ' && ' . $command;
         }
 
         exec($command . ' 2>&1', $output, $exitCode);
 
         return [$exitCode, $output];
+    }
+
+    /**
+     * ¿Estamos en Windows (local) o en Linux (VPS)?
+     */
+    protected function esWindows(): bool
+    {
+        return strtoupper(substr(PHP_OS_FAMILY, 0, 3)) === 'WIN';
+    }
+
+    /**
+     * Entrecomilla una ruta según el sistema operativo.
+     */
+    protected function quote(string $path): string
+    {
+        return $this->esWindows() ? '"' . $path . '"' : escapeshellarg($path);
+    }
+
+    /**
+     * Binario de PHP a usar: UPDATE_PHP_BINARY del .env, /usr/bin/php82 en Linux
+     * o el PHP con el que se está ejecutando artisan en Windows.
+     */
+    protected function resolverPhpBinary(): string
+    {
+        $configurado = trim((string) env('UPDATE_PHP_BINARY', ''));
+        if ($configurado !== '') {
+            return $configurado;
+        }
+
+        if ($this->esWindows()) {
+            return PHP_BINARY;
+        }
+
+        return is_executable('/usr/bin/php82') ? '/usr/bin/php82' : (PHP_BINARY ?: 'php');
+    }
+
+    /**
+     * Comando base de Composer (sin argumentos). Prefiere composer.phar ejecutado
+     * con el PHP resuelto; si solo hay un ejecutable (composer.bat/composer), lo usa directo.
+     */
+    protected function resolverComposerCmd(): string
+    {
+        $configurado = trim((string) env('UPDATE_COMPOSER_PATH', ''));
+        if ($configurado !== '') {
+            return $this->comandoParaComposer($configurado);
+        }
+
+        $candidatos = array_filter([
+            base_path('composer.phar'),
+            $this->esWindows() ? 'C:\\laragon\\bin\\composer\\composer.phar' : '/usr/local/bin/composer',
+            $this->esWindows() ? 'C:\\ProgramData\\ComposerSetup\\bin\\composer.phar' : '/usr/bin/composer',
+        ]);
+
+        foreach ($candidatos as $ruta) {
+            if (is_file($ruta)) {
+                return $this->comandoParaComposer($ruta);
+            }
+        }
+
+        // Último recurso: buscarlo en el PATH.
+        $buscar = $this->esWindows() ? 'where composer' : 'which composer';
+        $encontrado = trim((string) @shell_exec($buscar));
+        if ($encontrado !== '') {
+            $primero = trim(explode("\n", str_replace("\r", '', $encontrado))[0]);
+            if ($primero !== '' && is_file($primero)) {
+                return $this->comandoParaComposer($primero);
+            }
+        }
+
+        return 'composer';
+    }
+
+    /**
+     * Un .phar se ejecuta con PHP; un .bat/.exe/binario se ejecuta directo.
+     */
+    protected function comandoParaComposer(string $ruta): string
+    {
+        $esPhar = str_ends_with(strtolower($ruta), '.phar') || !$this->esWindows();
+
+        return $esPhar
+            ? $this->quote($this->phpBinary) . ' ' . $this->quote($ruta)
+            : $this->quote($ruta);
     }
 
     /**
