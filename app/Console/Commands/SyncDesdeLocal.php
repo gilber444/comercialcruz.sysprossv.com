@@ -32,6 +32,7 @@ class SyncDesdeLocal extends Command
     public function handle()
     {
         try {
+        try {
             DB::connection($this->connLocal)->getPdo();
             DB::connection($this->connRemote)->getPdo();
         } catch (Throwable $e) {
@@ -211,6 +212,10 @@ class SyncDesdeLocal extends Command
         }
 
         return $estado === 'OK' ? self::SUCCESS : self::FAILURE;
+        } finally {
+            DB::disconnect($this->connLocal);
+            DB::disconnect($this->connRemote);
+        }
     }
 
     // --- Watermark helpers (guardados en LOCAL.sync_states si existe) ---

@@ -90,6 +90,9 @@ class SyncExistenciasVPS extends Command
         $this->info($resumen);
         Log::channel('daily')->info("[sync:existencias-vps] {$resumen}", $errores ? ['errores' => $errores] : []);
 
+        DB::disconnect($connLocal);
+        DB::disconnect($connVps);
+
         return self::SUCCESS;
     }
 

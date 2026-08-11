@@ -193,6 +193,10 @@ class SyncLocalAVPSTablas extends Command
     ];
     public function handle()
     {
+        $connLocal = (string) $this->option('local');
+        $connVps   = (string) $this->option('vps');
+
+        try {
         if (config('app.modo', 'local') === 'vps') {
             $this->error('❌ sync:local-vps NO debe ejecutarse en VPS (APP_MODO=vps). Abortando.');
             return self::FAILURE;
@@ -206,6 +210,13 @@ class SyncLocalAVPSTablas extends Command
 
         if ($sucursalInventarios <= 0) {
             $this->error('❌ No se especificó --sucursal-inventarios ni APP_SUCURSAL_ID. Abortando para evitar subir datos de todas las sucursales.');
+            return self::FAILURE;
+        }
+
+        // 🔒 Proteger sucursales que solo deben manejarse desde el VPS (ej. bodega central)
+        $sucursalesProtegidas = array_values(array_filter(array_map('trim', explode(',', env('PROTECTED_SUCURSAL_IDS', ''))), fn($v) => $v !== ''));
+        if (in_array((string) $sucursalInventarios, $sucursalesProtegidas, true)) {
+            $this->error("❌ La sucursal {$sucursalInventarios} está protegida (PROTECTED_SUCURSAL_IDS). No se permite subir sus datos al VPS. Abortando.");
             return self::FAILURE;
         }
 
@@ -306,6 +317,10 @@ class SyncLocalAVPSTablas extends Command
         }
         $this->info('✔ Sincronización finalizada.');
         return self::SUCCESS;
+        } finally {
+            DB::disconnect($connLocal);
+            DB::disconnect($connVps);
+        }
     }
     // ========== Núcleo por tabla ==========
     protected function syncTable(string $table, int $limit, string $connLocal, string $connVps, string $direction, int $sucursalInventarios = 0): array

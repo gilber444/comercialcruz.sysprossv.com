@@ -69,6 +69,8 @@ class SyncDesdeVPS extends Command
     ];
     // 🔒 Se calcula en runtime desde --sucursales o APP_SUCURSAL_ID del .env
     protected array $sucursalesPermitidas = [];
+    // 🔒 Sucursales cuyo inventario NUNCA se debe crear desde la sincronización (ej. bodega central / VPS)
+    protected array $sucursalesProtegidas = [];
     // Tablas a las que aplica filtro por sucursal/destino
     protected array $tablasConFiltroSucursal = [
         'compras',
@@ -135,6 +137,11 @@ class SyncDesdeVPS extends Command
         // ✅ Carga sucursales (CLI / APP_SUCURSAL_ID del .env)
         $resolved = $this->resolverSucursales();
         $this->sucursalesPermitidas = $resolved;
+
+        // ✅ Carga sucursales protegidas (PROTECTED_SUCURSAL_IDS del .env, separadas por coma)
+        $protectedRaw = env('PROTECTED_SUCURSAL_IDS', '');
+        $this->sucursalesProtegidas = array_values(array_filter(array_map('trim', explode(',', $protectedRaw)), fn($v) => $v !== ''));
+
         // Label para bitácora: dinámico según sucursal resuelta
         $ids = implode(',', $this->sucursalesPermitidas);
         $this->sucursal = $ids ? "SERVIDOR -> SUCURSAL(ES) #{$ids}" : 'SERVIDOR -> (sin sucursal)';
@@ -494,8 +501,9 @@ class SyncDesdeVPS extends Command
             ->select($cols)
             ->whereNotNull('sincro_id')
             ->where('sincro_id', '!=', '');
-        if ($tabla === 'dtes' && in_array('estado', $colsRemote, true)) {
-            $query->whereRaw("UPPER(TRIM(estado)) = 'PROCESADO'");
+        // dtes: a la local SOLO regresan los PROCESADO (con sello) y los INVALIDADO.
+        if ($tabla === 'dtes') {
+            $query->whereIn('estado', ['PROCESADO', 'INVALIDADO']);
         }
         // (Opcional futuro) anti-eco por last_writer_node si existiera esa columna
         if (Schema::connection($this->connRemote)->hasColumn($tabla, 'last_writer_node')) {
@@ -570,9 +578,6 @@ class SyncDesdeVPS extends Command
                     }
                     if ($hasIdVpsLocal) {
                         $arr['id_vps'] = $r->id;
-                    }
-                    if ($tabla === 'dtes' && !$this->prepararDteParaLocal($arr)) {
-                        continue;
                     }
                     $lote[] = $arr;
                     $sids[] = $arr['sincro_id'];
@@ -727,11 +732,20 @@ class SyncDesdeVPS extends Command
                     $updateCols = array_values(array_intersect($updateCols, $cols));
                     DB::connection($this->connLocal)->transaction(function () use ($lote, $updateCols, &$insertados, &$actualizados) {
                         foreach ($lote as $row) {
+                            $sucursalRow = (int) ($row['sucursal'] ?? 0);
+                            $esSucursalProtegida = in_array($sucursalRow, $this->sucursalesProtegidas, true);
+
                             $existing = DB::connection($this->connLocal)
                                 ->table('inventarios')
                                 ->where('producto', $row['producto'])
                                 ->where('sucursal', $row['sucursal'])
                                 ->first();
+
+                            // 🔒 Sucursal protegida (ej. bodega central): nunca crear desde sync; solo actualizar metadatos si ya existe
+                            if ($esSucursalProtegida && !$existing) {
+                                $this->line("   ⏭ inventarios: producto={$row['producto']} sucursal={$sucursalRow} es sucursal protegida. Registro VPS omitido.");
+                                continue;
+                            }
 
                             $duplicateBySincro = null;
                             if (!empty($row['sincro_id'])) {
@@ -816,6 +830,11 @@ class SyncDesdeVPS extends Command
                         }
                         $toUpdate[] = $row;
                     } else {
+                        // dtes: SOLO se actualizan los que ya existen en la local (validados por sincro_id).
+                        // NO se insertan: traen el id del tocken del VPS y romperían el FK dtes.tocken.
+                        if ($tabla === 'dtes') {
+                            continue;
+                        }
                         $toInsert[] = $row;
                     }
                 }
@@ -840,10 +859,35 @@ class SyncDesdeVPS extends Command
                                     unset($data['estado']);
                                 }
                             }
-                            // DTEs: si en VPS está Procesado, actualizar local con estado y sello del VPS
-                            if ($tabla === 'dtes' && $this->estadoEsProcesado($row['estado'] ?? null)) {
-                                $data['estado'] = 'Procesado';
-                                $data['sello']  = $row['sello'] ?? $data['sello'] ?? null;
+                            // DTEs: SOLO se actualiza estado (+ sello si PROCESADO). NUNCA se tocan los FKs
+                            // (tocken/venta/caja): traen ids del VPS y romperían el FK dtes.tocken.
+                            // Estados reales en MAYÚSCULA (PROCESADO/INVALIDADO).
+                            if ($tabla === 'dtes') {
+                                $estadoVps = strtoupper((string) ($row['estado'] ?? ''));
+                                if (!in_array($estadoVps, ['PROCESADO', 'INVALIDADO'], true)) {
+                                    continue; // otros estados no se bajan
+                                }
+                                $estadoLocal = DB::connection($this->connLocal)
+                                    ->table('dtes')
+                                    ->where('sincro_id', $row['sincro_id'])
+                                    ->value('estado');
+                                if (strtoupper((string) $estadoLocal) === $estadoVps) {
+                                    continue; // ya está igual → no actualizar (no pisar FKs)
+                                }
+
+                                // $data SOLO con columnas seguras (no FKs)
+                                $data = ['estado' => $estadoVps];
+                                if ($estadoVps === 'PROCESADO' && !empty($row['sello'])) {
+                                    $data['sello'] = $row['sello'];
+                                    // Propagar el sello a ventas y caja (por el id de venta del DTE)
+                                    $ventaId = $row['venta'] ?? null;
+                                    if ($ventaId) {
+                                        DB::connection($this->connLocal)->table('ventas')
+                                            ->where('id', $ventaId)->update(['sello' => $row['sello']]);
+                                        DB::connection($this->connLocal)->table('cajas')
+                                            ->where('venta', $ventaId)->update(['sello' => $row['sello']]);
+                                    }
+                                }
                             }
                             // Proteger: si ajuste ya fue aplicado localmente, no pisar el status
                             if ($tabla === 'ajustes' && isset($data['status'])) {
@@ -872,22 +916,12 @@ class SyncDesdeVPS extends Command
                                 ->table($tabla)
                                 ->where('sincro_id', $row['sincro_id'])
                                 ->update($data);
-                            if ($tabla === 'dtes' && $this->estadoEsProcesado($row['estado'] ?? null)) {
-                                $this->propagarDteProcesado($row);
-                            }
                         }
                         $actualizados += count($toUpdate);
                     }
                     // INSERT nuevos
                     if (!empty($toInsert)) {
                         DB::connection($this->connLocal)->table($tabla)->insert($toInsert);
-                        if ($tabla === 'dtes') {
-                            foreach ($toInsert as $row) {
-                                if ($this->estadoEsProcesado($row['estado'] ?? null)) {
-                                    $this->propagarDteProcesado($row);
-                                }
-                            }
-                        }
                         $insertados += count($toInsert);
                     }
                 });
@@ -2027,11 +2061,6 @@ class SyncDesdeVPS extends Command
         return $aplicados;
     }
 
-    protected function estadoEsProcesado($estado): bool
-    {
-        return strtoupper(trim((string) $estado)) === 'PROCESADO';
-    }
-
     protected function inventarioEsDeSucursalLocal($sucursal): bool
     {
         if (empty($this->sucursalesPermitidas)) {
@@ -2041,49 +2070,6 @@ class SyncDesdeVPS extends Command
         $locales = array_map('intval', $this->sucursalesPermitidas);
 
         return in_array((int) $sucursal, $locales, true);
-    }
-
-    protected function prepararDteParaLocal(array &$row): bool
-    {
-        // Solo sincronizar DTEs que en VPS estén PROCESADOS
-        if (!$this->estadoEsProcesado($row['estado'] ?? null)) {
-            return false;
-        }
-
-        // Solo procesar si el DTE local está en estado Rechazado
-        // (el update posterior cambiará a Procesado y propagará el sello)
-        $dteLocal = DB::connection($this->connLocal)
-            ->table('dtes')
-            ->where('sincro_id', $row['sincro_id'])
-            ->value('estado');
-
-        if (strtoupper(trim((string) $dteLocal)) !== 'RECHAZADO') {
-            return false;
-        }
-
-        // Resolver venta local para propagar sello a ventas/cajas
-        if (!array_key_exists('venta', $row) || blank($row['venta'])) {
-            return true;
-        }
-
-        $ventaLocalId = $this->resolverVentaLocalDte(null, $row['venta']);
-        if (!$ventaLocalId) {
-            $this->warn("   ⚠ dtes: sincro_id={$row['sincro_id']} omitido; venta VPS {$row['venta']} no existe en local.");
-            return false;
-        }
-
-        $row['venta'] = $ventaLocalId;
-
-        // NO validar token: solo se necesita el sello para propagar a ventas/cajas/dtes
-        if (array_key_exists('tocken', $row) && !blank($row['tocken'])) {
-            $tockenLocalId = $this->resolverTockenLocal($row['tocken']);
-            if ($tockenLocalId) {
-                $row['tocken'] = $tockenLocalId;
-            }
-            // Si no existe token local, no fallar: dejar el valor VPS o null
-        }
-
-        return true;
     }
 
     protected function resolverTockenLocal($tockenVps): ?int
@@ -2168,41 +2154,6 @@ class SyncDesdeVPS extends Command
         $mensaje = @iconv('UTF-8', 'UTF-8//IGNORE', $mensaje) ?: $mensaje;
 
         return Str::limit($mensaje, 1000);
-    }
-
-    protected function propagarDteProcesado(array $row): void
-    {
-        $sello = $row['sello'] ?? null;
-        if (blank($sello) || empty($row['sincro_id'])) {
-            return;
-        }
-
-        $dteLocal = DB::connection($this->connLocal)
-            ->table('dtes')
-            ->where('sincro_id', $row['sincro_id'])
-            ->first(['id', 'venta', 'estado']);
-
-        if (!$dteLocal) {
-            return;
-        }
-
-        $ventaLocalId = $this->resolverVentaLocalDte($dteLocal->venta ?? null, $row['venta'] ?? null);
-        if ($ventaLocalId) {
-            DB::connection($this->connLocal)
-                ->table('ventas')
-                ->where('id', $ventaLocalId)
-                ->update(['sello' => $sello, 'updated_at' => now()]);
-
-            DB::connection($this->connLocal)
-                ->table('cajas')
-                ->where('venta', $ventaLocalId)
-                ->update(['sello' => $sello, 'updated_at' => now()]);
-        }
-
-        DB::connection($this->connLocal)
-            ->table('dtes')
-            ->where('id', $dteLocal->id)
-            ->update(['estado' => 'Procesado', 'sello' => $sello, 'updated_at' => now()]);
     }
 
     protected function resolverVentaLocalDte($ventaLocalActual, $ventaVps): ?int
