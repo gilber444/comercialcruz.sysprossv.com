@@ -26,25 +26,21 @@ class dte extends Model
         });
     } 
 
+    /**
+     * Compresion transparente del Archivo DTE.
+     *
+     * Se guarda en el formato canonico gz64: (gzencode + Base64 envuelto como
+     * string JSON valido). El formato anterior era gzcompress binario crudo,
+     * que no es JSON valido pese a que la columna se declaro como json; los
+     * registros historicos en ese formato -y los de MySQL COMPRESS(), con sus
+     * cuatro bytes de encabezado- se siguen leyendo, porque descomprimir() los
+     * reconoce. El resto de la aplicacion recibe siempre JSON normal.
+     */
     protected function jsonDte(): Attribute
     {
         return Attribute::make(
-            set: function ($value) {
-                if ($value === null) return null;
-
-                // Si viene array/obj -> a JSON
-                $json = is_array($value) || is_object($value)
-                    ? json_encode($value, JSON_UNESCAPED_UNICODE)
-                    : (string) $value;
-
-                // Evita doble compresión si ya viene comprimido
-                if (is_string($value)) {
-                    if (@gzuncompress($value) !== false) return $value;           // gzcompress (PHP)
-                    if (@gzuncompress(substr($value, 4)) !== false) return $value; // COMPRESS() (MySQL)
-                }
-
-                return gzcompress($json);
-            }
+            get: fn ($value) => \App\Support\JsonComprimido::descomprimir($value),
+            set: fn ($value) => \App\Support\JsonComprimido::comprimir($value),
         );
     }
 

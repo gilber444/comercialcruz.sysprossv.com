@@ -18,7 +18,7 @@ class ClientesController extends Component
     use WithPagination;
 
     public  $nombreCliente, $tipoPersona, $dui, $nit, $homologado, $registro, $giro, $direccion, $telefono,
-    $departamento, $municipio, $distrito, $actividad, $tipo = 'CLIENTE', $search, $selected_id, $pageTitle, $componentName, $clienteAddSelectId, $clienteAddSelectName, $idenreceptors, $idenReceptor, $celular, $correo, $departamentos, $municipios, $distritos;
+    $departamento, $municipio, $distrito, $actividad, $tipo = 'CLIENTE', $search, $selected_id, $pageTitle, $componentName, $clienteAddSelectId, $clienteAddSelectName, $idenreceptors, $idenReceptor, $celular, $correo, $categoria = 'OTRO', $departamentos, $municipios, $distritos;
     private $pagination = 7;
 
     public function mount()
@@ -76,6 +76,7 @@ class ClientesController extends Component
         $cliente = Clientes::create([
             'nombreCliente' => strtoupper($this->nombreCliente),
             'tipoPersona' => $this->tipoPersona,
+            'categoria' => $this->categoria ?: 'OTRO',
             'dui' => $this->dui,
             'nit' => $this->nit,
             'homologado' => $this->homologado,
@@ -102,6 +103,7 @@ class ClientesController extends Component
         $record = Clientes::find($id);
         $this->nombreCliente = $record->nombreCliente;
         $this->tipoPersona = $record->tipoPersona;
+        $this->categoria = $record->categoria ?: 'OTRO';
         $this->dui = $record->dui;
         $this->nit = $record->nit;
         $this->homologado = $record->homologado;
@@ -126,6 +128,7 @@ class ClientesController extends Component
     {
         $this->nombreCliente = '';
         $this->tipoPersona = 'Elegir Tipo de PErsona';
+        $this->categoria = 'OTRO';
         $this->dui = '';
         $this->nit = '';
         $this->homologado = 'SI';
@@ -164,6 +167,7 @@ class ClientesController extends Component
         $cliente->update([
             'nombreCliente' => strtoupper($this->nombreCliente),
             'tipoPersona' => $this->tipoPersona,
+            'categoria' => $this->categoria ?: 'OTRO',
             'dui' => $this->dui,
             'nit' => $this->nit,
             'homologado' => $this->homologado,

@@ -73,7 +73,10 @@ trait RecepcionDTEF
             $url = $urls->url;
 
             $ambiente = AmbienteDestino::find($empresa->ambiente);
-            $tipoDte = TipoDocumento::where('status', 'Activo')->where('valor', 'FACTURA')->first();
+            // Por codigo del CAT-002, no por texto: el importador de catalogos
+            // reescribe el valor publicado por Hacienda y esta consulta, que
+            // alimenta el sobre de recepcion, devolveria null en plena transmision.
+            $tipoDte = TipoDocumento::where('status', 'Activo')->whereIn('codigo', ['01', '1'])->first();
 
             if (!$ambiente || !$tipoDte) {
                 throw new \Exception('Faltan configuraciones de ambiente o tipo de DTE.');
@@ -127,6 +130,7 @@ trait RecepcionDTEF
         } catch (\Throwable $e) {
             Log::warning('No se pudo enviar el correo del DTE', [
                 'dte_id' => $id,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -172,33 +176,48 @@ trait RecepcionDTEF
             'josn' => json_encode($responseData),
         ]);
 
-        $contenido = @gzuncompress($dte->jsonDte);
-
-        if ($contenido === false) {
-            $contenido = $dte->jsonDte;
-        }
-
-        $arrayDtes = json_decode($contenido, true);
+        // El accessor del modelo ya devuelve JSON normal, y el mutator vuelve a
+        // comprimir al guardar. Comprimir aqui a mano dejaba el valor
+        // comprimido dos veces y el JSON no se podia volver a leer.
+        $arrayDtes = json_decode((string) $dte->jsonDte, true);
 
         if (is_array($arrayDtes)) {
             $arrayDtes['selloRecibido'] = $responseData['selloRecibido'] ?? null;
-            $dte->jsonDte = gzcompress(json_encode($arrayDtes));
+            $dte->jsonDte = json_encode($arrayDtes);
         }
 
-        $dte->estado = $responseData['estado'] ?? 'ERROR';
-        $dte->sello = $responseData['selloRecibido'] ?? null;
-        $dte->save();
+        $estadoMh = (string) ($responseData['estado'] ?? 'ERROR');
+        $sello = $responseData['selloRecibido'] ?? null;
 
-        $venta = Ventas::find($dte->venta);
-        if ($venta) {
-            $venta->sello = $responseData['selloRecibido'] ?? null;
-            $venta->save();
+        if (strtoupper($estadoMh) === 'PROCESADO' && trim((string) $sello) !== '') {
+            $dte->estado = $estadoMh;
+            $dte->sello = $sello;
+            $dte->save();
+        } else {
+            // Hacienda respondio 200 pero sin sellar. Si el motivo es que el
+            // documento "ya existe", se consulta y reconcilia en vez de dejar
+            // el sistema en RECHAZADO; y el estado solo se escribe si el DTE
+            // sigue sin sello.
+            $dte->save();
+
+            app(\App\Services\ProcesamientoDteService::class)
+                ->resolverRespuestaRechazada((int) $id, $responseData);
         }
 
-        $caja = Caja::where('venta', $dte->venta)->first();
-        if ($caja) {
-            $caja->sello = $responseData['selloRecibido'] ?? null;
-            $caja->save();
+        // Solo se propaga un sello real: con una respuesta sin sellar esto
+        // borraba el sello que la venta y la caja ya tuvieran.
+        if (trim((string) $sello) !== '') {
+            $venta = Ventas::find($dte->venta);
+            if ($venta) {
+                $venta->sello = $sello;
+                $venta->save();
+            }
+
+            $caja = Caja::where('venta', $dte->venta)->first();
+            if ($caja) {
+                $caja->sello = $sello;
+                $caja->save();
+            }
         }
     }
 
@@ -230,11 +249,13 @@ trait RecepcionDTEF
             'josn' => json_encode($errorResponseData),
         ]);
 
-        $dte = dte::find($id);
-        if ($dte) {
-            $dte->estado = $errorResponseData['estado'] ?? 'RECHAZADO';
-            $dte->save();
-        }
+        // Una respuesta tardia no puede degradar un DTE que Hacienda ya sello.
+        // La actualizacion es condicional: solo escribe si sigue sin sello y en
+        // un estado no final. Antes bastaba con que llegara tarde un RECHAZADO
+        // para marcar como rechazado un documento ya procesado.
+        app(\App\Services\ProcesamientoDteService::class)
+            ->guardarEstadoNoFinalizado((int) $id, (string) ($errorResponseData['estado'] ?? 'RECHAZADO'));
+
     }
 
     /**
@@ -253,10 +274,11 @@ trait RecepcionDTEF
             'josn' => json_encode(['error' => $mensaje]),
         ]);
 
-        $dte = dte::find($id);
-        if ($dte) {
-            $dte->estado = 'ERROR';
-            $dte->save();
-        }
+        // Una respuesta tardia no puede degradar un DTE que Hacienda ya sello.
+        // La actualizacion es condicional: solo escribe si sigue sin sello y en
+        // un estado no final. Antes bastaba con que llegara tarde un RECHAZADO
+        // para marcar como rechazado un documento ya procesado.
+        app(\App\Services\ProcesamientoDteService::class)
+            ->guardarEstadoNoFinalizado((int) $id, 'ERROR');
     }
 }

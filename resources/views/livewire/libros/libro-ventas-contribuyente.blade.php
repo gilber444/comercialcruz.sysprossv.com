@@ -60,7 +60,7 @@
                 @endcan
                 @can('GenerarLibroConsumidor_PDF')
                     <div class="col-sm-3 mt-3">
-                        <a href="{{ url('pdf/libroConsumidor' . '/' . $empresa .  '/' . $sucursal . '/' . $caja . '/' . $desde . '/' . $hasta) }}" class="btn btn-label-google-plus btn-sm" target="_blank"> <i class="fa-solid fa-file-pdf"></i> Generar PDF </a>
+                        <a href="{{ url('pdf/libroContribuyente' . '/' . $empresa .  '/' . $sucursal . '/' . $caja . '/' . $desde . '/' . $hasta) }}" class="btn btn-label-google-plus btn-sm" target="_blank"> <i class="fa-solid fa-file-pdf"></i> Generar PDF </a>
                     </div>
                 @endcan
 

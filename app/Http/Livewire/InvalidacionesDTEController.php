@@ -19,9 +19,13 @@ use App\Models\TipoInvalidacion;
 use App\Traits\Firmador2;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\RecepcionInvalidacion;
+use App\Services\InvalidacionEntregaService;
+use App\Services\PlazoInvalidacionDteService;
+use App\Traits\CatalogoRequerido;
 
 class InvalidacionesDTEController extends Component
 {
+    use CatalogoRequerido;
     use WithPagination;
     use GenerarJsonInva;
     use RecepcionInvalidacion;
@@ -117,7 +121,10 @@ class InvalidacionesDTEController extends Component
         $empresa = Empresas::find($user->empresa);
 
         $dte = dte::find($this->dteid);
-        $ambiente = AmbienteDestino::find($empresa->ambiente);
+        $ambiente = $this->catalogoRequerido(
+            AmbienteDestino::find($empresa->ambiente),
+            'el ambiente de destino id ' . $empresa->ambiente . ' (catalogo ambiente_destinos)'
+        );
 
         $sucursal = Sucursales::find($dte->sucursal);
         $caja = Parametros::find($dte->caja);
@@ -126,234 +133,199 @@ class InvalidacionesDTEController extends Component
             $this->emit('item-error', 'No se puede hacer devolución sin Código de Generación a Reemplazar');
             //dd('No se puede hacer devolucion sin Codigo de Generacion a Reemplazar ');
         } else {
-            if ($dte->tipoDte == 1) {
-                // Fecha y hora de generación del DTE
-                $fechaHoraGeneracion = Carbon::parse($dte->fecEmi . ' ' . $dte->horEmi);
-                // Fecha límite de vigencia (3 meses después de la generación)
-                $fechaLimiteVigencia = $fechaHoraGeneracion->addMonths(3)->endOfDay();
-                // Fecha y hora actual
-                $fechaHoraActual = Carbon::now();
+            // Plazo normativo 2.0 centralizado. Antes habia dos ramas
+            // identicas -Factura con 3 meses y CCF con 1 dia, que ya no es la
+            // regla vigente- y ninguna para Nota de Credito ni Sujeto
+            // Excluido: esos dos tipos entraban aqui y no pasaba nada.
+            $plazos = app(PlazoInvalidacionDteService::class);
 
-                if ($fechaHoraActual <= $fechaLimiteVigencia) {
-                    if ($this->tipo === 'ANULACION') {
-                        if ($dte->sello != null) {
-                            $invalida = InvalidacionDte::create([
-                                'tipo' => $this->tipo,
-                                'ambiente' => $ambiente->id,
-                                'numero' => $this->numero,
-                                'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
-                                'fecAnula' => date('Y-m-d'),
-                                'horAnula' => date('H:i:s'),
-                                'emisor' => $dte->emisor,
-                                'dte' => $this->dteid,
-                                'codigoGeneracionR' => null,
-                                'tipoAnulacion' => $this->motivo,
-                                'motivoAnulacion' => $this->desmotivo,
-                                'responsable' => Auth::user()->id,
-                                'solicita' => Auth::user()->id,
-                                'caja' => $caja->id,
-                                'sucursal' => $sucursal->id,
-                                'empresa' => $empresa->id,
-                                'estado' => 'Generado',
-                                'selloRecibido' => null,
-                                'fhProcesamiento' => null,
-                                'descripcionMsg' => null,
-                                'json' => null,
-                                'jsonRespuesta' => null,
-                                'docFirmado' => null,
-                            ]);
+            try {
+                if (!$plazos->vigente($dte)) {
+                    $this->emit('item-error', $plazos->mensajeVencimiento($dte));
 
-                            $json = $this->generarJsonInva($invalida->id);
-                            $firmador = $this->Firmador2($json);
-
-                            $invalida->json = $json;
-                            $invalida->docFirmado = $firmador;
-                            $invalida->save();
-
-                            $recep = $this->RecepcionInvalidacion($invalida->id);
-
-                            if ($recep == 'RECHAZADO') {
-                                $this->ResetUI();
-                                $this->emit('item-error', $recep);
-                            } else {
-                                $dte = dte::find($invalida->dte);
-                                $dte->estado = 'INVALIDADO';
-                                $dte->save();
-                                $this->ResetUI();
-                                $this->emit('item-added', $recep);
-                            }
-                        } else {
-                            $this->emit('item-error', 'Este DTE necesita tener Sello de Recepcion para poder ser Anulado');
-                        }
-                    } else {
-                        if ($dte->sello != null) {
-                            $invalida = InvalidacionDte::create([
-                                'tipo' => $this->tipo,
-                                'ambiente' => $ambiente->id,
-                                'numero' => $this->numero,
-                                'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
-                                'fecAnula' => date('Y-m-d'),
-                                'horAnula' => date('H:i:s'),
-                                'emisor' => $dte->emisor,
-                                'dte' => $this->dteid,
-                                'codigoGeneracionR' => $this->dterem,
-                                'tipoAnulacion' => $this->motivo,
-                                'motivoAnulacion' => $this->desmotivo,
-                                'responsable' => Auth::user()->id,
-                                'solicita' => Auth::user()->id,
-                                'caja' => $caja->id,
-                                'sucursal' => $sucursal->id,
-                                'empresa' => $empresa->id,
-                                'estado' => 'Generado',
-                                'selloRecibido' => null,
-                                'fhProcesamiento' => null,
-                                'descripcionMsg' => null,
-                                'json' => null,
-                                'jsonRespuesta' => null,
-                                'docFirmado' => null,
-                            ]);
-
-                            $json = $this->generarJsonInva($invalida->id);
-                            $firmador = $this->Firmador2($json);
-
-                            $invalida->json = $json;
-                            $invalida->docFirmado = $firmador;
-                            $invalida->save();
-
-                            $recep = $this->RecepcionInvalidacion($invalida->id);
-
-                            if ($recep == 'RECHAZADO') {
-                                $this->ResetUI();
-                                $this->emit('item-error', $recep);
-                            } else {
-                                $dte = dte::find($invalida->dte);
-                                $dte->estado = 'INVALIDADO';
-                                $dte->save();
-                                $this->ResetUI();
-                                $this->emit('item-added', $recep);
-                            }
-                        } else {
-                            $this->emit('item-error', 'Este DTE necesita tener Sello de Recepcion para poder ser Anulado');
-                        }
-                    }
-                } else {
-                    $this->emit('item-error', 'El registro ha superado el período de vigencia.');
+                    return;
                 }
-            } elseif ($dte->tipoDte == 2) {
-                // Fecha y hora de generación del DTE
-                $fechaHoraGeneracion = Carbon::parse($dte->fecEmi . ' ' . $dte->horEmi);
-                // Fecha límite de vigencia (final del día siguiente)
-                $fechaLimiteVigencia = $fechaHoraGeneracion->addDays(1)->endOfDay();
-                // Fecha y hora actual
-                $fechaHoraActual = Carbon::now();
+            } catch (\DomainException $e) {
+                $this->emit('item-error', $e->getMessage());
 
-                if ($fechaHoraActual <= $fechaLimiteVigencia) {
-                    if ($this->tipo === 'ANULACION') {
-                        if ($dte->sello != null) {
-                            $invalida = InvalidacionDte::create([
-                                'tipo' => $this->tipo,
-                                'ambiente' => $ambiente->id,
-                                'numero' => $this->numero,
-                                'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
-                                'fecAnula' => date('Y-m-d'),
-                                'horAnula' => date('H:i:s'),
-                                'emisor' => $dte->emisor,
-                                'dte' => $this->dteid,
-                                'codigoGeneracionR' => null,
-                                'tipoAnulacion' => $this->motivo,
-                                'motivoAnulacion' => $this->desmotivo,
-                                'responsable' => Auth::user()->id,
-                                'solicita' => Auth::user()->id,
-                                'caja' => $caja->id,
-                                'sucursal' => $sucursal->id,
-                                'empresa' => $empresa->id,
-                                'estado' => 'Generado',
-                                'selloRecibido' => null,
-                                'fhProcesamiento' => null,
-                                'descripcionMsg' => null,
-                                'json' => null,
-                                'jsonRespuesta' => null,
-                                'docFirmado' => null,
-                            ]);
-
-                            $json = $this->generarJsonInva($invalida->id);
-                            $firmador = $this->Firmador2($json);
-
-                            $invalida->json = $json;
-                            $invalida->docFirmado = $firmador;
-                            $invalida->save();
-
-                            $recep = $this->RecepcionInvalidacion($invalida->id);
-
-                            if ($recep == 'RECHAZADO') {
-                                $this->ResetUI();
-                                $this->emit('item-error', $recep);
-                            } else {
-                                $dte = dte::find($invalida->dte);
-                                $dte->estado = 'INVALIDADO';
-                                $dte->save();
-                                $this->ResetUI();
-                                $this->emit('item-added', $recep);
-                            }
-                        } else {
-                            $this->emit('item-error', 'Este DTE necesita tener Sello de Recepcion para poder ser Anulado');
-                        }
-                    } else {
-                        if ($dte->sello != null) {
-                            $invalida = InvalidacionDte::create([
-                                'tipo' => $this->tipo,
-                                'ambiente' => $ambiente->id,
-                                'numero' => $this->numero,
-                                'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
-                                'fecAnula' => date('Y-m-d'),
-                                'horAnula' => date('H:i:s'),
-                                'emisor' => $dte->emisor,
-                                'dte' => $this->dteid,
-                                'codigoGeneracionR' => $this->dterem,
-                                'tipoAnulacion' => $this->motivo,
-                                'motivoAnulacion' => $this->desmotivo,
-                                'responsable' => Auth::user()->id,
-                                'solicita' => Auth::user()->id,
-                                'caja' => $caja->id,
-                                'sucursal' => $sucursal->id,
-                                'empresa' => $empresa->id,
-                                'estado' => 'Generado',
-                                'selloRecibido' => null,
-                                'fhProcesamiento' => null,
-                                'descripcionMsg' => null,
-                                'json' => null,
-                                'jsonRespuesta' => null,
-                                'docFirmado' => null,
-                            ]);
-
-                            $json = $this->generarJsonInva($invalida->id);
-                            $firmador = $this->Firmador2($json);
-
-                            $invalida->json = $json;
-                            $invalida->docFirmado = $firmador;
-                            $invalida->save();
-
-                            $recep = $this->RecepcionInvalidacion($invalida->id);
-
-                            if ($recep == 'RECHAZADO') {
-                                $this->ResetUI();
-                                $this->emit('item-error', $recep);
-                            } else {
-                                $dte = dte::find($invalida->dte);
-                                $dte->estado = 'INVALIDADO';
-                                $dte->save();
-                                $this->ResetUI();
-                                $this->emit('item-added', $recep);
-                            }
-                        } else {
-                            $this->emit('item-error', 'Este DTE necesita tener Sello de Recepcion para poder ser Anulado');
-                        }
-                    }
-                } else {
-                    $this->emit('item-error', 'El registro ha superado el período de vigencia.');
-                }
+                return;
             }
+
+                if ($this->tipo === 'ANULACION') {
+                    if ($dte->sello != null) {
+                        $invalida = InvalidacionDte::create([
+                            'tipo' => $this->tipo,
+                            'ambiente' => $ambiente->id,
+                            'numero' => $this->numero,
+                            'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
+                            'fecAnula' => date('Y-m-d'),
+                            'horAnula' => date('H:i:s'),
+                            'emisor' => $dte->emisor,
+                            'dte' => $this->dteid,
+                            'codigoGeneracionR' => null,
+                            'tipoAnulacion' => $this->motivo,
+                            'motivoAnulacion' => $this->desmotivo,
+                            'responsable' => Auth::user()->id,
+                            'solicita' => Auth::user()->id,
+                            'caja' => $caja->id,
+                            'sucursal' => $sucursal->id,
+                            'empresa' => $empresa->id,
+                            'estado' => 'Generado',
+                            'selloRecibido' => null,
+                            'fhProcesamiento' => null,
+                            'descripcionMsg' => null,
+                            'json' => null,
+                            'jsonRespuesta' => null,
+                            'docFirmado' => null,
+                        ]);
+
+                        $json = $this->generarJsonInva($invalida->id);
+                        $firmador = $this->Firmador2($json);
+
+                        $invalida->json = $json;
+                        $invalida->docFirmado = $firmador;
+                        $invalida->save();
+
+                        $recep = $this->RecepcionInvalidacion($invalida->id);
+
+                        if ($recep == 'RECHAZADO') {
+                            $this->ResetUI();
+                            $this->emit('item-error', $recep);
+                        } else {
+                            $dte = dte::find($invalida->dte);
+                            $dte->estado = 'INVALIDADO';
+                            $dte->save();
+                            $this->ResetUI();
+                            $this->emit('item-added', $recep);
+                        }
+                    } else {
+                        $this->emit('item-error', 'Este DTE necesita tener Sello de Recepcion para poder ser Anulado');
+                    }
+                } else {
+                    if ($dte->sello != null) {
+                        $invalida = InvalidacionDte::create([
+                            'tipo' => $this->tipo,
+                            'ambiente' => $ambiente->id,
+                            'numero' => $this->numero,
+                            'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
+                            'fecAnula' => date('Y-m-d'),
+                            'horAnula' => date('H:i:s'),
+                            'emisor' => $dte->emisor,
+                            'dte' => $this->dteid,
+                            'codigoGeneracionR' => $this->dterem,
+                            'tipoAnulacion' => $this->motivo,
+                            'motivoAnulacion' => $this->desmotivo,
+                            'responsable' => Auth::user()->id,
+                            'solicita' => Auth::user()->id,
+                            'caja' => $caja->id,
+                            'sucursal' => $sucursal->id,
+                            'empresa' => $empresa->id,
+                            'estado' => 'Generado',
+                            'selloRecibido' => null,
+                            'fhProcesamiento' => null,
+                            'descripcionMsg' => null,
+                            'json' => null,
+                            'jsonRespuesta' => null,
+                            'docFirmado' => null,
+                        ]);
+
+                        $json = $this->generarJsonInva($invalida->id);
+                        $firmador = $this->Firmador2($json);
+
+                        $invalida->json = $json;
+                        $invalida->docFirmado = $firmador;
+                        $invalida->save();
+
+                        $recep = $this->RecepcionInvalidacion($invalida->id);
+
+                        if ($recep == 'RECHAZADO') {
+                            $this->ResetUI();
+                            $this->emit('item-error', $recep);
+                        } else {
+                            $dte = dte::find($invalida->dte);
+                            $dte->estado = 'INVALIDADO';
+                            $dte->save();
+                            $this->ResetUI();
+                            $this->emit('item-added', $recep);
+                        }
+                    } else {
+                        $this->emit('item-error', 'Este DTE necesita tener Sello de Recepcion para poder ser Anulado');
+                    }
+                }
         }
+    }
+
+    /**
+     * Representacion grafica del evento aceptado, para el usuario del sistema.
+     */
+    public function pdf($id)
+    {
+        return $this->respuestaPdfInvalidacion($this->invalidacionProcesadaDeEmpresa((int) $id));
+    }
+
+    /**
+     * Consulta publica del evento: es el destino del QR que lleva el PDF, y el
+     * receptor la abre sin sesion. Solo expone eventos ya procesados.
+     */
+    public function pdfPublic($codigo)
+    {
+        $invalidacion = InvalidacionDte::where('codigoGeneracion', $codigo)
+            ->where('estado', 'PROCESADO')
+            ->firstOrFail();
+
+        return $this->respuestaPdfInvalidacion($invalidacion);
+    }
+
+    public function showJson($id)
+    {
+        return $this->respuestaJsonInvalidacion((int) $id, 'inline');
+    }
+
+    public function downloadJson($id)
+    {
+        return $this->respuestaJsonInvalidacion((int) $id, 'attachment');
+    }
+
+    private function respuestaPdfInvalidacion(InvalidacionDte $invalidacion)
+    {
+        $entrega = app(InvalidacionEntregaService::class)->generar($invalidacion->id);
+        $nombre = 'INVALIDACION-' . $invalidacion->codigoGeneracion . '.pdf';
+
+        return response($entrega['pdf'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $nombre . '"',
+        ]);
+    }
+
+    private function respuestaJsonInvalidacion(int $id, string $disposicion)
+    {
+        $invalidacion = $this->invalidacionProcesadaDeEmpresa($id);
+        $jsonCompacto = app(InvalidacionEntregaService::class)
+            ->construirArchivoJson($invalidacion);
+        $contenido = json_decode($jsonCompacto, true, 512, JSON_THROW_ON_ERROR);
+        $jsonLegible = json_encode(
+            $contenido,
+            JSON_PRETTY_PRINT
+                | JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_PRESERVE_ZERO_FRACTION
+                | JSON_THROW_ON_ERROR
+        );
+        $nombre = 'INVALIDACION-' . $invalidacion->codigoGeneracion . '.json';
+
+        return response($jsonLegible, 200, [
+            'Content-Type' => 'application/json; charset=utf-8',
+            'Content-Disposition' => $disposicion . '; filename="' . $nombre . '"',
+        ]);
+    }
+
+    /** Aislamiento por empresa: nunca se sirve el evento de otro contribuyente. */
+    private function invalidacionProcesadaDeEmpresa(int $id): InvalidacionDte
+    {
+        return InvalidacionDte::whereKey($id)
+            ->where('empresa', Auth::user()->empresa)
+            ->where('estado', 'PROCESADO')
+            ->firstOrFail();
     }
 
     public function ResetUI()

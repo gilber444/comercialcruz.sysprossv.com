@@ -31,11 +31,11 @@ trait GenerarTicketgetJsonBase64
         $dte = dte::where('venta', $venta->venta)->first();
         if($dte)
         {
-            $qrCodeText = "https://supermercadojosue.sysprossv.com/report/pdf/".$dte->id;
+            $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf/' . $dte->codigoGeneracion;
         }
         else
         {
-            $qrCodeText = "https://supermercadojosue.sysprossv.com/report/pdf";
+            $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf';
         }
         $ventaData = [
             'fecha' => $venta->fecha,

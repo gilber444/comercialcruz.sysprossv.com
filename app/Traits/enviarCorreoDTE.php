@@ -17,7 +17,8 @@ trait enviarCorreoDTE
         $imagenUrl = asset('logo/' . $empresa->image);
         // Generar el PDF
         $exportController = new ExportDteController();
-        $pdfContent = $exportController->generarPDF($id);
+        // La representacion grafica se regenera por codigoGeneracion, nunca por id.
+        $pdfContent = $exportController->generarPDF($dte->codigoGeneracion);
         // Convertir el DTE a formato JSON
         //$jsonContent = $dte->jsonDte;
         $jsonRaw = $this->inflateJsonFromBin($dte->jsonDte);
@@ -61,19 +62,13 @@ trait enviarCorreoDTE
             return $e;
         }
     }
+    /**
+     * El accessor del modelo ya entrega JSON normal. Se conserva el metodo
+     * porque hay llamadores, pero la logica de formatos vive en un solo lugar.
+     */
     private function inflateJsonFromBin(?string $bin): ?string
     {
-        if ($bin === null) return null;
-        $out = @gzuncompress($bin);            // PHP gzcompress
-        if ($out !== false) return $out;
-        $out = @gzuncompress(substr($bin, 4)); // MySQL COMPRESS()
-        if ($out !== false) return $out;
-        // Por si quedaron filas antiguas sin comprimir
-        $trim = ltrim($bin);
-        if ($trim !== '' && ($trim[0] === '{' || $trim[0] === '[')) {
-            return $bin;
-        }
-        return null;
+        return \App\Support\JsonComprimido::descomprimir($bin);
     }
     /** JSON bonito (si no es válido, lo deja tal cual). */
     private function prettyJson(string $json): string

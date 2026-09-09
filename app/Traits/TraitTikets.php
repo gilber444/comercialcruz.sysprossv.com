@@ -34,11 +34,11 @@ trait TraitTikets
         $dte = dte::where('venta', $venta->venta)->first();
         if($dte)
         {
-            $qrCodeText = "https://comercialcruz.sysprossv.com/report/pdf/".$dte->codigoGeneracion;
+            $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf/' . $dte->codigoGeneracion;
         }
         else
         {
-            $qrCodeText = "https://comercialcruz.sysprossv.com/report/pdf";
+            $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf';
         }
         $dtes = ($venta->codigo === null) ? 'No' : 'Si';
         $ventaData = [

@@ -53,6 +53,7 @@ use App\Models\User;
 use App\Models\Ventas;
 use App\Models\VentasDetalles;
 use App\Traits\AnulacionGetJsonBase64;
+use App\Traits\CatalogoRequerido;
 use App\Traits\DevolucionGetJsonBase64;
 use App\Traits\FirmadorDTE;
 use App\Traits\FirmadorLocal;
@@ -82,6 +83,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 class PosController extends Component
 {
+    use CatalogoRequerido;
     use NumeroControlTrait;
     use GenerarToken;
     use FirmadorDTE;
@@ -1757,9 +1759,12 @@ class PosController extends Component
             // Generar DTE
             $control = $this->obtenerCodigoDTE(1);
             $this->GenerarToken();
-            $tokenActivo = Tocken::where('estado', 'ok')
-                ->whereDate('fecha', Carbon::now()->toDateString())
-                ->first();
+            $tokenActivo = $this->catalogoRequerido(
+                Tocken::where('estado', 'ok')
+                    ->whereDate('fecha', Carbon::now()->toDateString())
+                    ->first(),
+                'el token de Hacienda de hoy (tabla tocken, estado ok): no se pudo autenticar contra el Ministerio'
+            );
             $codigoGeneracion = strtoupper(Str::uuid());
             $tipo = 'DTE';
         }
@@ -1918,14 +1923,38 @@ class PosController extends Component
                 }
 
                 $user = Auth::user();
-                $emprea = Empresas::find($user->empresa);
+                $emprea = $this->catalogoRequerido(
+                    Empresas::find($user->empresa),
+                    'la empresa del usuario (tabla empresas, id ' . $user->empresa . ')'
+                );
 
-                $ambiente = AmbienteDestino::find($emprea->ambiente);
-                $tipoDte = TipoDocumento::where('status', 'Activo')->where('valor', 'FACTURA')->first();
-                $tipoModelo = ModeloFacturacion::where('status', 'Activo')->first();
-                $tipoOpera = TipoTransmision::where('status', 'Activo')->first();
-                $tipoContingencia = TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first();
-                $tributo = Tributo::where('status', 'Activo')->whereNull('codigo')->first();
+                $ambiente = $this->catalogoRequerido(
+                    AmbienteDestino::find($emprea->ambiente),
+                    'el ambiente de destino id ' . $emprea->ambiente . ' (catalogo ambiente_destinos)'
+                );
+                // Por codigo del CAT-002, no por el texto: el importador de
+                // catalogos reescribe "FACTURA" con el valor que publica
+                // Hacienda y la consulta por texto deja de encontrar la fila.
+                $tipoDte = $this->catalogoRequerido(
+                    TipoDocumento::where('status', 'Activo')->whereIn('codigo', ['01', '1'])->first(),
+                    'el tipo de documento con codigo 01 y status Activo (catalogo tipo_documentos)'
+                );
+                $tipoModelo = $this->catalogoRequerido(
+                    ModeloFacturacion::where('status', 'Activo')->first(),
+                    'un modelo de facturacion con status Activo (catalogo modelo_facturacions)'
+                );
+                $tipoOpera = $this->catalogoRequerido(
+                    TipoTransmision::where('status', 'Activo')->first(),
+                    'un tipo de transmision con status Activo (catalogo tipo_transmisions)'
+                );
+                $tipoContingencia = $this->catalogoRequerido(
+                    TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tipo de contingencia sin codigo con status Activo (catalogo tipo_contigencias)'
+                );
+                $tributo = $this->catalogoRequerido(
+                    Tributo::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tributo sin codigo con status Activo (catalogo tributos)'
+                );
                 $condipago = $this->metodo == 4 ? 2 : 1;
 
                 if ($para->dte == 'Si' && $enviar) {
@@ -2114,18 +2143,22 @@ class PosController extends Component
                 $enviar = $enviar ? 0 : 1;
             }
 
-            $correlativo      = $para->tcorrelativo;
+            $correlativo      = null;
             $control          = null;
             $codigoGeneracion = null;
             $tipo             = 'Fisico';
             $tokenActivo      = null;
+            $emiteDte         = ($enviar && $para->dte === 'Si');
 
             // =====================================================
-            // 4) DTE: OBTENER CÓDIGO + TOKEN SOLO SI ES NECESARIO
+            // 4) DTE: TOKEN SOLO SI ES NECESARIO
+            //
+            // El token es una llamada HTTP a Hacienda y se pide ANTES de abrir
+            // la transaccion: dentro mantendria bloqueos de base abiertos y un
+            // timeout revertiria una venta valida. El correlativo y el codigo
+            // de generacion, en cambio, bajan DENTRO de la transaccion.
             // =====================================================
-            if ($enviar && $para->dte === 'Si') {
-                $control = $this->obtenerCodigoDTE(1);
-
+            if ($emiteDte) {
                 // Busca token vigente primero
                 $tokenActivo = Tocken::where('estado', 'ok')
                     ->whereDate('fecha', Carbon::now()->toDateString())
@@ -2135,12 +2168,14 @@ class PosController extends Component
                 if (!$tokenActivo) {
                     $this->GenerarToken();
 
-                    $tokenActivo = Tocken::where('estado', 'ok')
-                        ->whereDate('fecha', Carbon::now()->toDateString())
-                        ->first();
+                    $tokenActivo = $this->catalogoRequerido(
+                        Tocken::where('estado', 'ok')
+                            ->whereDate('fecha', Carbon::now()->toDateString())
+                            ->first(),
+                        'el token de Hacienda de hoy (tabla tocken, estado ok): no se pudo autenticar contra el Ministerio'
+                    );
                 }
 
-                $codigoGeneracion = strtoupper(Str::uuid());
                 $tipo = 'DTE';
             }
 
@@ -2157,27 +2192,50 @@ class PosController extends Component
             $condipago = null;
 
             if ($para->dte == 'Si' && $enviar) {
-                $empresaModel = Empresas::find($user->empresa);
+                $empresaModel = $this->catalogoRequerido(
+                    Empresas::find($user->empresa),
+                    'la empresa del usuario (tabla empresas, id ' . $user->empresa . ')'
+                );
 
-                $ambiente = AmbienteDestino::select('id')->find($empresaModel->ambiente);
-                $tipoDte = TipoDocumento::select('id')
-                    ->where('status', 'Activo')
-                    ->where('valor', 'FACTURA')
-                    ->first();
-                $tipoModelo = ModeloFacturacion::select('id')
-                    ->where('status', 'Activo')
-                    ->first();
-                $tipoOpera = TipoTransmision::select('id')
-                    ->where('status', 'Activo')
-                    ->first();
-                $tipoContingencia = TipoContigencia::select('id')
-                    ->where('status', 'Activo')
-                    ->whereNull('codigo')
-                    ->first();
-                $tributo = Tributo::select('id')
-                    ->where('status', 'Activo')
-                    ->whereNull('codigo')
-                    ->first();
+                $ambiente = $this->catalogoRequerido(
+                    AmbienteDestino::select('id')->find($empresaModel->ambiente),
+                    'el ambiente de destino id ' . $empresaModel->ambiente . ' (catalogo ambiente_destinos)'
+                );
+                // Por codigo del CAT-002, no por el texto: el importador de
+                // catalogos reescribe el valor publicado por Hacienda.
+                $tipoDte = $this->catalogoRequerido(
+                    TipoDocumento::select('id')
+                        ->where('status', 'Activo')
+                        ->whereIn('codigo', ['01', '1'])
+                        ->first(),
+                    'el tipo de documento con codigo 01 y status Activo (catalogo tipo_documentos)'
+                );
+                $tipoModelo = $this->catalogoRequerido(
+                    ModeloFacturacion::select('id')
+                        ->where('status', 'Activo')
+                        ->first(),
+                    'un modelo de facturacion con status Activo (catalogo modelo_facturacions)'
+                );
+                $tipoOpera = $this->catalogoRequerido(
+                    TipoTransmision::select('id')
+                        ->where('status', 'Activo')
+                        ->first(),
+                    'un tipo de transmision con status Activo (catalogo tipo_transmisions)'
+                );
+                $tipoContingencia = $this->catalogoRequerido(
+                    TipoContigencia::select('id')
+                        ->where('status', 'Activo')
+                        ->whereNull('codigo')
+                        ->first(),
+                    'el tipo de contingencia sin codigo con status Activo (catalogo tipo_contigencias)'
+                );
+                $tributo = $this->catalogoRequerido(
+                    Tributo::select('id')
+                        ->where('status', 'Activo')
+                        ->whereNull('codigo')
+                        ->first(),
+                    'el tributo sin codigo con status Activo (catalogo tributos)'
+                );
 
                 $condipago = $this->metodo == 4 ? 2 : 1;
             }
@@ -2187,6 +2245,18 @@ class PosController extends Component
             // =====================================================
             DB::beginTransaction();
             $transaccionIniciada = true;
+
+            // Correlativos DENTRO de la transaccion y con lockForUpdate: si la
+            // venta falla, el rollBack los devuelve y no quedan saltos de
+            // numeracion. nextCorrelativo() ya avisa que necesita estar dentro
+            // de una transaccion para que su lockForUpdate sirva de algo.
+            $para = Parametros::whereKey((int) session('caja'))->lockForUpdate()->first();
+            $correlativo = $para->tcorrelativo;
+
+            if ($emiteDte) {
+                $control = $this->obtenerCodigoDTE(1);
+                $codigoGeneracion = strtoupper(Str::uuid());
+            }
 
             // 6.1 Crear cabecera de venta
             $ingre = Ventas::create([
@@ -2535,8 +2605,20 @@ class PosController extends Component
 
         $c = Clientes::find($this->idC);
 
-        if ($c->tipoPersona == 3) {
-            $percecion = $tt * 0.01;
+        // Retencion del 1% (Art. 162 CT): la hace el gran contribuyente cuando
+        // compra, o sea el cliente categoria GRANDE le retiene a la empresa y
+        // el monto baja el total a cobrar. Antes se resolvia por tipoPersona,
+        // que es natural/juridica y no distingue el tamano del contribuyente.
+        //
+        // Aplica desde $113 CON IVA inclusive, que equivalen a
+        // $100 netos. El umbral se compara contra el total CON IVA ($sub), no
+        // contra la base ($tt): comparando la base habrian hecho falta $127.69
+        // reales para que aplicara. La base del 1% si es el monto SIN IVA.
+        //
+        // El redondeo a 2 decimales no es cosmetico: 113 / 1.13 arrastra cola
+        // decimal y sin el se grababa 1.0000000000000002 en la venta.
+        if ($sub >= 113 && $c->categoria === 'GRANDE') {
+            $percecion = round($tt * 0.01, 2);
         } else {
             $percecion = 0;
         }
@@ -2551,27 +2633,42 @@ class PosController extends Component
         //$correlativo = $para->concorrelativo;
 
         $para = Parametros::find(session('caja'));
-        $correlativo = empty($this->correlativo) ? $para->concorrelativo : $this->correlativo;
+        $emiteDte = ($para->dte == "Si");
 
         $fecha = empty($this->fecha) ? now()->format('Y-m-d') : $this->fecha;
 
+        $correlativo = null;
+        $control = NULL;
+        $codigoGeneracion = NULL;
 
-
-        if ($para->dte == "Si") {
-            $control = $this->obtenerCodigoDTE(1);
+        // El token es una llamada HTTP a Hacienda: se pide FUERA de la
+        // transaccion para no mantener bloqueos de base abiertos.
+        if ($emiteDte) {
             $this->GenerarToken();
-            $codigoGeneracion = strtoupper(Str::uuid()->toString());
             $fechaHoy = Carbon::now()->toDateString();
-            $tokenActivo = Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first();
+            $tokenActivo = $this->catalogoRequerido(
+                Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first(),
+                'el token de Hacienda de hoy (tabla tocken, estado ok): no se pudo autenticar contra el Ministerio'
+            );
             $tipo = 'DTE';
         } else {
-            $control = NULL;
-            $codigoGeneracion = NULL;
             $tipo = 'Fisico';
         }
 
         try {
             DB::beginTransaction();
+
+            // Correlativos DENTRO de la transaccion y con lockForUpdate: si la
+            // venta falla, el rollBack los devuelve y no quedan saltos de
+            // numeracion. nextCorrelativo() ya avisa que necesita estar dentro
+            // de una transaccion para que su lockForUpdate sirva de algo.
+            $para = Parametros::whereKey((int) session('caja'))->lockForUpdate()->first();
+            $correlativo = empty($this->correlativo) ? $para->concorrelativo : $this->correlativo;
+
+            if ($emiteDte) {
+                $control = $this->obtenerCodigoDTE(1);
+                $codigoGeneracion = strtoupper(Str::uuid()->toString());
+            }
             $ingre = Ventas::create([
                 'cliente' => $this->idC,
                 'tipoPago' => $this->metodo,
@@ -2632,6 +2729,17 @@ class PosController extends Component
                         ->where('sucursal', session('sucursal'))
                         //->where('empresa', session('empresa'))
                         ->first();
+
+                    // Sin esto, un producto sin fila de inventario en la
+                    // sucursal reventaba con 'Attempt to read property
+                    // existencia on null', que no le dice nada al cajero.
+                    if (!$in) {
+                        throw new \RuntimeException(
+                            'El producto "' . ($item->name ?? $item->producto)
+                            . '" no tiene inventario en esta sucursal.'
+                        );
+                    }
+
                     $newStock = $in->existencia - $item->descargar;
 
                     $in->existencia = $newStock;
@@ -2708,14 +2816,38 @@ class PosController extends Component
                 }
 
                 //$user = Auth::user();
-                $emprea = Empresas::find($user->empresa);
+                $emprea = $this->catalogoRequerido(
+                    Empresas::find($user->empresa),
+                    'la empresa del usuario (tabla empresas, id ' . $user->empresa . ')'
+                );
 
-                $ambiente = AmbienteDestino::find($emprea->ambiente);
-                $tipoDte = TipoDocumento::where('status', 'Activo')->where('valor', 'FACTURA')->first();
-                $tipoModelo = ModeloFacturacion::where('status', 'Activo')->first();
-                $tipoOpera = TipoTransmision::where('status', 'Activo')->first();
-                $tipoContingencia = TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first();
-                $tributo = Tributo::where('status', 'Activo')->whereNull('codigo')->first();
+                $ambiente = $this->catalogoRequerido(
+                    AmbienteDestino::find($emprea->ambiente),
+                    'el ambiente de destino id ' . $emprea->ambiente . ' (catalogo ambiente_destinos)'
+                );
+                // Por codigo del CAT-002, no por el texto: el importador de
+                // catalogos reescribe "FACTURA" con el valor que publica
+                // Hacienda y la consulta por texto deja de encontrar la fila.
+                $tipoDte = $this->catalogoRequerido(
+                    TipoDocumento::where('status', 'Activo')->whereIn('codigo', ['01', '1'])->first(),
+                    'el tipo de documento con codigo 01 y status Activo (catalogo tipo_documentos)'
+                );
+                $tipoModelo = $this->catalogoRequerido(
+                    ModeloFacturacion::where('status', 'Activo')->first(),
+                    'un modelo de facturacion con status Activo (catalogo modelo_facturacions)'
+                );
+                $tipoOpera = $this->catalogoRequerido(
+                    TipoTransmision::where('status', 'Activo')->first(),
+                    'un tipo de transmision con status Activo (catalogo tipo_transmisions)'
+                );
+                $tipoContingencia = $this->catalogoRequerido(
+                    TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tipo de contingencia sin codigo con status Activo (catalogo tipo_contigencias)'
+                );
+                $tributo = $this->catalogoRequerido(
+                    Tributo::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tributo sin codigo con status Activo (catalogo tributos)'
+                );
                 $condipago = $this->metodo == 4 ? 2 : 1;
                 if ($para->dte == "Si") {
                     $dte = dte::create([
@@ -2802,7 +2934,7 @@ class PosController extends Component
             } else {
                 return redirect()->route('pos');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             //session()->flash('error', $e->getMessage());
             $this->emit('item-error', $e->getMessage());
@@ -2840,6 +2972,20 @@ class PosController extends Component
         $tiva = $sub - $sub / 1.13;
         $tt = $sub - $tiva;
 
+        $c = Clientes::find($this->idC);
+
+        // Misma regla que el consumidor: retencion del 1% (Art. 162 CT) a
+        // clientes categoria GRANDE, desde $113 CON IVA, sobre la base sin IVA
+        // y redondeada a centavos. Antes esto era $perce = number_format(0 *
+        // 0.01), o sea siempre cero: el credito fiscal nunca retenia, y lo poco
+        // que calculaba no se guardaba en Ventas ni en Caja, con lo que los
+        // totales de caja no cuadraban contra el DTE.
+        if ($sub >= 113 && $c->categoria === 'GRANDE') {
+            $percecion = round($tt * 0.01, 2);
+        } else {
+            $percecion = 0;
+        }
+
         if ($this->metodo == 4) {
             $estado = 'Credito';
         } else {
@@ -2847,16 +2993,23 @@ class PosController extends Component
         }
 
         $para = Parametros::find(session('caja'));
-        $correlativo = empty($this->correlativo) ? $para->crecorrelativo : $this->correlativo;
-        //dd($correlativo);
+        $emiteDte = ($para->dte == "Si");
+
         $fecha = empty($this->fecha) ? now()->format('Y-m-d') : $this->fecha;
 
-        if ($para->dte == "Si") {
-            $control = $this->obtenerCodigoDTE(2);
+        $correlativo = null;
+        $control = NULL;
+        $codigoGeneracion = NULL;
+
+        // El token es una llamada HTTP a Hacienda: se pide FUERA de la
+        // transaccion para no mantener bloqueos de base abiertos.
+        if ($emiteDte) {
             $this->GenerarToken();
-            $codigoGeneracion = strtoupper(Str::uuid()->toString());
             $fechaHoy = Carbon::now()->toDateString();
-            $tokenActivo = Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first();
+            $tokenActivo = $this->catalogoRequerido(
+                Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first(),
+                'el token de Hacienda de hoy (tabla tocken, estado ok): no se pudo autenticar contra el Ministerio'
+            );
             $tipo = 'DTE';
         } else {
             $control = NULL;
@@ -2866,6 +3019,19 @@ class PosController extends Component
 
         try {
             DB::beginTransaction();
+
+            // Correlativos DENTRO de la transaccion y con lockForUpdate: si la
+            // venta falla, el rollBack los devuelve y no quedan saltos de
+            // numeracion. nextCorrelativo() ya avisa que necesita estar dentro
+            // de una transaccion para que su lockForUpdate sirva de algo.
+            $para = Parametros::whereKey((int) session('caja'))->lockForUpdate()->first();
+            $correlativo = empty($this->correlativo) ? $para->crecorrelativo : $this->correlativo;
+
+            if ($emiteDte) {
+                $control = $this->obtenerCodigoDTE(2);
+                $codigoGeneracion = strtoupper(Str::uuid()->toString());
+            }
+
             $ingre = Ventas::create([
                 'cliente' => $this->idC,
                 'tipoPago' => $this->metodo,
@@ -2884,7 +3050,8 @@ class PosController extends Component
                 'subtotal' => $sub,
                 'descuento' => $descuentos,
                 'iva' => $tiva,
-                'total' => $sub,
+                'percepcion' => $percecion,
+                'total' => $sub - $percecion,
                 'estado' => $estado,
                 'qr' => '',
             ]);
@@ -2926,6 +3093,17 @@ class PosController extends Component
                         ->where('sucursal', session('sucursal'))
                         //->where('empresa', session('empresa'))
                         ->first();
+
+                    // Sin esto, un producto sin fila de inventario en la
+                    // sucursal reventaba con 'Attempt to read property
+                    // existencia on null', que no le dice nada al cajero.
+                    if (!$in) {
+                        throw new \RuntimeException(
+                            'El producto "' . ($item->name ?? $item->producto)
+                            . '" no tiene inventario en esta sucursal.'
+                        );
+                    }
+
                     $newStock = $in->existencia - $item->descargar;
 
                     $in->existencia = $newStock;
@@ -2976,7 +3154,8 @@ class PosController extends Component
                     'subtotal' => $sub,
                     'descuento' => $descuentos,
                     'iva' => $tiva,
-                    'total' => $sub,
+                    'percepcion' => $percecion,
+                    'total' => $sub - $percecion,
                     'estado' => $estado,
                     'arqueado' => false
                 ]);
@@ -2993,29 +3172,43 @@ class PosController extends Component
                         'correlativo' => $nuevoCorrelativo,
                         'fechaCredito' => date('Y-m-d'),
                         'fechaPago' => Carbon::now()->addDays(15)->format('Y-m-d'),
-                        'total' => $sub,
-                        'saldo' => $sub,
+                        'total' => $sub - $percecion,
+                        'saldo' => $sub - $percecion,
                         'estado' => 'Pendiente',
                     ]);
                 }
 
-                $emprea = Empresas::find($user->empresa);
+                $emprea = $this->catalogoRequerido(
+                    Empresas::find($user->empresa),
+                    'la empresa del usuario (tabla empresas, id ' . $user->empresa . ')'
+                );
 
-                $ambiente = AmbienteDestino::find($emprea->ambiente);
-                $tipoDte = TipoDocumento::where('status', 'Activo')->where('codigo', '03')->first();
-                $tipoModelo = ModeloFacturacion::where('status', 'Activo')->first();
-                $tipoOpera = TipoTransmision::where('status', 'Activo')->first();
-                $tipoContingencia = TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first();
-                $tributo = Tributo::where('status', 'Activo')->whereNull('codigo')->first();
+                $ambiente = $this->catalogoRequerido(
+                    AmbienteDestino::find($emprea->ambiente),
+                    'el ambiente de destino id ' . $emprea->ambiente . ' (catalogo ambiente_destinos)'
+                );
+                $tipoDte = $this->catalogoRequerido(
+                    TipoDocumento::where('status', 'Activo')->whereIn('codigo', ['03', '3'])->first(),
+                    'el tipo de documento con codigo 03 y status Activo (catalogo tipo_documentos)'
+                );
+                $tipoModelo = $this->catalogoRequerido(
+                    ModeloFacturacion::where('status', 'Activo')->first(),
+                    'un modelo de facturacion con status Activo (catalogo modelo_facturacions)'
+                );
+                $tipoOpera = $this->catalogoRequerido(
+                    TipoTransmision::where('status', 'Activo')->first(),
+                    'un tipo de transmision con status Activo (catalogo tipo_transmisions)'
+                );
+                $tipoContingencia = $this->catalogoRequerido(
+                    TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tipo de contingencia sin codigo con status Activo (catalogo tipo_contigencias)'
+                );
+                $tributo = $this->catalogoRequerido(
+                    Tributo::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tributo sin codigo con status Activo (catalogo tributos)'
+                );
                 $condipago = $this->metodo == 4 ? 2 : 1;
 
-                $p = $sub - $tiva;
-
-                if ($p > 100.00) {
-                    $perce = number_format(0 * 0.01);
-                } else {
-                    $perce = 0.00;
-                }
                 if ($para->dte == "Si") {
                     $dte = dte::create([
                         'motivoContin' => null,
@@ -3063,12 +3256,12 @@ class PosController extends Component
                         'valor' => null,
                         'subTotal' => $sub,
                         'ivaPerci1' => 0,
-                        'ivaRete1' => $perce,
+                        'ivaRete1' => $percecion,
                         'reteRenta' => 0,
                         'montoTotalOperacion' => $sub,
                         'totalNoGravado' => 0,
-                        'totalPagar' => $sub,
-                        'totalLetras' => strtoupper(Convertidor::montoALetras($sub + $perce)),
+                        'totalPagar' => $sub - $percecion,
+                        'totalLetras' => strtoupper(Convertidor::montoALetras($sub - $percecion)),
                         'saldoFavor' => 0,
                         'condicionOperacion' => $condipago,
                         'pagos' => $this->metodo,
@@ -3102,7 +3295,7 @@ class PosController extends Component
             } else {
                 return redirect()->route('pos');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             //session()->flash('error', $e->getMessage());
             $this->emit('item-error', $e->getMessage());

@@ -10,6 +10,8 @@ use App\Http\Controllers\ExportCorteZController;
 
 use App\Http\Controllers\ExportCotizacionController;
 
+use App\Http\Controllers\DescargaDteZipController;
+
 use App\Http\Controllers\ExportDteController;
 
 use App\Http\Controllers\ExportInventarioController;
@@ -81,6 +83,8 @@ use App\Http\Livewire\DomicilioFiscalController;
 
 use App\Http\Livewire\DonacionController;
 
+use App\Http\Livewire\DownloadJson;
+
 use App\Http\Livewire\DteController;
 
 use App\Http\Livewire\EditarCompra;
@@ -94,6 +98,7 @@ use App\Http\Livewire\EditarProductoController;
 use App\Http\Livewire\EditarSolicitudController;
 
 use App\Http\Livewire\EmpresaController;
+use App\Http\Livewire\PersonalizacionDteController;
 
 use App\Http\Livewire\FeaturesController;
 
@@ -303,6 +308,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('empresa', EmpresaController::class)->name('empresa')->can('Empresa_Index');
 
+    // Va antes de /empresa/{imagen}: ese comodin capturaria esta ruta.
+    Route::get('empresa/personalizacion-dte', PersonalizacionDteController::class)
+        ->name('empresa.personalizacion-dte')->can('Empresa_Update');
+
     Route::get('sucursales', SucursalesController::class)->name('sucursales')->can('Sucursales_Index');
 
     Route::get('parametros', ParametrosController::class)->name('parametros')->can('Parametros_Index');
@@ -426,7 +435,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/json/download/{id}', [DteController::class, 'download'])->name('json.download');
 
-    Route::get('report/pdf/{id}', [ExportDteController::class, 'reportPDF'])->name('reportPDF');
+    // Descarga masiva por lotes. Reutiliza DTE_Index a proposito: un permiso
+    // nuevo daria 403 hasta correr el seeder y asignarlo a los roles.
+    Route::get('download', DownloadJson::class)->name('download')->can('DTE_Index');
+    Route::get('download/dte/{token}', DescargaDteZipController::class)
+        ->whereUuid('token')->name('download.dte.zip')->can('DTE_Index');
+
+    // La representacion grafica es publica (el QR del ticket la abre sin sesion).
+    // Se registra una sola vez al final del archivo, restringida a UUID.
 
     Route::get('invalidaciones', InvalidacionesDTEController::class)->name('invalidaciones')->can('Invalidaciones_Index');
 
@@ -663,7 +679,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    Route::get('pdf/libroContribuyente/{empresa}/{sucursal}/{caja}/{desde}/{hasta}', [LibroContribuyente::class, 'generarPDF'])->name('libroVentasContribuyente')->can('GenerarLibroContribuyente_PDF');
+    Route::get('pdf/libroContribuyente/{empresa}/{sucursal}/{caja}/{desde}/{hasta}', [LibroContribuyente::class, 'generarPDF'])->name('pdfLibroContribuyente')->can('GenerarLibroContribuyente_PDF');
 
 
 
@@ -673,7 +689,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    Route::get('pdf/libroInvalidaciones/{empresa}/{sucursal}/{facturador}/{desde}/{hasta}', [LibroInvalidacion::class, 'generarPDF'])->name('libroVentasContribuyente')->can('GenerarLibroInvalidacion_PDF');
+    Route::get('pdf/libroInvalidaciones/{empresa}/{sucursal}/{facturador}/{desde}/{hasta}', [LibroInvalidacion::class, 'generarPDF'])->name('pdfLibroInvalidaciones')->can('GenerarLibroInvalidacion_PDF');
 
 
 
@@ -707,10 +723,13 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
-
-
-// PDFs accesibles públicamente para clientes (escaneo de QR / enlaces)
-Route::get('report/pdf/{id}', [ExportDteController::class, 'reportPDF'])->name('reportPDF');
+Route::get('report/pdf/{codigoGeneracion}', [ExportDteController::class, 'reportPDF'])
+    ->whereUuid('codigoGeneracion')->name('reportPDF');
 
 Route::get('report/pdf/cotizacion/{id}', [ExportCotizacionController::class, 'reportCotizacion'])->name('reportCotizacion');
+
+// Representacion grafica del evento de invalidacion: la abre el receptor desde
+// el QR del PDF, sin sesion. Solo sirve eventos ya procesados.
+Route::get('report/invalidacion/{codigo}', [InvalidacionesDTEController::class, 'pdfPublic'])
+    ->where('codigo', '[0-9A-Fa-f\-]{36}')->name('invalidaciones.pdf.public');
+

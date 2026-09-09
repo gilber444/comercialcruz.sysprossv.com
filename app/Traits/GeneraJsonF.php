@@ -90,7 +90,7 @@ trait GeneraJsonF
                     'complemento' => $emisor->complemento,
                 ],
                 'telefono' => $emisor->telefono,
-                'correo' => $emisor->correo,
+                'correo' => \App\Support\NormalizadorCorreoDte::normalizar($emisor->correo),
             ],
             'receptor' => [
                 'tipoDocumento' => $receptor->tipoDocumento,
@@ -105,7 +105,7 @@ trait GeneraJsonF
                     'complemento' => $receptor->complemento,
                 ],
                 'telefono' => $receptor->telefono,
-                'correo' => $receptor->correo,
+                'correo' => \App\Support\NormalizadorCorreoDte::normalizar($receptor->correo),
             ],
             'otrosDocumentos' => null,
             'ventaTercero' => null,

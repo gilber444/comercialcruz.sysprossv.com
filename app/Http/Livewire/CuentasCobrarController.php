@@ -29,9 +29,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\CatalogoRequerido;
 
 class CuentasCobrarController extends Component
 {
+    use CatalogoRequerido;
     use WithPagination;
     use GenerarTicketgetJsonBase64;
 
@@ -159,7 +161,10 @@ class CuentasCobrarController extends Component
             $this->GenerarToken();
             $codigoGeneracion = strtoupper(Str::uuid()->toString());
             $fechaHoy = Carbon::now()->toDateString();
-            $tokenActivo = Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first();
+            $tokenActivo = $this->catalogoRequerido(
+                Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first(),
+                'el token de Hacienda de hoy (tabla tocken, estado ok): no se pudo autenticar contra el Ministerio'
+            );
             $tipo = 'DTE';
         }
         else
@@ -282,12 +287,32 @@ class CuentasCobrarController extends Component
                 'arqueado' => false
             ]);
 
-            $ambiente = AmbienteDestino::where('status', 'Activo')->first();
-            $tipoDte = TipoDocumento::where('status', 'Activo')->where('valor', 'FACTURA')->first();
-            $tipoModelo = ModeloFacturacion::where('status', 'Activo')->first();
-            $tipoOpera = TipoTransmision::where('status', 'Activo')->first();
-            $tipoContingencia = TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first();
-            $tributo = Tributo::where('status', 'Activo')->whereNull('codigo')->first();
+            $ambiente = $this->catalogoRequerido(
+                AmbienteDestino::where('status', 'Activo')->first(),
+                'un ambiente de destino con status Activo (catalogo ambiente_destinos)'
+            );
+            // Por codigo del CAT-002: el importador reescribe el texto
+            // publicado por Hacienda y la busqueda por valor deja de empatar.
+            $tipoDte = $this->catalogoRequerido(
+                TipoDocumento::where('status', 'Activo')->whereIn('codigo', ['01', '1'])->first(),
+                'el tipo de documento con codigo 01 y status Activo (catalogo tipo_documentos)'
+            );
+            $tipoModelo = $this->catalogoRequerido(
+                ModeloFacturacion::where('status', 'Activo')->first(),
+                'un modelo de facturacion con status Activo (catalogo modelo_facturacions)'
+            );
+            $tipoOpera = $this->catalogoRequerido(
+                TipoTransmision::where('status', 'Activo')->first(),
+                'un tipo de transmision con status Activo (catalogo tipo_transmisions)'
+            );
+            $tipoContingencia = $this->catalogoRequerido(
+                TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first(),
+                'el tipo de contingencia sin codigo con status Activo (catalogo tipo_contigencias)'
+            );
+            $tributo = $this->catalogoRequerido(
+                Tributo::where('status', 'Activo')->whereNull('codigo')->first(),
+                'el tributo sin codigo con status Activo (catalogo tributos)'
+            );
             $condipago = $this->metodo == 4 ? 2 : 1;
 
             if($para->dte == 'Si' && $para->tiquedte == '1')

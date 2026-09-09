@@ -38,12 +38,7 @@ class ExportCotizacionController extends Controller
 
     {
 
-        // Acceso público para clientes mediante QR/enlace
         $cotizacion = Cotizaciones::with('Rcliente')->find($id);
-
-        if (!$cotizacion) {
-            abort(404, 'Cotización no encontrada.');
-        }
 
 
 
@@ -81,7 +76,7 @@ class ExportCotizacionController extends Controller
 
 
 
-        $qrCodeText = "https://supermercadojosue.sysprossv.com/report/pdf/cotizacion/" . $cotizacion->id; // Puedes cambiar esto según tu lógica
+        $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf/cotizacion/' . $cotizacion->id; // Puedes cambiar esto según tu lógica
 
         $qrCode = QrCode::size(300)->generate($qrCodeText);
 

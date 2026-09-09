@@ -12,6 +12,10 @@ use App\Models\Empresas;
 
 use App\Models\resumenDte;
 
+use App\Models\SujetoExcluido;
+
+use App\Models\SujetoExcluidosDetalles;
+
 use App\Models\Sucursales;
 
 use App\Models\Ventas;
@@ -38,6 +42,121 @@ class ExportDteController extends Controller
     use HasLogoBase64;
 
 
+
+    /**
+     * Base publica del sistema. Sale de APP_URL para que el QR no quede atado
+     * al dominio en el que se escribio el codigo.
+     */
+    private function appUrl(string $path = ''): string
+    {
+        return rtrim((string) config('app.url'), '/') . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * QR oficial de Hacienda para la consulta publica del DTE. Va a la par del
+     * QR propio, que abre la representacion grafica de este sistema.
+     */
+    private function qrHacienda(dte $dte): string
+    {
+        // El codigo del CAT-001 sale del catalogo, no de un mapeo adivinado:
+        // 00 = pruebas, 01 = produccion.
+        $ambiente = optional($dte->ambiente()->first())->codigo ?: '01';
+
+        return rtrim((string) config('dte.consulta_publica_url'), '/')
+            . '?ambiente=' . $ambiente
+            . '&codGen=' . $dte->codigoGeneracion
+            . '&fechaEmi=' . \Carbon\Carbon::parse($dte->fecEmi)->format('Y-m-d');
+    }
+
+    /**
+     * Receptor y detalle del documento, resolviendo el caso de Sujeto Excluido
+     * (tipoDte 10), que no vive en ventas sino en sujeto_excluidos.
+     *
+     * Los left join territoriales y c.registro / c.desActividad faltaban en el
+     * select: la vista ya los pedia y salian siempre vacios.
+     */
+    private function cargarReceptor(dte $dte): array
+    {
+        if ((int) $dte->tipoDte === 10) {
+            $venta = SujetoExcluido::join('clientes as c', 'c.id', 'sujeto_excluidos.cliente')
+                ->join('identificacion_receptors as ir', 'ir.id', 'c.idenReceptor')
+                ->leftJoin('departamentos as dep', 'dep.id', 'c.departamento')
+                ->leftJoin('municipios as mun', 'mun.id', 'c.municipio')
+                ->leftJoin('distritos as dis', 'dis.id', 'c.distrito')
+                ->select(
+                    'sujeto_excluidos.*',
+                    'c.nombreCliente',
+                    'ir.valor as identificacion',
+                    'c.dui',
+                    'c.nit',
+                    'c.email',
+                    'c.direccion',
+                    'c.registro',
+                    'c.desActividad',
+                    'dep.departamento as departamentoNombre',
+                    'mun.municipio as municipioNombre',
+                    'dis.distrito as distritoNombre'
+                )
+                ->find($dte->venta);
+
+            $detalleVentas = SujetoExcluidosDetalles::join('productos as p', 'p.id', 'sujeto_excluidos_detalles.producto')
+                ->where('sujeto_excluido_id', $dte->venta)
+                ->select(
+                    'sujeto_excluidos_detalles.cantidad',
+                    'sujeto_excluidos_detalles.unidad',
+                    'sujeto_excluidos_detalles.precio_unitario as precio',
+                    'sujeto_excluidos_detalles.descuento',
+                    'sujeto_excluidos_detalles.ventas as total',
+                    'p.nombreProducto',
+                    'p.codebar3'
+                )
+                ->get();
+
+            return [$venta, $detalleVentas];
+        }
+
+        $venta = Ventas::join('clientes as c', 'c.id', 'ventas.cliente')
+            ->join('identificacion_receptors as ir', 'ir.id', 'c.idenReceptor')
+            ->leftJoin('departamentos as dep', 'dep.id', 'c.departamento')
+            ->leftJoin('municipios as mun', 'mun.id', 'c.municipio')
+            ->leftJoin('distritos as dis', 'dis.id', 'c.distrito')
+            ->select(
+                'ventas.*',
+                'c.nombreCliente',
+                'ir.valor as identificacion',
+                'c.dui',
+                'c.nit',
+                'c.email',
+                'c.direccion',
+                'c.registro',
+                'c.desActividad',
+                'dep.departamento as departamentoNombre',
+                'mun.municipio as municipioNombre',
+                'dis.distrito as distritoNombre'
+            )
+            ->find($dte->venta);
+
+        $detalleVentas = VentasDetalles::join('productos as p', 'p.id', 'ventas_detalles.producto')
+            ->where('venta', $dte->venta)
+            ->select('ventas_detalles.*', 'p.nombreProducto', 'p.codebar3')
+            ->get();
+
+        return [$venta, $detalleVentas];
+    }
+
+    /**
+     * Documento relacionado que se imprime en la Nota de Credito.
+     */
+    private function documentoRelacionado(dte $dte): array
+    {
+        $dte2 = (int) $dte->tipoDte === 4
+            ? dte::where('venta', (int) $dte->documentoRelacionado)->first()
+            : dte::find($dte->id);
+
+        // dtes.tipoDte es columna y relacion a la vez: hay que pedir la
+        // relacion explicitamente o Eloquent devuelve el entero.
+        return [$dte2, $dte2 ? $dte2->tipoDte()->first() : null];
+    }
 
     public function reportPDF($id)
 
@@ -68,27 +187,25 @@ class ExportDteController extends Controller
 
         $sucursal = Sucursales::join('tipo_establecimientos as te', 'te.id', 'sucursales.tipo')
 
-            ->select('sucursales.*', 'te.valor as establecimiento')
+            ->leftJoin('departamentos as dep', 'dep.id', 'sucursales.departamento')
+
+            ->leftJoin('municipios as mun', 'mun.id', 'sucursales.municipio')
+
+            ->leftJoin('distritos as dis', 'dis.id', 'sucursales.distrito')
+
+            ->select(
+                'sucursales.*',
+                'te.valor as establecimiento',
+                'dep.departamento as departamentoNombre',
+                'mun.municipio as municipioNombre',
+                'dis.distrito as distritoNombre'
+            )
 
             ->find($dte->sucursal);
 
-        $venta = Ventas::join('clientes as c', 'c.id', 'ventas.cliente')
+        [$venta, $detalleVentas] = $this->cargarReceptor($dte);
 
-            ->join('identificacion_receptors as ir', 'ir.id', 'c.idenReceptor')
-
-            ->select('ventas.id', 'c.nombreCliente', 'ir.valor as identificacion', 'c.dui', 'c.nit', 'c.email', 'c.direccion')
-
-            ->find($dte->venta);
-
-
-
-        $detalleVentas = VentasDetalles::join('productos as p', 'p.id', 'ventas_detalles.producto')
-
-            ->where('venta', $dte->venta)
-
-            ->select('ventas_detalles.*', 'p.nombreProducto', 'p.codebar3')
-
-            ->get();
+        [$dte2, $tipoRelacionado] = $this->documentoRelacionado($dte);
 
 
 
@@ -112,7 +229,7 @@ class ExportDteController extends Controller
 
 
 
-        $qrCodeText = "https://comercialcruz.sysprossv.com/report/pdf/" . $dte->codigoGeneracion; // Puedes cambiar esto según tu lógica
+        $qrCodeText = $this->appUrl("report/pdf/" . $dte->codigoGeneracion); // Puedes cambiar esto según tu lógica
 
         $qrCode = QrCode::size(300)->generate($qrCodeText);
 
@@ -121,6 +238,11 @@ class ExportDteController extends Controller
         // Obtener la imagen del código QR en base64
 
         $qrCodeDataUri = 'data:image/png;base64,' . base64_encode($qrCode);
+
+        // QR oficial de consulta publica de Hacienda, exigido por la 2.0.
+        $qrHaciendaDataUri = 'data:image/png;base64,' . base64_encode(
+            QrCode::size(300)->generate($this->qrHacienda($dte))
+        );
 
 
 
@@ -131,6 +253,8 @@ class ExportDteController extends Controller
         $viewData = [
 
             'dte' => $dte,
+            'dte2' => $dte2,
+            'tipoRelacionado' => $tipoRelacionado,
 
             'empresa' => $empresa,
 
@@ -147,6 +271,7 @@ class ExportDteController extends Controller
             'pageNumber' => $totalPages,
 
             'qrCode' => $qrCodeDataUri,
+            'qrHacienda' => $qrHaciendaDataUri,
             'mostrarMarcaAgua' => $dte->estado === 'INVALIDADO',
 
         ];
@@ -216,7 +341,9 @@ class ExportDteController extends Controller
 
     {
 
-        $dte = dte::join('modelo_facturacions as mf', 'mf.id', 'dtes.tipoModelo')->join('tipo_transmisions as tt', 'tt.id', 'dtes.tipoOperacion')->select('dtes.*', 'mf.valor as modelo', 'tt.valor as tipo')->where('dtes.codigoGeneracion', $id)->orWhere('dtes.id', $id)->first();
+        $dte = dte::join('modelo_facturacions as mf', 'mf.id', 'dtes.tipoModelo')->join('tipo_transmisions as tt', 'tt.id', 'dtes.tipoOperacion')->select('dtes.*', 'mf.valor as modelo', 'tt.valor as tipo')->where('dtes.codigoGeneracion', $id)->first();
+
+        abort_if(!$dte, 404, 'DTE no encontrado.');
 
         $empresa = Empresas::join('actividad_economicas as ae', 'ae.id', 'empresas.actividad')
 
@@ -226,27 +353,25 @@ class ExportDteController extends Controller
 
         $sucursal = Sucursales::join('tipo_establecimientos as te', 'te.id', 'sucursales.tipo')
 
-            ->select('sucursales.*', 'te.valor as establecimiento')
+            ->leftJoin('departamentos as dep', 'dep.id', 'sucursales.departamento')
+
+            ->leftJoin('municipios as mun', 'mun.id', 'sucursales.municipio')
+
+            ->leftJoin('distritos as dis', 'dis.id', 'sucursales.distrito')
+
+            ->select(
+                'sucursales.*',
+                'te.valor as establecimiento',
+                'dep.departamento as departamentoNombre',
+                'mun.municipio as municipioNombre',
+                'dis.distrito as distritoNombre'
+            )
 
             ->find($dte->sucursal);
 
-        $venta = Ventas::join('clientes as c', 'c.id', 'ventas.cliente')
+        [$venta, $detalleVentas] = $this->cargarReceptor($dte);
 
-            ->join('identificacion_receptors as ir', 'ir.id', 'c.idenReceptor')
-
-            ->select('ventas.id', 'c.nombreCliente', 'ir.valor as identificacion', 'c.dui', 'c.nit', 'c.email', 'c.direccion')
-
-            ->find($dte->venta);
-
-
-
-        $detalleVentas = VentasDetalles::join('productos as p', 'p.id', 'ventas_detalles.producto')
-
-            ->where('venta', $dte->venta)
-
-            ->select('ventas_detalles.*', 'p.nombreProducto', 'p.codebar3')
-
-            ->get();
+        [$dte2, $tipoRelacionado] = $this->documentoRelacionado($dte);
 
 
 
@@ -269,7 +394,7 @@ class ExportDteController extends Controller
         $totalPages = $pdf->getCanvas()->get_page_count();
 
 
-        $qrCodeText = "https://comercialcruz.sysprossv.com/report/pdf/" . $dte->codigoGeneracion; // Puedes cambiar esto según tu lógica
+        $qrCodeText = $this->appUrl("report/pdf/" . $dte->codigoGeneracion); // Puedes cambiar esto según tu lógica
 
         $qrCode = QrCode::size(300)->generate($qrCodeText);
 
@@ -278,6 +403,11 @@ class ExportDteController extends Controller
         // Obtener la imagen del código QR en base64
 
         $qrCodeDataUri = 'data:image/png;base64,' . base64_encode($qrCode);
+
+        // QR oficial de consulta publica de Hacienda, exigido por la 2.0.
+        $qrHaciendaDataUri = 'data:image/png;base64,' . base64_encode(
+            QrCode::size(300)->generate($this->qrHacienda($dte))
+        );
 
 
 
@@ -288,6 +418,8 @@ class ExportDteController extends Controller
         $viewData = [
 
             'dte' => $dte,
+            'dte2' => $dte2,
+            'tipoRelacionado' => $tipoRelacionado,
 
             'empresa' => $empresa,
 
@@ -304,6 +436,7 @@ class ExportDteController extends Controller
             'pageNumber' => $totalPages,
 
             'qrCode' => $qrCodeDataUri,
+            'qrHacienda' => $qrHaciendaDataUri,
             'mostrarMarcaAgua' => $dte->estado === 'INVALIDADO',
 
         ];

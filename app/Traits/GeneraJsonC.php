@@ -67,7 +67,7 @@ trait GeneraJsonC
             'codEstable' => null,
             'codPuntoVentaMH' => $emisor->codPuntoVentaMH,
             'codPuntoVenta' => $emisor->codPuntoVenta,
-            'correo' => $emisor->correo
+            'correo' => \App\Support\NormalizadorCorreoDte::normalizar($emisor->correo)
         ];
         if($receptor->idenReceptor == 1)
         {
@@ -90,7 +90,7 @@ trait GeneraJsonC
                 'complemento' => $receptor->complemento,
             ],
             'telefono' => $receptor->telefono,
-            'correo' => $receptor->correo,
+            'correo' => \App\Support\NormalizadorCorreoDte::normalizar($receptor->correo),
         ];
         $cuerpoDocumento = [];
         $numItem = 1;

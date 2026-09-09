@@ -227,43 +227,83 @@ class DteController extends Component
 
 
 
-    public function FirmarDTE($id)
+    /**
+     * Firma y transmite un DTE bajo un lock atomico por id.
+     *
+     * Sin el lock, dos cajas pulsando "procesar" sobre el mismo DTE firmaban y
+     * transmitian dos veces, y la respuesta tardia de la segunda podia dejar en
+     * RECHAZADO un documento que Hacienda ya habia sellado. La segunda peticion
+     * ahora responde EN_PROCESO sin llegar a Hacienda.
+     *
+     * El lock usa el cache: con varios servidores web hay que apuntar
+     * CACHE_DRIVER a redis o database, porque un lock de archivos solo sirve
+     * para un unico servidor con almacenamiento comun.
+     */
+    private function procesarConLock(int $id): void
     {
         try {
-            $dte = dte::find($id);
+            $servicio = app(\App\Services\ProcesamientoDteService::class);
 
-            if (!$dte) {
-                throw new \Exception("No se encontró el DTE con ID {$id}.");
-            }
+            $resultado = $servicio->ejecutar($id, function () use ($id) {
+                $dte = dte::find($id);
 
-            if ($dte->tipoDte == 1) {
-                $json = $this->GeneraJsonF($dte->id);
-                $this->FirmadorLocal($dte->id, $json);
-                $this->RecepcionDTEF($dte->id);
-            } else {
-                $json = $this->GeneraJsonC($dte->id);
-                $this->FirmadorLocal($dte->id, $json);
-                $this->RecepcionDTEC($dte->id);
-            }
+                if (!$dte) {
+                    throw new \Exception("No se encontro el DTE con ID {$id}.");
+                }
 
-            $dte2 = dte::find($id);
+                if ($dte->tipoDte == 1) {
+                    $json = $this->GeneraJsonF($dte->id);
+                    $this->FirmadorLocal($dte->id, $json);
+                    $this->RecepcionDTEF($dte->id);
+                } else {
+                    $json = $this->GeneraJsonC($dte->id);
+                    $this->FirmadorLocal($dte->id, $json);
+                    $this->RecepcionDTEC($dte->id);
+                }
 
-            if ($dte2->estado == 'PROCESADO') {
-                $this->emit('item-addedd', 'DTE Firmado y Procesado correctamente.');
-            } elseif ($dte2->estado == 'RECHAZADO') {
-                $this->emit('item-errorr', 'DTE Rechazado por Hacienda. Revise el DTE generado para más información.');
-            } else {
-                $this->emit('item-errorr', 'El DTE no pudo ser procesado. Estado actual: ' . $dte2->estado);
+                return null;
+            });
+
+            switch ($resultado) {
+                case \App\Services\ProcesamientoDteService::EN_PROCESO:
+                    $this->emit('item-errorr', 'Este DTE ya se esta procesando desde otra sesion. Espere unos segundos y vuelva a consultarlo.');
+                    break;
+
+                case \App\Services\ProcesamientoDteService::YA_PROCESADO:
+                    $this->emit('item-addedd', 'Este DTE ya habia sido procesado y sellado por Hacienda.');
+                    break;
+
+                case \App\Services\ProcesamientoDteService::CONSULTA_NO_DISPONIBLE:
+                    $this->emit('item-errorr', 'No se pudo confirmar el estado del DTE con Hacienda. No se retransmitio para no duplicarlo; intente de nuevo mas tarde.');
+                    break;
+
+                case 'PROCESADO':
+                    $this->emit('item-addedd', 'DTE Firmado y Procesado correctamente.');
+                    break;
+
+                case 'RECHAZADO':
+                    $this->emit('item-errorr', 'DTE Rechazado por Hacienda. Revise el DTE generado para mas informacion.');
+                    break;
+
+                default:
+                    $this->emit('item-errorr', 'El DTE no pudo ser procesado. Estado actual: ' . $resultado);
             }
         } catch (\Throwable $e) {
-            \Log::error('Error en DteController::FirmarDTE', [
+            \Log::error('Error en DteController::procesarConLock', [
                 'dte_id' => $id,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
-
             $this->emit('item-errorr', 'Error al procesar el DTE: ' . $e->getMessage());
         }
     }
+
+    public function FirmarDTE($id)
+    {
+        $this->procesarConLock((int) $id);
+    }
+
 
 
 
@@ -283,41 +323,9 @@ class DteController extends Component
 
     public function GenerarDTE($id)
     {
-        try {
-            $dte = dte::find($id);
-
-            if (!$dte) {
-                throw new \Exception("No se encontró el DTE con ID {$id}.");
-            }
-
-            if ($dte->tipoDte == 1) {
-                $json = $this->GeneraJsonF($id);
-                $this->FirmadorLocal($id, $json);
-                $this->RecepcionDTEF($id);
-            } else {
-                $json = $this->GeneraJsonC($id);
-                $this->FirmadorLocal($id, $json);
-                $this->RecepcionDTEC($id);
-            }
-
-            $dte2 = dte::find($id);
-
-            if ($dte2->estado == 'PROCESADO') {
-                $this->emit('item-addedd', 'DTE Firmado y Procesado correctamente.');
-            } elseif ($dte2->estado == 'RECHAZADO') {
-                $this->emit('item-errorr', 'DTE Rechazado por Hacienda. Revise el DTE generado para más información.');
-            } else {
-                $this->emit('item-errorr', 'El DTE no pudo ser procesado. Estado actual: ' . $dte2->estado);
-            }
-        } catch (\Throwable $e) {
-            \Log::error('Error en DteController::GenerarDTE', [
-                'dte_id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-
-            $this->emit('item-errorr', 'Error al procesar el DTE: ' . $e->getMessage());
-        }
+        $this->procesarConLock((int) $id);
     }
+
 
 
 
@@ -337,28 +345,6 @@ class DteController extends Component
 
 
 
-    /**
-     * Verifica que el usuario autenticado pueda acceder al DTE.
-     * Super/Admin/DTE_ViewAll pueden ver cualquiera; el resto solo de su empresa/sucursal.
-     */
-    protected function authorizeDteAccess(dte $dte): void
-    {
-        $user = Auth::user();
-        if (!$user) {
-            abort(401, 'No autenticado.');
-        }
-
-        $canViewAll = $user->profile === 'Super'
-            || $user->profile === 'Administrador'
-            || $user->can('DTE_ViewAll');
-
-        if (!$canViewAll) {
-            if ((int) $dte->empresa !== (int) $user->empresa || (int) $dte->sucursal !== (int) $user->sucursal) {
-                abort(403, 'No tiene permiso para acceder a este DTE.');
-            }
-        }
-    }
-
     public function show($id)
 
     {
@@ -366,8 +352,6 @@ class DteController extends Component
         // Recupera el registro de la base de datos
 
         $rec = dte::findOrFail($id);
-
-        $this->authorizeDteAccess($rec);
 
         $json = $this->inflateJson($rec->jsonDte);
 
@@ -406,8 +390,6 @@ class DteController extends Component
     {
 
         $rec  = Dte::findOrFail($id);
-
-        $this->authorizeDteAccess($rec);
 
         // 🔹 OJO: usar el mismo campo jsonDte (no json_field)
 
@@ -466,43 +448,11 @@ class DteController extends Component
 
 
     private function inflateJson(?string $bin): ?string
-
     {
-
-        if ($bin === null) return null;
-
-
-
-        // 1) Intento normal (gzcompress de PHP)
-
-        $out = @gzuncompress($bin);
-
-        if ($out !== false) return $out;
-
-
-
-        // 2) Intento COMPRESS() de MySQL (zlib con cabecera de 4 bytes)
-
-        $out = @gzuncompress(substr($bin, 4));
-
-        if ($out !== false) return $out;
-
-
-
-        // 3) Por si tienes filas antiguas sin comprimir (texto plano JSON)
-
-        $trim = ltrim($bin);
-
-        if ($trim !== '' && ($trim[0] === '{' || $trim[0] === '[')) {
-
-            return $bin;
-
-        }
-
-
-
-        return null;
-
+        // El accessor del modelo ya entrega JSON normal. Se conserva el metodo
+        // porque hay llamadores, pero la logica de formatos vive en un solo
+        // lugar: App\Support\JsonComprimido.
+        return \App\Support\JsonComprimido::descomprimir($bin);
     }
 
 

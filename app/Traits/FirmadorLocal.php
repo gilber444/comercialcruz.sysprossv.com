@@ -44,7 +44,10 @@ trait FirmadorLocal
         }
 
         // Guardar la firma en la tabla 'firmador'
-        $firma = new Firmador();
+        // Una sola fila de firma vigente por DTE. Antes se insertaba una
+        // nueva en cada reintento, asi que un DTE rechazado y reprocesado
+        // dejaba varias firmas y no habia forma de saber cual valia.
+        $firma = Firmador::firstOrNew(['dte' => $id]);
         $firma->firmador = $resultado;
         $firma->fecha = date('Y-m-d');
         $firma->dte = $id;

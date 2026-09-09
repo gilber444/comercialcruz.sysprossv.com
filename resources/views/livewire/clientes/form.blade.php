@@ -15,7 +15,7 @@
                         </div>
                         @error('nombreCliente') <span class="text-danger er">{{ $message}}</span>@enderror
                     </div>
-                    <div class="col-sm-12 col-md-12 mb-3">
+                    <div class="col-sm-12 col-md-6 mb-3">
                         <label class="form-label">Tipo Persona</label>
                         <div class="input-group">
                             <select class="form-select" wire:model='tipoPersona'>
@@ -26,6 +26,19 @@
                             </select>
                         </div>
                         @error('tipoPersona') <span class="text-danger er">{{ $message}}</span>@enderror
+                    </div>
+                    <div class="col-sm-12 col-md-6 mb-3">
+                        <label class="form-label">Categoria</label>
+                        <div class="input-group">
+                            <select class="form-select" wire:model='categoria'>
+                                <option value="OTRO">OTRO</option>
+                                <option value="GRANDE">GRANDE</option>
+                                <option value="MEDIANA">MEDIANA</option>
+                                <option value="PEQUENO">PEQUENO</option>
+                            </select>
+                        </div>
+                        <small class="text-muted">GRANDE aplica la retencion del 1% desde $113.</small>
+                        @error('categoria') <span class="text-danger er">{{ $message}}</span>@enderror
                     </div>
                 </div>
                 <div class="row">

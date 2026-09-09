@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -52,5 +53,31 @@ class InvalidacionDte extends Model
     public function tipoInvalidacion()
     {
         return $this->belongsTo(TipoInvalidacion::class, 'tipoAnulacion');
+    }
+
+    /**
+     * Compresion transparente: se guarda en el formato canonico gz64: y se
+     * devuelve siempre JSON normal. Los valores historicos en gzcompress
+     * binario, en MySQL COMPRESS() o en JSON plano se siguen leyendo.
+     */
+    protected function json(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => \App\Support\JsonComprimido::descomprimir($value),
+            set: fn ($value) => \App\Support\JsonComprimido::comprimir($value),
+        );
+    }
+
+    /**
+     * Compresion transparente: se guarda en el formato canonico gz64: y se
+     * devuelve siempre JSON normal. Los valores historicos en gzcompress
+     * binario, en MySQL COMPRESS() o en JSON plano se siguen leyendo.
+     */
+    protected function jsonRespuesta(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => \App\Support\JsonComprimido::descomprimir($value),
+            set: fn ($value) => \App\Support\JsonComprimido::comprimir($value),
+        );
     }
 }

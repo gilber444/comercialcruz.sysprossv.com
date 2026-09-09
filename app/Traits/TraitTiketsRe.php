@@ -33,9 +33,9 @@ trait TraitTiketsRe
         //$cajero = Ventas::join('users as u', 'u.codigo', 'ventas.codigoVendedor')->where('ventas.id', $venta->venta)->first();
         $dte = dte::where('venta', $caja->venta)->first();
         if ($dte) {
-            $qrCodeText = "https://comercialcruz.sysprossv.com/report/pdf/" . $dte->codigoGeneracion;
+            $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf/' . $dte->codigoGeneracion;
         } else {
-            $qrCodeText = "https://comercialcruz.sysprossv.com/report/pdf";
+            $qrCodeText = rtrim((string) config('app.url'), '/') . '/report/pdf';
         }
         $dtes = ($venta->codigo === null) ? 'No' : 'Si';
         $ventaData = [

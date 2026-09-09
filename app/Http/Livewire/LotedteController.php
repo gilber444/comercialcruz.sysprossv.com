@@ -14,9 +14,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\CatalogoRequerido;
 
 class LotedteController extends Component
 {
+    use CatalogoRequerido;
     use WithPagination;
     use RecepcionLote;
     use ConsultaLote;
@@ -96,7 +98,10 @@ class LotedteController extends Component
 
             $empresa = Empresas::find($user->empresa);
 
-            $ambiente = AmbienteDestino::find($empresa->ambiente);
+            $ambiente = $this->catalogoRequerido(
+                AmbienteDestino::find($empresa->ambiente),
+                'el ambiente de destino id ' . $empresa->ambiente . ' (catalogo ambiente_destinos)'
+            );
 
             $lote = lotedte::create([
                 'numero' => $numero,

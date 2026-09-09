@@ -28,9 +28,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Str;
 use Livewire\Component;
+use App\Traits\CatalogoRequerido;
 
 class NuevoSujetoExcluidoController extends Component
 {
+    use CatalogoRequerido;
     use NumeroControlTrait;
     use RecepcionDTESujeto;
 
@@ -215,7 +217,10 @@ class NuevoSujetoExcluidoController extends Component
         $numeroControl = $this->obtenerCodigoDTESujeto(6);
 
         $fechaHoy = Carbon::now()->toDateString();
-        $tokenActivo = Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first();
+        $tokenActivo = $this->catalogoRequerido(
+            Tocken::where('estado', 'ok')->whereDate('fecha', $fechaHoy)->first(),
+            'el token de Hacienda de hoy (tabla tocken, estado ok): no se pudo autenticar contra el Ministerio'
+        );
 
         //   dd('prueba de dd');
         try {
@@ -250,12 +255,32 @@ class NuevoSujetoExcluidoController extends Component
 
                 $emprea = Empresas::find($user->empresa);
 
-                $ambiente = AmbienteDestino::find($emprea->ambiente);
-                $tipoDte = TipoDocumento::find(10);
-                $tipoModelo = ModeloFacturacion::where('status', 'Activo')->first();
-                $tipoOpera = TipoTransmision::where('status', 'Activo')->first();
-                $tipoContingencia = TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first();
-                $tributo = Tributo::where('status', 'Activo')->whereNull('codigo')->first();
+                $ambiente = $this->catalogoRequerido(
+                    AmbienteDestino::find($emprea->ambiente),
+                    'el ambiente de destino id ' . $emprea->ambiente . ' (catalogo ambiente_destinos)'
+                );
+                // Antes era TipoDocumento::find(10): un id fijo que deja de
+                // apuntar a Sujeto Excluido si el catalogo se reordena.
+                $tipoDte = $this->catalogoRequerido(
+                    TipoDocumento::where('status', 'Activo')->where('codigo', '14')->first(),
+                    'el tipo de documento con codigo 14, Sujeto Excluido, con status Activo (catalogo tipo_documentos)'
+                );
+                $tipoModelo = $this->catalogoRequerido(
+                    ModeloFacturacion::where('status', 'Activo')->first(),
+                    'un modelo de facturacion con status Activo (catalogo modelo_facturacions)'
+                );
+                $tipoOpera = $this->catalogoRequerido(
+                    TipoTransmision::where('status', 'Activo')->first(),
+                    'un tipo de transmision con status Activo (catalogo tipo_transmisions)'
+                );
+                $tipoContingencia = $this->catalogoRequerido(
+                    TipoContigencia::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tipo de contingencia sin codigo con status Activo (catalogo tipo_contigencias)'
+                );
+                $tributo = $this->catalogoRequerido(
+                    Tributo::where('status', 'Activo')->whereNull('codigo')->first(),
+                    'el tributo sin codigo con status Activo (catalogo tributos)'
+                );
 
                 $parametro = Parametros::where('empresa', $user->empresa)->where('sucursal', 1)->first();
 

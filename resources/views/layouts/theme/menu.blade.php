@@ -184,7 +184,7 @@
 
         <li
 
-            class="menu-item {{ Request::is('empresa') ? 'active' : '' }} {{ Request::is('sucursales') ? 'active' : '' }} {{ Request::is('parametros') ? 'active' : '' }} {{ Request::is('features') ? 'active' : '' }}">
+            class="menu-item {{ Request::is('empresa') ? 'active' : '' }} {{ Request::is('empresa/personalizacion-dte') ? 'active' : '' }} {{ Request::is('sucursales') ? 'active' : '' }} {{ Request::is('parametros') ? 'active' : '' }} {{ Request::is('features') ? 'active' : '' }}">
 
             <a href="javascript:void(0)" class="menu-link menu-toggle">
 
@@ -203,6 +203,20 @@
                         <a href="{{ route('empresa') }}" class="menu-link">
 
                             <div data-i18n="Empresa">Empresa</div>
+
+                        </a>
+
+                    </li>
+
+                @endcan
+
+                @can('Empresa_Update')
+
+                    <li class="menu-item {{ Request::is('empresa/personalizacion-dte') ? 'active' : '' }}">
+
+                        <a href="{{ route('empresa.personalizacion-dte') }}" class="menu-link">
+
+                            <div data-i18n="Personalizar DTE">Personalizar DTE</div>
 
                         </a>
 
@@ -1332,7 +1346,7 @@
 
         <li
 
-            class="menu-item {{ Request::is('firmador') ? 'active' : '' }} {{ Request::is('tocken') ? 'active' : '' }} {{ Request::is('ap') ? 'active' : '' }} {{ Request::is('dtes') ? 'active' : '' }} {{ request::is('invalidaciones') ? 'active' : '' }} {{ request::is('lote') ? 'active' : '' }} {{ request::is('contingencia') ? 'active' : '' }}">
+            class="menu-item {{ Request::is('firmador') ? 'active' : '' }} {{ Request::is('tocken') ? 'active' : '' }} {{ Request::is('ap') ? 'active' : '' }} {{ Request::is('dtes') ? 'active' : '' }} {{ Request::is('download') ? 'active' : '' }} {{ request::is('invalidaciones') ? 'active' : '' }} {{ request::is('lote') ? 'active' : '' }} {{ request::is('contingencia') ? 'active' : '' }}">
 
             <a href="javascript:void(0);" class="menu-link menu-toggle">
 
@@ -1393,6 +1407,20 @@
                         <a href="{{ route('dtes') }}" class="menu-link">
 
                             <div data-i18n="DTE Generados">DTE Generados</div>
+
+                        </a>
+
+                    </li>
+
+                @endcan
+
+                @can('DTE_Index')
+
+                    <li class="menu-item {{ Request::is('download') ? 'active' : '' }}">
+
+                        <a href="{{ route('download') }}" class="menu-link">
+
+                            <div data-i18n="Descargar DTE">Descargar DTE</div>
 
                         </a>
 

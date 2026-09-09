@@ -35,7 +35,8 @@ trait RecepcionInvalidacion
             $url = $urls->url;
             $token = $this->generarToken();
             $ambiente = AmbienteDestino::find($empresa->ambiente);
-            $tipoDte = TipoDocumento::where('status', 'Activo')->where('valor', 'FACTURA')->first();
+            // Por codigo del CAT-002, no por texto: ver nota en RecepcionDTEF.
+            $tipoDte = TipoDocumento::where('status', 'Activo')->whereIn('codigo', ['01', '1'])->first();
             $tipoModelo = ModeloFacturacion::where('status', 'Activo')->first();
             $tipoOpera =TipoTransmision::where('status', 'Activo')->first();
             $data = [

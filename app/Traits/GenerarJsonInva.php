@@ -43,7 +43,7 @@ trait GenerarJsonInva
             'codPuntoVentaMH' => $emisorr->codPuntoVentaMH,
             'codPuntoVenta' => $emisorr->codPuntoVenta,
             'telefono' => $emisorr->telefono,
-            'correo' => $emisorr->correo,
+            'correo' => \App\Support\NormalizadorCorreoDte::normalizar($emisorr->correo),
         ];
         $documento = [
             'tipoDte' => $identificacionn->tipoDte,
@@ -57,7 +57,7 @@ trait GenerarJsonInva
             'numDocumento' => $receptor->numDocumento,
             'nombre' => $receptor->nombre,
             'telefono' => $receptor->telefono,
-            'correo' =>  $receptor->correo
+            'correo' => \App\Support\NormalizadorCorreoDte::normalizar($receptor->correo)
         ];
         $motivo = [
             'tipoAnulacion' => (int)$invalidacion->tipoInvalidacion->codigo,

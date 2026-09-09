@@ -19,9 +19,11 @@ use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
 use PDOException;
+use App\Traits\CatalogoRequerido;
 
 class ContingenciaDTEController extends Component
 {
+    use CatalogoRequerido;
     use WithPagination;
     use GenerarJsonContingencia;
     use Firmador;
@@ -134,7 +136,10 @@ class ContingenciaDTEController extends Component
         $empresa = Empresas::find($user->empresa);
         try {
             DB::beginTransaction();
-            $ambiente = AmbienteDestino::find($empresa->ambiente);
+            $ambiente = $this->catalogoRequerido(
+                AmbienteDestino::find($empresa->ambiente),
+                'el ambiente de destino id ' . $empresa->ambiente . ' (catalogo ambiente_destinos)'
+            );
 
             $ultimoNumero = ContingenciaDte::where('empresa', $user->empresa)->orderBy('numero', 'desc')->value('numero');
 

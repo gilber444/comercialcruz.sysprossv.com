@@ -94,7 +94,7 @@ trait GeneraJsonNota
                     'complemento' => $dte->Remisor->direccion,
                 ],
                 'telefono' => $dte->Remisor->telefono,
-                'correo' => $dte->Remisor->Rempresa->correo
+                'correo' => \App\Support\NormalizadorCorreoDte::normalizar($dte->Remisor->Rempresa->correo)
             ],
             'receptor' => [
                 //'tipoDocumento' => $dte->Rventas->Rclientes->RidentificacionReceptor->codigo,
@@ -110,7 +110,7 @@ trait GeneraJsonNota
                     'complemento' => $dte->Rventas->Rclientes->direccion,
                 ],
                 'telefono' => $dte->Rventas->Rclientes->telefono,
-                'correo' => $dte->Rventas->Rclientes->email,
+                'correo' => \App\Support\NormalizadorCorreoDte::normalizar($dte->Rventas->Rclientes->email),
             ],
             'ventaTercero' => null,
             'cuerpoDocumento' => $cuerpoDocumento,

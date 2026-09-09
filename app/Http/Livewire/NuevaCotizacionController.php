@@ -365,11 +365,16 @@ class NuevaCotizacionController extends Component
 
         $verTipoC = Clientes::find($this->idC);
 
-        if($verTipoC->tipoPersona == 3)
-        {
-            $percecion = $tt * 0.001;
-        }else
-        {
+        // Misma regla que el punto de venta, para que la cotizacion cuadre con
+        // la factura que sale de ella: retencion del 1% (Art. 162 CT) a
+        // clientes categoria GRANDE, desde $113 CON IVA, sobre la base sin IVA
+        // y redondeada a centavos.
+        //
+        // Antes era 0.001 -un decimal de menos, o sea 0.1%- y por tipoPersona,
+        // asi que lo cotizado nunca coincidia con lo facturado.
+        if ($sub >= 113 && $verTipoC->categoria === 'GRANDE') {
+            $percecion = round($tt * 0.01, 2);
+        } else {
             $percecion = 0;
         }
 

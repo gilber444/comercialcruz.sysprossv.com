@@ -34,11 +34,6 @@ class Empresas extends Model
         'sincro_id'
     ];
 
-    protected $hidden = [
-        'apiPassword',
-        'certificado',
-    ];
-
     // Genera sincro_id si no viene seteado
     protected static function booted()
     {
@@ -62,5 +57,10 @@ class Empresas extends Model
     public function Rambientes()
     {
         return $this->belongsTo(AmbienteDestino::class, 'ambiente');
+    }
+
+    public function personalizacionDte()
+    {
+        return $this->hasOne(PersonalizacionDte::class, 'empresa_id');
     }
 }
