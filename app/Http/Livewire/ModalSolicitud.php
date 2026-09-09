@@ -30,6 +30,7 @@ class ModalSolicitud extends Component
 
     public function liveSearch()
     {
+        dd('llega');
         $user = Auth::user();
 
         if (strlen($this->search) > 0) {
