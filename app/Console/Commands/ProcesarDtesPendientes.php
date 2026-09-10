@@ -6,6 +6,7 @@ use App\Helpers\Convertidor;
 use App\Models\dte;
 use App\Models\resumenDte;
 use App\Models\Tributo;
+use App\Models\Ventas;
 use App\Models\VentasDetalles;
 use App\Traits\RecepcionDTEC;
 use App\Traits\RecepcionDTEF;
@@ -132,6 +133,15 @@ class ProcesarDtesPendientes extends Command
         $metodoPago     = '01';     // 01 = Efectivo (ejemplo)
         $referenciaPago = null;
 
+        // Retencion del 1% (Art. 162 CT). La calcula el POS al vender a un
+        // cliente GRANDE y la cobra de menos: sale de la venta, que es lo que
+        // realmente se cobro. Antes aqui iba ivaRete1 => 0 y totalPagar = total
+        // con IVA, asi que todo DTE que pasaba por este comando (no automatico,
+        // fallido o rechazado) perdia la retencion y no cuadraba con la caja.
+        $venta      = Ventas::find($dte->venta);
+        $retenido   = round((float) ($venta->percepcion ?? 0), 2);
+        $totalPagar = round($montoTotal - $retenido, 2);
+
         $now     = now();
         $tributo = Tributo::where('codigo', '20')->first(); // 20 = IVA
 
@@ -157,20 +167,20 @@ class ProcesarDtesPendientes extends Command
 
                 'subTotal'            => $totalGravada,
                 'ivaPerci1'           => 0,
-                'ivaRete1'            => 0,
+                'ivaRete1'            => $retenido,
                 'reteRenta'           => 0,
 
                 'montoTotalOperacion' => $montoTotal,
                 'totalNoGravado'      => 0,
-                'totalPagar'          => $montoTotal,
+                'totalPagar'          => $totalPagar,
                 'totalLetras'         => strtoupper(
-                    Convertidor::montoALetras(round($montoTotal, 2))
+                    Convertidor::montoALetras($totalPagar)
                 ),
                 'saldoFavor'          => 0,
 
                 'condicionOperacion'  => $condipago,
                 'pagos'               => $metodoPago,
-                'montoPagado'         => $montoTotal,
+                'montoPagado'         => $totalPagar,
                 'refencia'            => $referenciaPago,
                 'palzo'               => null,
                 'periodo'             => null,
