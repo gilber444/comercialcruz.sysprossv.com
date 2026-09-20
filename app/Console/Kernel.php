@@ -41,29 +41,15 @@ class Kernel extends ConsoleKernel
                 ->appendOutputTo(storage_path('logs/procesar_dtes_pendientes.log'));
 
             if ($sucursalId > 0) {
-                // LOCAL → VPS: tablas generales
-                $schedule->command("sync:local-vps --sucursal-inventarios={$sucursalId} --limit=1000")
-                    ->name('push local->vps')
-                    ->everyMinute()
+                // LOCAL → VPS: un solo proceso maestro reemplaza los 3 comandos separados
+                // (sync:local-vps + sync:solicitudes + sync:bitacora-local-vps)
+                // → menos conexiones simultáneas al VPS
+                $schedule->command("sync:maestro --sucursal={$sucursalId} --limit=1000")
+                    ->name('push maestro local->vps')
+                    ->everyTwoMinutes()
                     ->runInBackground()
-                    ->withoutOverlapping(59)
-                    ->appendOutputTo(storage_path('logs/sync_local_vps_tables.log'));
-
-                // LOCAL → VPS: bitácora
-                $schedule->command('sync:bitacora-local-vps --limit=1000')
-                    ->name('sync bitacora local to vps')
-                    ->everyMinute()
-                    ->runInBackground()
-                    ->withoutOverlapping(59)
-                    ->appendOutputTo(storage_path('logs/sync_bitacora_local_vps.log'));
-
-                // LOCAL → VPS: solicitudes
-                $schedule->command('sync:solicitudes --limit=500')
-                    ->name('sync solicitudes local to vps')
-                    ->everyMinute()
-                    ->runInBackground()
-                    ->withoutOverlapping(59)
-                    ->appendOutputTo(storage_path('logs/sync_solicitudes.log'));
+                    ->withoutOverlapping(4)
+                    ->appendOutputTo(storage_path('logs/sync_maestro.log'));
 
                 // VPS → LOCAL: descarga cambios del servidor
                 $schedule->command("sync:vps-local --sucursales={$sucursalId}")
@@ -113,12 +99,14 @@ class Kernel extends ConsoleKernel
         // =====================================================================
         if ($modo === 'vps') {
 
-            $schedule->command('dte:correo-wm --limit=30')
-                ->everyMinute()
-                ->withoutOverlapping()
+            // Maestro VPS: consolida correos de DTEs + procesado en un solo proceso
+            $schedule->command('sync:maestro-vps --limit-correos=30 --limit-dtes=50')
+                ->everyTwoMinutes()
+                ->withoutOverlapping(3)
                 ->runInBackground()
-                ->appendOutputTo(storage_path('logs/dte_correo_scheduler.log'));
+                ->appendOutputTo(storage_path('logs/maestro_vps.log'));
 
+            // Procesar DTEs en ventana nocturna (fuera del maestro para no saturar en horario pico)
             $schedule->command('app:procesar-dtes-pendientes --limit=50')
                 ->everyFiveMinutes()
                 ->runInBackground()

@@ -219,6 +219,8 @@ class SyncDesdeVPS extends Command
             $this->procesarAjustesIncrementales(); // ⬅️ reemplaza a procesarAjustesPendientes()
         }
         $this->info('== FIN SYNC VPS → LOCAL == ' . now()->toDateTimeString());
+        DB::disconnect($this->connRemote);
+        DB::disconnect($this->connLocal);
         return self::SUCCESS;
     }
     /* =========================

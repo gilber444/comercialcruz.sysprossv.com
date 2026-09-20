@@ -66,6 +66,8 @@ class SyncSolicitudesLocalVPS extends Command
         }
 
         $this->info('✔ Sincronización de solicitudes finalizada');
+        DB::disconnect('vpsmysql');
+        DB::disconnect('localmysql');
         return self::SUCCESS;
     }
 
