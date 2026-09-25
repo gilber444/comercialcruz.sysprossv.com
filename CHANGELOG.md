@@ -5,6 +5,14 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.19] - 2026-09-24
+
+### Corregido
+- `sync:maestro`: `sync:local-vps` fallaba con `The "1" argument does not exist` porque las opciones se pasaban a `$this->call()` como lista (`"--opcion=valor"`) en lugar de arreglo asociativo (`'--opcion' => valor`). Ahora `sync:local-vps` vuelve a subir inventario, ventas, compras y cajas de la sucursal.
+- `--limit` ahora llega correctamente a `sync:solicitudes` y `sync:bitacora-local-vps` (antes se ignoraba y la bitácora usaba 5000 por defecto; ahora usa el límite del maestro, 1000).
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.12] - 2026-06-30
 
 ### Corregido

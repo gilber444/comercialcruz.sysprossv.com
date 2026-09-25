@@ -52,8 +52,8 @@ class SyncMaestro extends Command
         try {
             $this->info('→ [1/3] sync:local-vps');
             $this->call('sync:local-vps', [
-                "--sucursal-inventarios={$sucursal}",
-                "--limit={$limit}",
+                '--sucursal-inventarios' => $sucursal,
+                '--limit'                => $limit,
             ]);
         } catch (Throwable $e) {
             $this->error('✘ sync:local-vps falló: ' . $e->getMessage());
@@ -64,7 +64,7 @@ class SyncMaestro extends Command
         try {
             $this->info('→ [2/3] sync:solicitudes');
             $this->call('sync:solicitudes', [
-                "--limit={$limit}",
+                '--limit' => $limit,
             ]);
         } catch (Throwable $e) {
             $this->error('✘ sync:solicitudes falló: ' . $e->getMessage());
@@ -76,7 +76,7 @@ class SyncMaestro extends Command
             try {
                 $this->info('→ [3/3] sync:bitacora-local-vps');
                 $this->call('sync:bitacora-local-vps', [
-                    "--limit={$limit}",
+                    '--limit' => $limit,
                 ]);
             } catch (Throwable $e) {
                 $this->error('✘ sync:bitacora-local-vps falló: ' . $e->getMessage());
