@@ -1,0 +1,773 @@
+PROMPT PARA COPIAR LA ACTUALIZACION DTE 2.0 A OTRO PROYECTO
+
+ORDEN DE APLICACION DE LOS TRES PROMPTS
+
+Este trabajo esta repartido en tres prompts que NO son independientes. Aplicalos
+en este orden; saltarse el orden hace perder tiempo o corrompe datos:
+
+  1) prompt_copiar_actualizacion_dte_2_0.txt
+     Modulo DTE, invalidaciones, PDF nuevo, personalizacion de colores
+     (DtePaletteService) y blindaje de catalogos. Es la base: los otros dos lo
+     dan por hecho.
+
+  2) prompt_copiar_catalogos_esquemas_y_eventos.txt
+     Importador de catalogos oficiales, esquemas JSON y eventos. Va DESPUES del
+     1 porque su sincronizacion de catalogos puede desactivar filas que la
+     facturacion necesita, y el apartado 26 del prompt 1 es lo que protege
+     contra eso.
+
+  3) prompt_libros_iva_y_anexos_f07.txt
+     Libros de IVA y anexos del F07. Va al final porque necesita la paleta del
+     prompt 1 y los catalogos correctos del prompt 2.
+
+Despues de CADA prompt, corre su ciclo de QA y una venta de prueba antes de
+pasar al siguiente. Si el destino ya tiene alguno aplicado, verificalo en vez de
+asumirlo: la seccion de auditoria de cada prompt dice como.
+
+
+Trabaja sobre el proyecto Laravel ubicado en:
+
+PROYECTO DESTINO:
+[ESCRIBIR AQUI LA RUTA DEL OTRO PROYECTO]
+
+Usa como proyecto fuente y referencia funcional:
+
+PROYECTO FUENTE:
+C:\laragon\www\servimangueras.cpc.lat
+
+OBJETIVO
+
+Copia y adapta al proyecto destino toda la actualizacion del modulo DTE e invalidaciones implementada en el proyecto fuente. No copies el proyecto completo. Traslada solamente los controladores, servicios, traits, modelos, migraciones, configuraciones, rutas, vistas y pruebas necesarios.
+
+Antes de modificar archivos:
+
+1. Inspecciona ambos proyectos.
+2. Identifica diferencias de Laravel, Livewire, namespaces, modelos, tablas, campos y permisos.
+3. Respalda cada archivo del destino que sera reemplazado.
+4. Conserva la funcionalidad propia del proyecto destino.
+5. No sobrescribas .env, credenciales, certificados, logos, vendor, storage ni datos de empresas.
+6. Usa el proyecto fuente como implementacion canonica, adaptando consultas y relaciones cuando el esquema del destino sea distinto.
+
+1. MODULO DTE E INVALIDACIONES
+
+Copia y adapta:
+
+- Controlador Livewire de DTE.
+- Controlador de invalidaciones.
+- Servicios de plazo, invalidacion y entrega.
+- Generacion, firma, transmision y recepcion del JSON de invalidacion.
+- Consulta de respuesta de Hacienda.
+- Descarga y visualizacion del JSON.
+- PDF del DTE y del evento de invalidacion.
+- Reenvio por correo del DTE.
+- Envio por correo del JSON y PDF de invalidacion.
+- Traits utilizados por DTE, invalidaciones, tickets y reimpresiones.
+- Rutas publicas y autenticadas.
+- Vistas Livewire de DTE e invalidaciones.
+
+Archivos principales de referencia:
+
+- app/Http/Controllers/ExportController.php
+- app/Http/Controllers/DescargaDteZipController.php
+- app/Http/Livewire/DownloadJson.php
+- app/Http/Livewire/DteController.php
+- app/Http/Livewire/InvalidacionesDTEController.php
+- app/Services/InvalidacionEntregaService.php
+- app/Services/PlazoInvalidacionDteService.php
+- app/Services/ProcesamientoDteService.php
+- app/Traits/enviarCorreoDTE.php
+- app/Traits/GeneraJsonC.php
+- app/Traits/GeneraJsonF.php
+- app/Traits/GeneraJsonNota.php
+- app/Traits/GeneraJsonS.php
+- app/Traits/GenerarJsonInva.php
+- app/Traits/RecepcionInvalidacion.php
+- app/Traits/GenerarTicketgetJsonBase64.php
+- app/Traits/TraitTikets.php
+- app/Traits/TraitTiketsRe.php
+- app/Support/JsonComprimido.php
+- app/Support/NormalizadorCorreoDte.php
+- app/Models/dte.php
+- app/Models/Firmador.php
+- app/Models/InvalidacionDte.php
+- app/Models/RecepcionDte.php
+- tests/Unit/ProcesamientoDteServiceTest.php
+- config/dte.php
+- resources/views/livewire/dtes/dte.blade.php
+- resources/views/livewire/dtes/download-json.blade.php
+- resources/views/livewire/dtes/invalidaciones-d-t-e.blade.php
+- resources/views/pdf/dteFactura.blade.php
+- resources/views/pdf/invalidacionDte.blade.php
+- routes/web.php
+
+2. NORMATIVA DE FACTURACION ELECTRONICA 2.0 DE EL SALVADOR
+
+Implementa las reglas existentes en el proyecto fuente:
+
+- Comprobante de Credito Fiscal: invalidacion hasta el decimo dia habil del mes siguiente a la emision.
+- No contar sabados ni domingos como dias habiles.
+- Mantener preparada la configuracion de feriados.
+- Factura/Consumidor Final y Sujeto Excluido: plazo maximo de tres meses desde la emision, conforme a la configuracion central del proyecto fuente.
+- Permitir invalidaciones para Factura/Consumidor Final (01), Comprobante de Credito Fiscal (03), Nota de Credito (05) y Sujeto Excluido (14).
+- No asumir que todos los tipos tienen el mismo plazo: resolver cada regla por el codigo oficial del tipo de DTE.
+- Mostrar la fecha limite calculada.
+- Bloquear invalidaciones fuera de plazo.
+- Mostrar mensajes claros con el motivo del bloqueo.
+- Validar en servidor y en interfaz.
+- Centralizar las reglas en PlazoInvalidacionDteService; no duplicarlas en controladores o vistas.
+
+3. NUEVO PDF DEL DTE
+
+Replica y adapta el formato moderno del proyecto fuente:
+
+- Encabezado suave, logo a la izquierda, titulo centrado y QR a la derecha.
+- Codigo de generacion, numero de control, sello, transmision, fecha y hora.
+- Tarjetas de emisor y receptor.
+- Tabla de detalle, resumen de totales, extension y observaciones.
+- Pie y numero de pagina.
+- Marca de agua INVALIDADO cuando corresponda.
+- Compatibilidad con DomPDF.
+- Soporte para Factura, CCF, Nota de Credito, Sujeto Excluido y DTE invalidado, segun las capacidades del destino.
+
+DATOS DEL EMISOR EN TODOS LOS JSON:
+
+- emisor.nombre debe salir de empresas.empresa.
+- emisor.nombreComercial debe salir de empresas.razon en los esquemas de DTE que admiten ese campo.
+- No inviertas estos dos campos.
+- En Sujeto Excluido o eventos cuyo esquema oficial no admita nombreComercial, no agregues propiedades ajenas al esquema; conserva emisor.nombre desde empresas.empresa.
+- Para invalidaciones nuevas no heredes un nombre incorrecto de un JSON historico: usa la empresa asociada al DTE.
+
+4. PDF DEL EVENTO DE INVALIDACION
+
+Debe mostrar:
+
+- Logo y empresa.
+- QR del evento.
+- Codigo de generacion y sello del evento.
+- Fechas de generacion y procesamiento.
+- Datos del DTE invalidado.
+- Emisor, receptor, motivo, responsable y solicitante.
+- Documento reemplazante cuando aplique.
+- Aviso legal sobre JSON firmado y sello de recepcion.
+- Pie y numero de pagina.
+
+5. TODO DTE POR CODIGO DE GENERACION
+
+Todo acceso publico al PDF del DTE debe utilizar exclusivamente codigoGeneracion. No uses el ID numerico en QR, botones, URL publica, tickets, reimpresiones, correos ni generacion interna del PDF.
+
+Ruta esperada:
+
+/report/pdf/{codigoGeneracion}
+
+- Restringe el parametro a UUID.
+- ExportController debe buscar exclusivamente por dtes.codigoGeneracion.
+- No mantengas fallback publico por ID.
+- Las cotizaciones pueden continuar usando ID en /report/pdf/cotizacion/{id}.
+
+6. URL PUBLICA DESDE APP_URL
+
+Todos los QR y enlaces publicos deben usar config('app.url'). No dejes dominios o IP fijos.
+
+Metodo recomendado:
+
+private function appUrl(string $path = ''): string
+{
+    return rtrim((string) config('app.url'), '/') . '/' . ltrim($path, '/');
+}
+
+7. CORREOS Y ADJUNTOS
+
+Correo DTE:
+
+- Adjuntar PDF nuevo.
+- Adjuntar JSON original.
+
+Correo de invalidacion:
+
+- Adjuntar JSON firmado del evento.
+- Adjuntar PDF del evento.
+- Adjuntar JSON y PDF del DTE original cuando esten disponibles.
+- Regenerar el PDF mediante codigoGeneracion, nunca mediante ID.
+- Generar archivos en memoria cuando corresponda.
+- No hacer fallar la entrega obligatoria si falla solamente un adjunto opcional.
+
+8. MODULO SEPARADO ADMIN EMPRESA - PERSONALIZAR DTE
+
+Crea dentro de Admin Empresa una opcion independiente llamada Personalizar DTE. No la mezcles con el formulario general de empresa.
+
+Referencias:
+
+- app/Http/Livewire/PersonalizacionDteController.php
+- app/Services/DtePaletteService.php
+- app/Models/PersonalizacionDte.php
+- app/Models/Empresas.php
+- resources/views/livewire/empresa/personalizacion-dte.blade.php
+- resources/views/layouts/theme/menu.blade.php
+- database/migrations/2026_07_31_131500_create_personalizaciones_dte_table.php
+
+Permitir configurar por empresa:
+
+- Color principal.
+- Fondo de encabezados.
+- Texto principal.
+- Texto secundario.
+- Bordes.
+- Estado procesado.
+- Invalidado y alertas.
+- Fondo del documento.
+
+Debe incluir selector de empresa para Super, restriccion a la empresa del usuario normal, autorizacion en servidor, inputs color, hexadecimal visible, validacion #RRGGBB, proteccion contra inyeccion CSS, Guardar, Restablecer y vista previa en vivo. La misma paleta se aplica al DTE y a la invalidacion.
+
+9. MIGRACION Y MODELOS
+
+Crea personalizaciones_dte con:
+
+- id
+- empresa_id unico y foraneo a empresas
+- color_primario
+- color_encabezado
+- color_texto
+- color_texto_suave
+- color_borde
+- color_exito
+- color_peligro
+- color_fondo
+- timestamps
+
+Usa string(7), valores predeterminados y eliminacion en cascada. Empresa tiene hasOne y PersonalizacionDte belongsTo Empresa. Guarda mediante updateOrCreate. No uses archivos JSON ni .env para esta configuracion.
+
+10. TABLA VACIA
+
+Si no existe personalizacion para la empresa, los PDF deben funcionar con el diseño actual:
+
+primario: #33475B
+encabezado: #EEF1F5
+texto: #1F2937
+texto_suave: #64748B
+borde: #DFE4EA
+exito: #1F7A43
+peligro: #B02A37
+fondo: #FFFFFF
+
+No crees una fila al consultar. Creala solamente cuando el usuario guarde.
+
+11. SINTAXIS BLADE OBLIGATORIA
+
+Al inicio de ambos PDF usa:
+
+@php
+    $paletaDte = app(\App\Services\DtePaletteService::class)
+        ->obtener((int) $empresa->id);
+@endphp
+
+No uses @php($paletaDte = ...), porque produjo el error syntax error, unexpected identifier html.
+
+Despues ejecuta:
+
+php artisan view:clear
+php artisan view:cache
+
+Localiza las vistas compiladas, ejecuta php -l y confirma que PHP cierre antes de <!DOCTYPE html>.
+
+12. SEGURIDAD Y RUTAS
+
+- El usuario normal solo modifica su empresa.
+- Super puede seleccionar empresas.
+- Usa Empresa_Update o el permiso equivalente.
+- No expongas credenciales, certificados o .env.
+- No elimines funciones propias del destino.
+- No dupliques nombres de rutas.
+- DTE: /report/pdf/{codigoGeneracion} con UUID.
+- Cotizacion: /report/pdf/cotizacion/{id}.
+- Adapta todo a las versiones de Laravel y Livewire del destino.
+
+13. PRUEBAS
+
+Verifica:
+
+- Paleta predeterminada sin fila.
+- Guardado, lectura y aislamiento por empresa.
+- Rechazo de inyeccion CSS.
+- Restablecimiento de colores.
+- CCF hasta el decimo dia habil del mes siguiente.
+- Fines de semana excluidos.
+- Plazo de tres meses.
+- Bloqueo fuera de plazo.
+- PDF DTE por codigoGeneracion.
+- Ausencia de enlaces DTE por ID.
+- APP_URL en QR y enlaces.
+
+Ejecuta como minimo:
+
+php -l app/Services/DtePaletteService.php
+php -l app/Http/Livewire/PersonalizacionDteController.php
+php -l app/Http/Controllers/ExportController.php
+php artisan test tests/Unit/DtePaletteServiceTest.php
+php artisan test tests/Unit/PlazoInvalidacionDteServiceTest.php
+php artisan view:clear
+php artisan view:cache
+php artisan route:list --path=empresa
+php artisan route:list --path=report/pdf
+
+Los avisos Deprecated de dependencias antiguas no son fallos si las pruebas pasan. No ignores errores reales.
+
+14. EJECUCION DE MIGRACION
+
+Crea y copia la migracion, pero no la ejecutes sin autorizacion expresa. Entrega el comando:
+
+php artisan migrate --path=database/migrations/NOMBRE_DE_LA_MIGRACION.php --force
+
+Si ya esta registrada, no borres registros ni la ejecutes otra vez automaticamente.
+
+Migraciones canonicas que deben revisarse y adaptarse:
+
+- database/migrations/2026_07_31_131500_create_personalizaciones_dte_table.php
+- database/migrations/2026_07_31_133000_add_receptor_documento_to_dtes_table.php
+- database/migrations/2026_07_31_150000_optimize_dte_queries_and_compress_json.php
+
+Antes de la tercera migracion confirma expresamente si el destino tiene JSON plano, gz64 o compresion binaria antigua. Si existe formato antiguo, genera y prueba primero la migracion temporal de conversion descrita en este prompt.
+
+15. DESPLIEGUE AL VPS
+
+Si se solicita y existe .vscode/sftp.json:
+
+- Usa las credenciales sin mostrarlas.
+- Sube solo los archivos modificados, no todo el proyecto.
+- Excluye .env, .vscode, vendor, storage y caches.
+- Respalda los archivos remotos antes de reemplazarlos.
+- Usa FTP pasivo y crea directorios para archivos nuevos.
+- Descarga nuevamente cada archivo subido.
+- Compara SHA-256 local y remoto.
+- No declares terminado hasta que todos coincidan.
+
+16. CLIENTES CONFIGURADOS PARA CREDITO FISCAL
+
+- Revisa y replica la logica funcional del proyecto fuente y, cuando sea necesario, la referencia de app.tallerpanteralu.com.
+- Aunque el cliente este configurado para crear solamente Credito Fiscal, debe existir una opcion controlada para generar Factura/Consumidor Final.
+- No alteres permanentemente la configuracion fiscal del cliente solo por emitir una factura de consumidor.
+- Aplica la misma validacion en interfaz y servidor; no dependas solamente de ocultar o mostrar botones.
+- Conserva las restricciones tributarias obligatorias del receptor para cada tipo de documento.
+
+17. FIRMA, RECHAZO Y REPROCESAMIENTO
+
+- Debe existir una sola fila de firma vigente por DTE o por la clave funcional equivalente del destino.
+- Cuando Hacienda rechace un DTE y se vuelva a procesar, actualiza la firma existente mediante updateOrCreate, update o una operacion equivalente.
+- No insertes una fila nueva de Firmador en cada reintento.
+- Antes de modificar firma, sello o respuesta dentro del JSON, obtén siempre el JSON descomprimido.
+- Despues de modificarlo, guardalo por el modelo para que vuelva a comprimirse una sola vez.
+- Actualiza de forma consistente firma, sello, estado, respuesta y JSON del DTE.
+- Evita condiciones de carrera y duplicados mediante indice unico o transaccion cuando el esquema lo permita.
+- Protege firma y transmision completas con un lock atomico por ID de DTE, compartido entre sesiones y computadoras.
+- Dos peticiones simultaneas para el mismo DTE no deben firmar ni transmitir dos veces: la segunda debe responder EN_PROCESO sin llamar a Hacienda.
+- Al obtener el lock, vuelve a leer el DTE. Si ya tiene sello o estado PROCESADO/INVALIDADO, responde YA_PROCESADO y no lo modifiques.
+- No generes ni firmes el JSON en el controlador antes de entrar al lock; toda la secuencia debe ocurrir dentro de la seccion protegida.
+- Una respuesta tardia RECHAZADO o "ya existe" nunca puede sobrescribir un DTE que ya tenga sello o estado PROCESADO.
+- Guarda el rechazo con una actualizacion atomica condicionada a sello vacio y estado distinto de PROCESADO/INVALIDADO.
+- Si hay varios servidores web, usa Redis, base de datos u otro almacen de locks realmente compartido; un lock de archivos local solo es valido para un unico servidor con almacenamiento comun.
+- La interfaz debe informar "ya se esta procesando desde otra sesion" o "ya fue procesado" sin mostrar un rechazo falso.
+
+18. NORMALIZACION DEL CORREO DEL RECEPTOR
+
+Centraliza la limpieza en app/Support/NormalizadorCorreoDte.php y utilizala antes de construir, firmar o transmitir el JSON:
+
+- Elimina espacios al inicio y al final.
+- Convierte el correo a minusculas.
+- Elimina tildes y signos diacriticos.
+- Convierte ñ y Ñ a n.
+- Convierte comas en puntos.
+- Elimina espacios internos accidentales cuando sea seguro.
+- Valida el resultado como correo electronico.
+- No sobrescribas silenciosamente un correo imposible de corregir; muestra un error claro o aplica la politica existente del tipo de DTE.
+- Agrega pruebas para espacios, tildes, ñ, comas, mayusculas y correos invalidos.
+
+19. OPTIMIZACION DE CONSULTAS E INDICES
+
+Referencia principal:
+
+- database/migrations/2026_07_31_150000_optimize_dte_queries_and_compress_json.php
+
+Optimiza todas las consultas del listado, busqueda, invalidacion, recepcion, PDF, correo y descarga masiva:
+
+- Filtra siempre por empresa antes de cargar datos.
+- Selecciona solamente las columnas necesarias.
+- Evita N+1 mediante eager loading o joins controlados.
+- Usa codigoGeneracion para localizar representaciones graficas.
+- Agrega indices compuestos equivalentes a:
+  - dtes(empresa, fecEmi, id)
+  - dtes(empresa, estado, fecEmi)
+  - dtes(empresa, sucursal, fecEmi)
+  - dtes(empresa, tipoDte, fecEmi)
+  - dtes(empresa, codigoGeneracion)
+  - invalidacion_dtes(empresa, numero)
+  - invalidacion_dtes(empresa, estado, numero)
+  - invalidacion_dtes(codigoGeneracion, estado)
+  - recepcion_dtes(dte, fhProcesamiento)
+- Antes de crear indices, inspecciona los existentes para evitar nombres o indices duplicados.
+- Comprueba los planes de consulta cuando el destino tenga un volumen alto.
+
+20. COMPRESION TRANSPARENTE DE JSON
+
+Referencias:
+
+- app/Support/JsonComprimido.php
+- app/Models/dte.php
+- app/Models/Firmador.php
+- app/Models/InvalidacionDte.php
+- app/Models/RecepcionDte.php
+- database/migrations/2026_07_31_150000_optimize_dte_queries_and_compress_json.php
+
+Implementa compresion transparente y compatible con columnas JSON:
+
+- Formato canonico nuevo: gzencode nivel 9, Base64 y prefijo gz64: envuelto como string JSON valido.
+- No comprimas dos veces un valor que ya tenga el prefijo canonico.
+- Los mutators comprimen al guardar y los accessors descomprimen al leer.
+- El resto de la aplicacion debe recibir JSON normal, nunca el token comprimido.
+- Comprime historicos por chunkById de 200 o un tamaño seguro, sin cargar toda la tabla en memoria.
+- Incluye dtes.jsonDte, firmadors.json, invalidacion_dtes.json, invalidacion_dtes.jsonRespuesta y recepcion_dtes.josn, adaptando nombres si el destino difiere.
+- No reemplaces un valor por la version comprimida si esta resulta mas grande que el original.
+- La descarga, visualizacion, correo, PDF, reenvio y reprocesamiento deben trabajar con JSON descomprimido.
+- El ZIP puede comprimir el archivo como contenedor, pero dentro debe incluir un .json normal y legible.
+- El rollback debe descomprimir los valores antes de retirar cambios relacionados.
+
+ADVERTENCIA OBLIGATORIA SOBRE FORMATOS ANTIGUOS:
+
+- Antes de ejecutar la migracion, busca gzcompress, gzuncompress, gzencode, gzdecode, gzdeflate y base64 en el destino.
+- Si el proyecto ya guarda binario crudo con gzcompress, NO ejecutes directamente la migracion canonica.
+- Crea primero una migracion temporal de conversion que detecte: JSON plano, gzcompress antiguo, posibles cuatro bytes de encabezado y formato gz64 nuevo.
+- Para valores antiguos: descomprime, valida con json_decode, recomprime una sola vez al formato canonico y verifica el resultado antes de actualizar.
+- Omite los valores ya convertidos.
+- Registra los IDs dañados sin destruirlos ni regenerarlos silenciosamente.
+- Ejecuta primero dry-run o conteos, respalda la base y prueba una muestra de lectura, descarga y correo.
+- El binario gzcompress puede ocupar menos bytes que Base64, pero el formato gz64 es seguro para columnas JSON, respaldos y transferencias. No afirmes que siempre pesa menos.
+
+21. CONVERTIDOR DE NUMEROS A LETRAS
+
+Referencia:
+
+- app/Helpers/Convertidor.php
+- tests/Unit/ConvertidorTest.php
+
+- Corrige el helper para convertir correctamente cualquier valor monetario soportado por el sistema.
+- Maneja cero, enteros, decimales, valores grandes, centavos, negativos si el dominio los admite y redondeo a dos decimales.
+- Evita resultados vacios, escalas incorrectas o errores por separadores de miles y decimales.
+- Mantén la moneda correspondiente del DTE y la frase de centavos con formato consistente.
+- Agrega casos de frontera y varios importes reales en pruebas unitarias.
+
+22. DESCARGA MASIVA JSON Y PDF EN ZIP
+
+Referencias:
+
+- app/Http/Livewire/DownloadJson.php
+- app/Http/Controllers/DescargaDteZipController.php
+- resources/views/livewire/dtes/download-json.blade.php
+- routes/web.php
+
+Reemplaza la descarga sin filtro y en una sola peticion por una exportacion segura por lotes:
+
+- Filtro de fecha inicial y final.
+- Filtro por Todos, Factura/Consumidor Final (01), Credito Fiscal (03), Nota de Credito (05) y Sujeto Excluido (14).
+- Selector de formato: Solo JSON, Solo PDF o JSON y PDF.
+- Spinner inmediato en el boton con texto Preparando o Descargando.
+- Barra con porcentaje real, cantidad procesada, total y errores.
+- Consulta limitada obligatoriamente a Auth::user()->empresa.
+- Guarda solamente IDs en el estado de exportacion y consulta documentos por lotes.
+- Para JSON usa lotes mayores; para PDF usa lotes pequeños porque DomPDF consume CPU y memoria.
+- Genera el PDF con ExportController::generarPDF(codigoGeneracion), nunca con ID.
+- Para Solo PDF no selecciones jsonDte desde la base.
+- Si se solicitan ambos, usa carpetas JSON/ y PDF/ dentro del ZIP.
+- Si falla un documento, continua y agrega ERRORES.txt al ZIP.
+- Usa token UUID aleatorio, cache temporal, ruta privada por usuario y validacion de usuario y empresa al descargar.
+- El controlador de descarga debe impedir path traversal, eliminar cache y borrar el ZIP despues de enviarlo.
+- Limpia ZIP temporales antiguos de forma segura.
+- No envies miles de IDs al navegador ni confies en IDs recibidos desde JavaScript.
+- No dupliques la ruta download.
+
+Para volúmenes de 5,000 DTE o más:
+
+- La version por lotes en navegador puede funcionar, pero puede tardar horas y exige mantener la pestaña abierta.
+- Implementa preferiblemente una exportacion en cola, persistente y reanudable.
+- Divide el resultado en varios ZIP, por ejemplo 500 PDF por archivo.
+- Permite cerrar la pantalla, consultar progreso y descargar los ZIP cuando terminen.
+- Controla espacio disponible, caducidad, reintentos, errores y limpieza de archivos.
+
+23. PRUEBAS ADICIONALES Y COMPATIBILIDAD
+
+Verifica tambien:
+
+- Un cliente configurado para CCF puede emitir consumidor cuando se elige expresamente.
+- Reprocesar un rechazado actualiza la firma y no aumenta la cantidad de firmas del DTE.
+- Correos normalizados quedan validos dentro del JSON.
+- JSON plano, gz64 y formato legado se leen correctamente durante una conversion controlada.
+- Los JSON descargados y enviados son normales y validos.
+- Los cuatro tipos solicitados se invalidan y generan PDF correctamente.
+- Todos los listados y exportaciones estan aislados por empresa.
+- La descarga ZIP rechaza tokens de otro usuario o empresa.
+- El progreso llega a 100 y el ZIP se elimina despues de descargarse.
+- Una falla individual genera ERRORES.txt sin cancelar todo el lote.
+- Las consultas de Solo PDF no cargan jsonDte.
+
+Ejecuta, ademas de las pruebas anteriores:
+
+php artisan test tests/Unit/ConvertidorTest.php
+php artisan test tests/Unit/JsonComprimidoTest.php
+php artisan test tests/Unit/NormalizadorCorreoDteTest.php
+php artisan test tests/Unit/ProcesamientoDteServiceTest.php
+php artisan route:list --name=download
+
+24. CRITERIOS DE ACEPTACION
+
+La tarea termina cuando:
+
+- DTE abre PDF por codigoGeneracion.
+- QR y tickets usan codigoGeneracion.
+- Correos adjuntan PDF y JSON.
+- Invalidacion respeta los nuevos plazos.
+- PDF de invalidacion funciona.
+- Existe Admin Empresa > Personalizar DTE.
+- Los colores se guardan por empresa en base de datos.
+- La vista previa cambia en vivo.
+- DTE e invalidacion comparten paleta.
+- La tabla vacia mantiene el diseño actual.
+- No existe el error unexpected identifier html.
+- Clientes configurados para CCF pueden generar consumidor mediante la opcion autorizada.
+- Reprocesar un DTE rechazado actualiza la firma sin crear duplicados.
+- Dos computadoras procesando el mismo DTE producen un solo envio; la segunda no pisa el sello ni cambia el estado a RECHAZADO.
+- Ninguna venta, nota, sujeto excluido ni cobro muestra "Attempt to read property id on null"; si falta un catalogo, el mensaje nombra cual.
+- Los correos del receptor se normalizan y validan antes del JSON.
+- Los JSON nuevos e historicos se guardan comprimidos una sola vez y se leen normalmente.
+- Ninguna migracion nueva se ejecuta directamente sobre gzcompress antiguo sin conversion previa.
+- El helper convierte correctamente importes y centavos a letras.
+- La descarga permite filtrar tipo y elegir JSON, PDF o ambos.
+- El ZIP muestra progreso real, aisla empresas y maneja errores individuales.
+- Las exportaciones muy grandes tienen una estrategia de cola, division y limpieza.
+- Blade compila, PHP pasa lint y las pruebas pasan.
+- Si hubo despliegue, todos los hashes remotos coinciden.
+
+Al finalizar informa archivos creados y modificados, migraciones, formato de compresion encontrado y aplicado, cantidad de registros convertidos/omitidos/con error, indices, pruebas, compilacion Blade, rutas, adaptaciones y, si se desplego, respaldo y cantidad de hashes verificados.
+
+25. ESQUEMAS, EVENTOS Y CATALOGOS OFICIALES VIGENTES
+
+Antes de implementar, descarga nuevamente desde la pagina oficial de informacion tecnica y funcional de Hacienda y confirma la fecha publicada. La referencia auditada en el proyecto fuente al 31-07-2026 es:
+
+- JSON Schemas actualizados el 28-07-2026.
+- Catalogos actualizados el 01-07-2026.
+- Manual tecnologico, funcional y normativa version 2.0 actualizado el 25-05-2026.
+- Factura (01): schema v2.
+- Comprobante de Credito Fiscal (03): schema v4.
+- Nota de Credito (05): schema v4.
+- Factura de Sujeto Excluido (14): schema v2.
+- Evento de invalidacion: schema v3.
+- Evento de contingencia: schema v4.
+
+Referencias principales del proyecto fuente:
+
+- app/Services/GeneradorDteV2Service.php
+- app/Services/ConsultaDteHaciendaService.php
+- app/Traits/GenerarJsonContingencia.php
+- tests/Unit/GeneradorDteV2ServiceTest.php
+- tests/Unit/ConsultaDteHaciendaServiceTest.php
+
+Reglas estructurales obligatorias:
+
+- Todas las direcciones admitidas por estos schemas llevan departamento, municipio, distrito y complemento.
+- No agregar extension en FE v2, CCF v4, NC v4 ni FSE v2; observaciones pertenece al resumen cuando el schema la contempla.
+- FE usa resumen.ivaRete, no ivaRete1.
+- CCF usa resumen.ivaPerci e ivaRete, no campos terminados en 1.
+- NC v4 incluye identificacion.fusion, resumen.codigoRetencionMH y, por linea, ivaPerci, totalIva e ivaRete.
+- FSE v2 usa receptor como nombre de la seccion, no sujetoExcluido.
+- Contingencia v4 usa codPuntoVentaMH, no codPuntoVenta en el detalle requerido por el evento.
+- La version guardada en dtes.version y la enviada a recepcion deben coincidir con identificacion.version.
+- Valida muestras completas contra el JSON Schema oficial; comprobar solamente nombres de campos no es suficiente.
+
+Reglas vigentes para la fecha del evento de invalidacion:
+
+- Para CCF, NC y los demas documentos con cierre mensual, documento.fecEmi conserva la emision original e identificacion.fecEmi del evento debe ser exactamente la fecha de generacion del DTE original.
+- Para FE y FSE, la fecha del evento puede estar dentro de los tres meses permitidos.
+- El plazo de transmision no sustituye la fecha valida del evento: CCF/NC y documentos equivalentes se transmiten hasta el decimo dia habil del mes siguiente; FE/FSE, dentro de tres meses.
+- Motivo 2 no lleva codigoGeneracionR.
+- Motivos 1 y 3 requieren reemplazo ya procesado y sellado para FE, CCF y FSE.
+- Para NC, codigoGeneracionR queda null y el documento reemplazante se genera despues de aceptar la invalidacion.
+
+QR oficial de verificacion:
+
+https://admin.factura.gob.sv/consultaPublica?ambiente={ambiente}&codGen={codigoGeneracion}&fechaEmi={YYYY-MM-DD}
+
+- Conserva el QR propio por codigoGeneracion para abrir el PDF y agrega a la par el QR oficial de consulta publica.
+- En tickets conserva la clave anterior del QR propio para no romper el impresor y agrega urlHacienda con la URL oficial.
+- La base se configura con DTE_CONSULTA_PUBLICA_URL o config('dte.consulta_publica_url'); no dupliques dominios en controladores, vistas o traits.
+
+Consulta y reconciliacion antes de retransmitir:
+
+- Si el DTE esta FIRMADO o RECHAZADO, consulta primero a Hacienda por NIT, tipo y codigoGeneracion.
+- Solo toma el sello si la respuesta corresponde al mismo codigo y contiene un sello valido.
+- Si existe, actualiza atomicamente sello, estado, JSON descomprimido, recepcion y documento comercial; no vuelvas a firmar ni transmitir.
+- Si la consulta es ambigua o el servicio no responde, no retransmitas y no marques RECHAZADO: devuelve CONSULTA_NO_DISPONIBLE.
+- Si Hacienda responde a la recepcion que el documento ya existe, consulta y reconcilia en vez de dejar el sistema rechazado.
+
+Auditoria de catalogos obligatoria antes del despliegue:
+
+- Compara por codigo y descripcion los 33 catalogos oficiales, sin asumir que los seeders historicos siguen vigentes.
+- Revisa especialmente CAT-008 Distrito, CAT-012 Departamento, CAT-013 Municipio, CAT-014 Unidad de Medida, CAT-019 Actividad Economica, CAT-023 Operaciones Especiales y CAT-033 Tipo de Regimen.
+- En la auditoria del fuente, el seeder historico de actividades no cubria todo CAT-019 y la division municipio/distrito era anterior a la reorganizacion vigente.
+- No cambies IDs referenciados por clientes, sucursales o DTE historicos. Actualiza por clave natural dentro de una migracion respaldada, conserva las relaciones y registra elementos sin correspondencia.
+- Ejecuta primero un reporte/dry-run; no apliques una sincronizacion territorial destructiva automaticamente.
+
+Agrega a las pruebas minimas:
+
+php artisan test tests/Unit/GeneradorDteV2ServiceTest.php
+php artisan test tests/Unit/ConsultaDteHaciendaServiceTest.php
+php artisan test tests/Unit/PlazoInvalidacionDteServiceTest.php
+
+26. CATALOGOS FALTANTES AL CREAR EL DOCUMENTO (ERROR OBSERVADO EN PRODUCCION)
+
+Este apartado es obligatorio y va ligado al apartado 25: la auditoria y sincronizacion de catalogos puede dejar sin fila los registros que el codigo de venta da por sentados, y entonces el cajero recibe un mensaje inutil.
+
+Sintoma exacto observado:
+
+- Al guardar una venta con Consumidor Final o con Credito Fiscal aparece el cuadro rojo de SweetAlert con titulo Error y el texto: Attempt to read property "id" on null.
+- No es una pantalla de error de Laravel: es el listener item-error de resources/views/common/notis.blade.php mostrando el mensaje de la excepcion que capturo el try/catch de la venta. La venta se grabo y luego hizo rollBack, por eso no queda rastro visible.
+- Fallan por igual consumidor y credito fiscal porque ambos flujos leen el mismo grupo de catalogos.
+
+CAUSA RAIZ CONFIRMADA (no es solo falta de validacion):
+
+El importador de catalogos desactivo las filas que la facturacion necesita. Su
+barrido de retiro marca 'Desactivado' toda fila que no venga en el Excel, y las
+filas comodin con codigo NULL -el tributo y el tipo de contingencia que el POS
+busca con whereNull('codigo')- Hacienda no las publica nunca. Ademas, comparar
+codigos como texto crudo hace que "1" y "01" no empaten: inserta un duplicado y
+desactiva el original.
+
+Por eso este apartado tiene DOS mitades y ninguna sustituye a la otra:
+  a) arreglar el importador, que es de donde sale el dano. Las reglas completas
+     estan en el prompt de catalogos, seccion 1, "REGLAS QUE NO SE NEGOCIAN";
+  b) blindar los ->id, para que la proxima vez que falte un catalogo el mensaje
+     diga cual en vez de "property id on null".
+
+Aplicar solo (b) deja el sistema cayendose igual, nada mas que con mejor
+mensaje. Aplicar solo (a) deja el proximo hueco sin diagnosticar.
+
+Detalle de (b):
+
+Antes de crear la fila en dtes, el flujo de venta resuelve varios catalogos con first() o find() y lee ->id sin comprobar el resultado:
+
+- AmbienteDestino::find($empresa->ambiente)
+- TipoDocumento::where('status','Activo')->where('valor','FACTURA')->first()   (consumidor)
+- TipoDocumento::where('status','Activo')->where('codigo','03')->first()       (credito fiscal)
+- ModeloFacturacion::where('status','Activo')->first()
+- TipoTransmision::where('status','Activo')->first()
+- TipoContigencia::where('status','Activo')->whereNull('codigo')->first()
+- Tributo::where('status','Activo')->whereNull('codigo')->first()
+- Tocken::where('estado','ok')->whereDate('fecha', hoy)->first()
+
+Las dos consultas whereNull('codigo') dependen de una fila comodin sin codigo. Una reimportacion de catalogos que rellene la columna codigo, o que cambie el valor de status, las deja en null y la facturacion se cae por completo. El token queda en null cuando GenerarToken no consiguio autenticarse contra Hacienda ese dia.
+
+Correccion obligatoria en el destino:
+
+- Agrega el helper en un TRAIT compartido (app/Traits/CatalogoRequerido.php), no como metodo privado copiado en cada controlador: son nueve archivos y la copia se desincroniza. El metodo catalogoRequerido($registro, string $descripcion) lanza RuntimeException nombrando el catalogo que falta cuando el registro es null, y devuelve el registro cuando existe.
+- Envuelve con ese helper cada una de las consultas anteriores, incluido el token de Hacienda y la fila de empresa.
+- El mensaje debe indicar tabla, filtro y valor buscado, para que el administrador sepa que fila crear o reactivar. Ejemplo: "No se pudo emitir el DTE: falta el tributo sin codigo con status Activo (catalogo tributos)."
+- Mueve esas consultas dentro del bloque que solo se ejecuta cuando la empresa emite DTE; no tiene sentido exigir catalogos de DTE en una venta fisica.
+- Deja las validaciones dentro del try/catch de la transaccion, para que el rollBack ocurra y el mensaje llegue por item-error.
+- No sustituyas el null por un ID fijo ni por un valor por defecto inventado: eso graba un DTE con datos incorrectos ante Hacienda.
+
+Alcance: no basta con el punto de venta. Revisa y aplica el mismo blindaje en todos los controladores que crean documentos electronicos. En el proyecto fuente el patron aparece en:
+
+- app/Http/Livewire/PosController.php
+- app/Http/Livewire/CuentasCobrarController.php
+- app/Http/Livewire/NuevaNotaCreditoController.php
+- app/Http/Livewire/NuevoSujetoExcluidoController.php
+- app/Http/Livewire/ContingenciaDTEController.php
+- app/Http/Livewire/InvalidacionesDTEController.php
+- app/Http/Livewire/LotedteController.php
+- app/Http/Livewire/DteController.php
+- app/Http/Livewire/PrecompraController.php
+
+Localiza los puntos pendientes con:
+
+grep -rn "ambiente->id\|tipoModelo->id\|tipoOpera->id\|tipoContingencia->id\|tributo->id\|tokenActivo->id" app/
+
+PERO NO EDITES SEGUN ESE grep. No distingue codigo vivo de comentarios: en el
+fuente, CuentasCobrarController tenia 6 coincidencias y las 6 estaban dentro de
+un bloque /* */, o sea codigo muerto que no habia que tocar. Filtra la lista
+con token_get_all() de PHP, quedandote solo con las secuencias
+T_VARIABLE + T_OBJECT_OPERATOR + "id" reales.
+
+VERIFICACION FINAL: no la hagas con grep tampoco. Carga cada clase modificada
+por reflexion y comprueba que el trait resuelve de verdad:
+
+  require "vendor/autoload.php";
+  method_exists("App\\Http\\Livewire\\PosController", "catalogoRequerido");
+
+Motivo: si el archivo queda con "use CatalogoRequerido;" dentro de la clase
+pero sin el "use App\Traits\CatalogoRequerido;" de importacion, PHP lo resuelve
+al namespace del controlador, php -l pasa sin quejarse y la clase revienta en
+produccion al cargarse. Esto paso al inyectar el trait con expresiones
+regulares: los archivos del fuente estan en CRLF, los patrones escritos con \n
+no coincidieron y el script reporto exito sin haber escrito nada. Cualquier
+edicion masiva por script debe comparar el contenido antes y despues, y no
+confiar en que preg_replace haya hecho algo.
+
+Consulta de diagnostico para saber que catalogo falta en una base concreta:
+
+SELECT (SELECT COUNT(*) FROM ambiente_destinos WHERE id=(SELECT ambiente FROM empresas LIMIT 1)) AS ambiente,
+       (SELECT COUNT(*) FROM tipo_documentos WHERE status='Activo' AND valor='FACTURA')      AS factura,
+       (SELECT COUNT(*) FROM tipo_documentos WHERE status='Activo' AND codigo='03')          AS ccf,
+       (SELECT COUNT(*) FROM modelo_facturacions WHERE status='Activo')                      AS modelo,
+       (SELECT COUNT(*) FROM tipo_transmisions  WHERE status='Activo')                       AS transmision,
+       (SELECT COUNT(*) FROM tipo_contigencias  WHERE status='Activo' AND codigo IS NULL)    AS contingencia,
+       (SELECT COUNT(*) FROM tributos           WHERE status='Activo' AND codigo IS NULL)    AS tributo,
+       (SELECT COUNT(*) FROM tocken WHERE estado='ok' AND DATE(fecha)=CURDATE())             AS token_hoy;
+
+Cualquier columna en 0 es la causa. Adapta los nombres de tabla si el destino difiere.
+
+Verificacion antes de dar por terminada la actualizacion:
+
+- Ejecuta la consulta anterior en el destino ANTES y DESPUES de sincronizar catalogos, y compara.
+- Si la sincronizacion del apartado 25 rellena la columna codigo de tributos o tipo_contigencias, conserva o recrea la fila comodin sin codigo, o cambia la consulta al codigo oficial correspondiente. No dejes las dos cosas a medias.
+- Prueba una venta real de consumidor final y una de credito fiscal en el destino despues de migrar catalogos.
+- Confirma que al forzar la ausencia de un catalogo el mensaje nombra la tabla y no dice Attempt to read property id on null.
+
+27. AGENTE QA: CICLO DE VERIFICACION HASTA CERO ERRORES
+
+Al terminar, actua como AGENTE QA independiente. No asumas que lo que acabas de
+escribir esta bien: tu trabajo aqui es encontrar lo que falla.
+
+REGLA CENTRAL: NO DECLARES LA TAREA TERMINADA MIENTRAS QUEDE UN SOLO ERROR.
+Cada correccion obliga a repetir la bateria COMPLETA desde el principio, porque
+un arreglo puede romper algo que ya pasaba. Informa cuantas iteraciones hicieron
+falta.
+
+BATERIA:
+
+  a) php -l en cada archivo creado o modificado.
+  b) php artisan test --testsuite Unit COMPLETA, no solo las pruebas nuevas.
+     Una prueba existente que empieza a fallar es un error tuyo.
+  c) view:clear y view:cache; confirma que PHP cierre antes de <!DOCTYPE html>.
+  d) php artisan route:list; ninguna ruta duplicada ni faltante.
+  e) RESOLUCION DE CLASES POR REFLEXION, no por grep:
+       method_exists("App\Http\Livewire\PosController", "catalogoRequerido")
+     Un "use TraitX;" dentro de la clase sin su "use App\Traits\TraitX;" de
+     importacion pasa php -l limpio y revienta al cargar la clase en produccion.
+  f) Emitir una venta de consumidor final y una de credito fiscal, y que salgan
+     selladas. Es la unica prueba que cuenta para este modulo.
+  g) Provocar la falta de un catalogo a proposito y confirmar que el mensaje
+     nombra la tabla, y no "Attempt to read property id on null".
+  h) Revisar el log despues de ejercitar los flujos:
+       grep -i "error|exception" storage/logs/laravel.log
+
+NO SE PERMITE:
+
+- Declarar terminado con errores conocidos.
+- Confundir "compila y no lanza excepcion" con "los datos son correctos".
+- Editar un archivo sin comprobar que se ejecuta: puede no tener ruta, ser una
+  clase que nadie instancia, o estar dentro de un bloque comentado.
+- Dar por buena una edicion masiva por script sin comparar el contenido antes y
+  despues. Un preg_replace que no coincide informa exito sin escribir nada, y
+  los archivos de este proyecto estan en CRLF: un patron escrito con 
+ no
+  coincide.
+- Silenciar un error con ?? o try/catch para que la corrida quede limpia.
+
+INFORME DE QA: iteraciones hasta cero errores, cada error con su causa y
+correccion, resultado de cada punto de la bateria, y lo que quedo fuera de
+alcance y por que.

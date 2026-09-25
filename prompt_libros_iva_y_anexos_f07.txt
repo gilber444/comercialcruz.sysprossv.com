@@ -1,0 +1,831 @@
+PROMPT PARA LIBROS DE IVA Y ANEXOS DEL F07
+
+ORDEN DE APLICACION DE LOS TRES PROMPTS
+
+Este trabajo esta repartido en tres prompts que NO son independientes. Aplicalos
+en este orden; saltarse el orden hace perder tiempo o corrompe datos:
+
+  1) prompt_copiar_actualizacion_dte_2_0.txt
+     Modulo DTE, invalidaciones, PDF nuevo, personalizacion de colores
+     (DtePaletteService) y blindaje de catalogos. Es la base: los otros dos lo
+     dan por hecho.
+
+  2) prompt_copiar_catalogos_esquemas_y_eventos.txt
+     Importador de catalogos oficiales, esquemas JSON y eventos. Va DESPUES del
+     1 porque su sincronizacion de catalogos puede desactivar filas que la
+     facturacion necesita, y el apartado 26 del prompt 1 es lo que protege
+     contra eso.
+
+  3) prompt_libros_iva_y_anexos_f07.txt
+     Libros de IVA y anexos del F07. Va al final porque necesita la paleta del
+     prompt 1 y los catalogos correctos del prompt 2.
+
+Despues de CADA prompt, corre su ciclo de QA y una venta de prueba antes de
+pasar al siguiente. Si el destino ya tiene alguno aplicado, verificalo en vez de
+asumirlo: la seccion de auditoria de cada prompt dice como.
+
+
+Trabaja sobre el proyecto Laravel ubicado en:
+
+PROYECTO DESTINO:
+[ESCRIBIR AQUI LA RUTA DEL OTRO PROYECTO]
+
+Usa como proyecto fuente y referencia funcional:
+
+PROYECTO FUENTE:
+C:\laragon\www\servimangueras.cpc.lat
+
+OBJETIVO
+
+Dos entregables distintos que se suelen confundir:
+
+  A) LIBROS DE IVA: reportes en PDF para el contribuyente y para auditoria.
+     Ya existen; hay que rediseñarlos.
+  B) ANEXOS DEL F07: archivos CSV que se cargan en el portal de Hacienda para
+     que totalice las casillas de la declaracion. NO son PDF y no se imprimen.
+
+No mezcles los dos. Un libro bonito no sirve para declarar, y un anexo no se le
+entrega a nadie en papel.
+
+REGLAS INCORPORADAS DESDE EL PROYECTO FUENTE (OBLIGATORIAS)
+
+1. REDONDEOS, HOLGURAS Y PRECISION DE DTE
+
+- Aplicar una aritmetica decimal determinista en todas las facturas, notas,
+  compras y eventos; no usar float para calcular importes.
+- Los campos monetarios del cuerpoDocumento se calculan y conservan con hasta
+  8 posiciones decimales. Los campos del resumen y los anexos F-07 se
+  redondean directamente a 2 posiciones, con redondeo medio hacia arriba.
+- Para IVA/desgloses calcular una parte y obtener la otra por RESTA de valores
+  ya redondeados: base = total / 1.13; IVA = total - base. Nunca redondear
+  ambas formulas independientes, porque puede aparecer una diferencia de un
+  centavo.
+- Al totalizar un periodo sumar los valores ya redondeados de cada fila.
+- Respetar la holgura de +/- 0.01 permitida por Hacienda sin usarla para
+  ocultar una diferencia aritmetica real.
+- En el Anexo 2 de ventas a consumidor final, la columna B siempre es '4'
+  (DTE) y la columna C es '01' para Factura de Consumidor Final. No colocar
+  '4' en C: ese valor pertenece a la clase de documento de la columna B.
+- Agregar pruebas de frontera: 5.664 -> 5.66, 5.665 -> 5.67, importes de
+  0.01/0.05 y el cuadre 450.00 = 398.23 + 51.77.
+
+2. CONSULTA A HACIENDA ANTES DE PROCESAR UN DTE
+
+- Antes de firmar/transmitir un DTE que no este finalizado, consultar siempre
+  a Hacienda con su codigo de generacion, como se hace normalmente.
+- La consulta que encuentre el DTE con sello debe reconciliarlo localmente y
+  dejarlo en estado PROCESADO con ese sello. En ese unico caso se detiene el
+  procesamiento para evitar duplicidad.
+- Si Hacienda responde NO_ENCONTRADO o RECHAZADO, el DTE debe continuar al
+  flujo normal de generacion, firma y transmision. No dejarlo bloqueado en
+  FIRMADO ni tratar el rechazo como documento procesado.
+- Un DTE solo se considera finalizado cuando estado = PROCESADO y sello no es
+  nulo ni vacio. No usar FIRMADO, RECHAZADO o INVALIDADO como criterio de
+  exito para impedir un nuevo intento de un DTE no sellado.
+- Si la consulta no puede determinar el estado por timeout, error de red o
+  respuesta invalida, no marcar PROCESADO ni inventar un sello: dejar el DTE
+  pendiente/reintentable y mostrar CONSULTA_NO_DISPONIBLE. La siguiente
+  ejecucion debe volver a consultar antes de transmitir.
+- El bloqueo de concurrencia por DTE se conserva para que dos peticiones
+  simultaneas no firmen ni transmitan el mismo documento.
+
+FUENTES OFICIALES VERIFICADAS (al 08-08-2026)
+
+- Publicacion vigente: "MODIFICACION A LOS ANEXOS DE LOS FORMULARIOS DE IVA
+  (F07) Y PAGO A CUENTA (F14) A PARTIR DEL PERIODO TRIBUTARIO DE ENERO 2025".
+  Hay una publicacion anterior de febrero 2024 que ya NO es la vigente: si el
+  cliente te pasa ese enlace, avisale.
+- Manual: "MANUAL DE USUARIO PARA CARGA DE ARCHIVO DE LOS ANEXOS ... F-07 V14
+  ENERO 2025". La portada del PDF manda sobre el titulo de la pagina web, que
+  en el sitio aparece como V15.
+- Plantilla oficial con macros del F07: 12 hojas, una por anexo, guardada por
+  Hacienda el 19-08-2025.
+- Plantilla del F14: hoja "Detalle", 23 columnas (A..W).
+
+NO deduzcas la estructura de memoria ni de un ejemplo del cliente. Descarga la
+plantilla .xls oficial y leele las hojas con PhpSpreadsheet, que el proyecto ya
+tiene instalado. La cabecera de cada hoja es la estructura autoritativa. El
+manual aporta longitudes y reglas por columna; el PDF pesa mas de 10 MB, asi
+que si tu herramienta web no lo abre, descargalo y extrae el texto
+descomprimiendo los streams FlateDecode.
+
+
+0. AUDITORIA OBLIGATORIA ANTES DE ESCRIBIR CODIGO
+
+1. Lista los libros que ya existen en el destino y si usan la paleta.
+   En el fuente: resources/views/pdf/libroConsumidor.blade.php,
+   libroContribuyente.blade.php y libroInvalidaciones.blade.php tenian CERO
+   referencias a DtePaletteService, contra 33 de dteFactura.blade.php.
+2. Confirma que exista el modulo de personalizacion de colores
+   (DtePaletteService, PersonalizacionDte). Si no existe, primero se copia
+   desde el prompt de la actualizacion DTE 2.0; este prompt lo da por hecho.
+3. Anota de que tablas sale cada dato: ventas, ventas_detalles, compras,
+   sujeto_excluidos, dtes, clientes, proveedores.
+4. Verifica si el destino ya emite DTE. Cambia por completo que se informa en
+   la columna del correlativo (ver seccion 3).
+5. BUSCA LOS ANEXOS QUE YA EXISTEN ANTES DE DECLARARLOS AUSENTES. No estan en
+   resources/views/pdf ni tienen controlador propio: viven en app/Exports como
+   clases de maatwebsite/excel y los invocan los controladores de libros. En
+   el fuente estaban en:
+     - app/Exports/AnexoContribuyentesExport.php  -> anexo 1
+     - app/Exports/AnexoContribuyenteExport.php   -> anexo 2
+   Ojo con los nombres: se diferencian en una sola "s" y NO corresponden a lo
+   que sugieren. Buscar solo por "anexo" en views o routes da falso negativo.
+
+6. CUENTA LAS COLUMNAS DE CADA EXPORT CONTRA LA PLANTILLA OFICIAL. La
+   modificacion de enero 2025 agrego columnas de Renta al final de varios
+   anexos, y un export escrito antes queda corto sin que nadie lo note. En el
+   fuente:
+     - anexo 1: 20 columnas, correcto, ya trae Tipo de Operacion y Tipo de
+       Ingreso antes del numero de anexo;
+     - anexo 2: 21 columnas contra las 23 oficiales. Faltan U "Tipo de
+       Operacion (Renta)" y V "Tipo de Ingreso (Renta)", y como consecuencia
+       el numero de anexo cae en la columna U en vez de la W.
+   Sintoma tipico: el archivo "carga bien" pero la casilla no totaliza lo
+   esperado, o el portal asigna valores a la columna equivocada. Que Hacienda
+   acepte el archivo NO prueba que las columnas esten alineadas.
+
+7. COMPRUEBA QUE EL ARCHIVO QUE VAS A EDITAR SE EJECUTE. Es el error que mas
+   tiempo cuesta en este proyecto y se repitio tres veces:
+
+   a) CONTROLADORES SIN RUTA. En el fuente existian a la vez
+      LibroVentasContribuyenteController y LibroContribuyenteController, que se
+      diferencian en una palabra. Solo el SEGUNDO tiene ruta y menu; el primero
+      es huerfano. Se agrego un boton de anexo al huerfano y el usuario no
+      podia verlo, porque esa pantalla no se carga nunca.
+      Verifica SIEMPRE antes de editar:
+        grep -rn "NombreController" routes/ resources/views/layouts/
+        php artisan route:list --path=<ruta>
+      Si no aparece en ninguno, estas editando codigo muerto.
+
+   b) CLASES IMPORTADAS PERO NUNCA INSTANCIADAS. AnexoContribuyenteExport
+      estaba en el "use" de un controlador y jamas se hacia "new". La ruta viva
+      era un fputcsv dentro del propio controlador. Contar columnas de esa
+      clase llevo a una conclusion falsa. Busca "new NombreClase" antes de
+      sacar conclusiones de un Export.
+
+   c) BLOQUES COMENTADOS. En LibroContribuyente.php el whereExists que valida
+      el DTE estaba dentro de /* */, y la generacion del PDF tambien: el libro
+      salia como HTML crudo en el navegador. Al aplicar un filtro nuevo, el
+      codigo quedo DENTRO del comentario y no filtraba nada.
+      Antes de editar un bloque, comprueba que no este comentado. Para
+      localizar coincidencias reales usa el tokenizador, no grep:
+      token_get_all() y quedate con T_VARIABLE + T_OBJECT_OPERATOR.
+
+8. Revisa tambien los comentarios de columna de los export existentes. En el
+   fuente, el export del anexo 1 tenia los comentarios copiados del anexo 2
+   ("numero de control (del)/(al)") aunque los datos si correspondian al
+   anexo 1. Corrige los comentarios: el siguiente que lo mantenga se va a
+   guiar por ellos.
+
+
+1. LOS 12 ANEXOS DEL F07
+
+Lista literal de la plantilla oficial, con la casilla que totaliza cada uno:
+
+   1  Detalle de Ventas a Contribuyentes
+   2  Detalle de Ventas a Consumidor Final
+   3  Detalle de Compras
+   4  Detalle de Ventas a Cuenta de Terceros          (casilla 108)
+   5  Detalle de Compras a Sujetos Excluidos          (casilla 66)
+   6  Anticipo a Cuenta 2% IVA efectuada AL Declarante (casilla 161)
+   7  Retencion 1% IVA efectuada AL Declarante        (casilla 162)
+   8  Percepcion 1% IVA efectuada AL Declarante       (casilla 163)
+   9  Percepcion 1% IVA efectuada POR el Declarante   (casilla 169)
+  10  Retencion 1% IVA efectuada POR el Declarante    (casilla 170)
+  11  Anticipo a Cuenta 2% efectuada POR el Declarante (casilla 171)
+  12  Retencion 13% IVA efectuada POR el Declarante   (casilla 172)
+
+El manual describe ademas anexos de documentos anulados y extraviados, tasas
+diferenciadas por combustibles, descuento por precio maximo de combustibles y
+ventas internas exentas no sujetas a proporcionalidad (Decreto 357). No los
+implementes salvo que el giro del cliente los exija.
+
+AL DECLARANTE vs POR EL DECLARANTE. Es la confusion mas cara de este modulo, y
+NO se resuelve mirando si el dato esta en ventas o en compras. Se resuelve
+preguntando QUIEN es el agente:
+
+- "AL Declarante" (6, 7, 8): otro se lo hizo a la empresa.
+- "POR el Declarante" (9, 10, 11, 12): la empresa se lo hizo a otro.
+
+Y de ahi NO se deduce la tabla de origen. El caso que rompe la intuicion:
+
+  RETENCION 1% (Art. 162 CT). La hace el gran contribuyente cuando COMPRA a
+  quien no es gran contribuyente. Si el cliente de la empresa es gran
+  contribuyente, ese cliente le RETIENE el 1% a la empresa. La retencion queda
+  documentada en el CCF que la empresa EMITE, y baja el total a cobrar.
+  Entonces: es "AL Declarante" -> ANEXO 7, casilla 162, pero su fuente son las
+  VENTAS, no las compras. El agente que se informa es el CLIENTE.
+
+  PERCEPCION 1% (Art. 163 CT). La hace el gran contribuyente cuando VENDE. Se
+  SUMA al total del documento. Si a la empresa se la perciben, es "AL
+  Declarante" -> ANEXO 8, y ahi si la fuente son las COMPRAS.
+
+REGLA PRACTICA PARA DISTINGUIRLAS EN EL CODIGO: si el 1% se RESTA del total del
+documento es RETENCION; si se SUMA es PERCEPCION. Miralo en el calculo del
+total antes de decidir el anexo, y no te fies del nombre de la variable ni de
+la columna: en el fuente la columna se llama ventas.percepcion y el valor es
+una RETENCION.
+
+
+2. FORMATO DEL ARCHIVO. REGLAS QUE RECHAZAN LA CARGA SI SE IGNORAN
+
+- Separador: PUNTO Y COMA (;). El manual incluso instruye al usuario a cambiar
+  el separador de listas de Windows a ";".
+- SIN ENCABEZADOS. El archivo cargado no debe traer los titulos de las
+  columnas. Es literal del manual: "las columnas no deben contener encabezados
+  o titulos de los datos a ingresar ni celdas combinadas". Generar el CSV con
+  cabecera es el error mas comun y el portal lo rechaza entero.
+- Sin celdas combinadas, una fila por documento.
+- Fechas DD/MM/AAAA. Deben caer dentro del mes y año seleccionados en la
+  pantalla de carga: si el usuario elige marzo, no puede colarse un documento
+  de febrero.
+- Ultima columna de TODOS los anexos: "Numero de anexo", con el numero del
+  anexo al que pertenece la fila.
+- Montos con punto decimal y dos decimales, sin separador de miles y sin
+  simbolo de moneda.
+- Longitudes tomadas del manual, por ejemplo para los anexos de percepcion y
+  retencion: NIT 14, fecha 10, tipo de documento 8, resolucion 100, serie 100,
+  numero de documento 100, monto sujeto 10, monto 10, DUI 9.
+- Trunca y valida antes de escribir; no dejes que el portal descubra el error.
+
+
+2.b AMBIENTE Y SELLO: QUE DOCUMENTOS ENTRAN AL LIBRO Y AL ANEXO
+
+Regla del negocio, obligatoria en TODOS los libros y anexos:
+
+- El ambiente sale de la empresa (empresas.ambiente), no de una opcion de
+  pantalla ni del .env. Si la empresa esta en pruebas, los libros salen solo
+  con documentos de pruebas; si esta en produccion, solo de produccion.
+- Nunca se mezclan los dos ambientes en un mismo archivo. Un libro de
+  produccion con un DTE de pruebas es un libro invalido.
+- Solo entran documentos SELLADOS por Hacienda: sello no nulo y distinto de
+  vacio, y estado Procesado. Un DTE firmado pero sin sello no existe para
+  efectos del libro.
+
+Se filtra por dtes.ambiente comparado contra empresas.ambiente, dentro del
+mismo whereExists que ya valida el sello y el estado. Filtrar solo por
+ventas.sello no basta: la venta puede tener sello y el DTE asociado ser de otro
+ambiente si la empresa se cambio de pruebas a produccion.
+
+Sintoma de no hacerlo: al pasar una empresa de pruebas a produccion, los libros
+arrastran para siempre los documentos de la etapa de pruebas y los totales
+nunca cuadran con la declaracion.
+
+EL FILTRO VA EN DOS LUGARES, NO EN UNO. Cada libro tiene DOS consultas
+independientes: la del componente Livewire que pinta la pantalla y la del
+controlador que genera el PDF. Son codigo separado y casi identico. Si aplicas
+el filtro solo en el Livewire, el PDF impreso trae MAS filas que la pantalla
+que el usuario acaba de revisar, y nadie lo nota hasta que los totales no
+cuadran. En el fuente hubo que tocar:
+
+  - app/Http/Livewire/LibroVentasConsumidorController.php   (2 consultas)
+  - app/Http/Livewire/LibroVentasContribuyenteController.php (2 consultas)
+  - app/Http/Livewire/LibroContribuyenteController.php       (2 consultas)
+  - app/Http/Livewire/LibroInvalidacionesController.php      (2 consultas)
+  - app/Http/Controllers/LibrosConsumidor.php                (PDF)
+  - app/Http/Controllers/LibroContribuyente.php              (PDF)
+  - app/Http/Controllers/LibroInvalidacion.php               (PDF)
+
+Al terminar, compara el conteo de filas de la pantalla contra el del PDF para
+el mismo periodo. Si no coinciden, falta un filtro en alguno de los dos.
+
+
+2.b.2 VENTAS EXENTAS Y NO SUJETAS: PREGUNTA ANTES DE ASUMIR
+
+PREGUNTA AL CLIENTE, ANTES DE ESCRIBIR CODIGO: "¿este negocio genera ventas
+exentas o no sujetas de IVA?". La respuesta cambia el diseño y no se puede
+adivinar leyendo la base, porque un sistema que nunca las clasifico las tiene
+todas guardadas como gravadas aunque no lo sean.
+
+Casos tipicos de venta exenta o no sujeta en El Salvador: medicamentos, algunos
+servicios de salud y educacion, y ventas a zonas francas o DPA a tasa cero.
+
+SI LA RESPUESTA ES NO. Se informan en cero en el libro y en el anexo, pero
+DECLARALO en el codigo con un comentario y en el informe final. No dejes la
+celda vacia: pon 0.00. En el fuente, tres filas del resumen tenian los valores
+COMENTADOS y salia "$" sin numero, que parece un error de sistema.
+
+SI LA RESPUESTA ES SI. Entonces no basta con sumar el total de la venta:
+
+  - Hace falta una marca por PRODUCTO o por categoria que diga si esa linea es
+    gravada, exenta o no sujeta. Si el destino no la tiene, hay que agregarla
+    (columna en productos o en la categoria) y capturarla en el mantenimiento.
+  - La venta debe guardar el desglose ya calculado, igual que se hace con las
+    compras: columnas venta_gravada, venta_exenta, venta_no_sujeta. No lo
+    reconstruyas al generar el libro recorriendo los detalles: es lento y se
+    descuadra si un producto cambia de clasificacion despues.
+  - El IVA solo se calcula sobre la porcion GRAVADA. Dividir el total completo
+    entre 1.13 cuando hay lineas exentas infla el debito fiscal y la
+    declaracion sale mal.
+  - Las columnas del anexo 1 (J ventas exentas, K no sujetas, L gravadas) y del
+    anexo 2 (K exentas, L internas exentas no sujetas a proporcionalidad,
+    M no sujetas, N gravadas) se llenan cada una de su fuente, no todas del
+    mismo campo.
+  - Si hay ventas exentas Y gravadas conviviendo, aparece la PROPORCIONALIDAD
+    del credito fiscal. Avisale al cliente que eso lo define su contador: no lo
+    implementes por tu cuenta.
+
+Deja registrado en el informe final que preguntaste y que respondio.
+
+
+2.c COLUMNAS DE RENTA: DEPENDEN DEL PERIODO DECLARADO
+
+Literal del manual para los anexos 1 y 2: "Las nuevas columnas [...] aplica a
+partir del periodo de Enero 2025; para periodos anteriores al referido debera
+colocar '0' en las 2 columnas".
+
+O sea, Tipo de Operacion y Tipo de Ingreso NO son constantes: valen '0' si el
+periodo declarado es anterior a 2025-01 y el codigo real desde ahi. La decision
+se toma con el periodo que se esta declarando, no con la fecha en que se genera
+el archivo. Centralizalo en un helper y usalo en todos los anexos; fijarlo a
+'01' y '03' en el codigo informa columnas que en ese periodo no existian.
+
+
+3. FACTURACION ELECTRONICA: QUE VA EN LA COLUMNA DEL CORRELATIVO
+
+Regla del manual, y es la que mas se equivoca al migrar un sistema a DTE:
+
+- Documentos del periodo NOVIEMBRE 2022 en adelante: se informa el CODIGO DE
+  GENERACION del DTE, SIN GUIONES.
+- Documentos anteriores a ese periodo: el NUMERO DE CONTROL del DTE, SIN
+  GUIONES.
+- Para documentos fisicos previos a la facturacion electronica: el correlativo
+  preimpreso de siempre.
+
+Implementa esto como una funcion unica y usala en todos los anexos. No lo
+repitas por anexo, porque el dia que cambie la regla se corrige en un solo
+lugar. Quitar guiones no es opcional ni cosmetico: el portal valida longitud.
+
+
+4. ESTRUCTURA DE LOS ANEXOS DEL ALCANCE MINIMO
+
+Alcance minimo recomendado: 1, 2, 3 y 7. Son los que un punto de venta con
+compras ya puede llenar con datos reales. Agrega el 5 si el destino tiene
+modulo de sujeto excluido. Ver la seccion 5 antes de decidir entre 7 y 9.
+
+ANEXO 1 - VENTAS A CONTRIBUYENTES (20 columnas, A..T)
+  A Fecha Emision                       K Ventas no sujetas
+  B Clase de Documento                  L Ventas gravadas locales
+  C Tipo de Documento Emitido           M Debito Fiscal por gravadas locales
+  D Numero de Resolucion                N Ventas a cuenta de terceros no dom.
+  E Serie de Documento                  O Debito Fiscal por esas ventas
+  F Numero Correlativo de Documento     P Total Ventas
+  G Numero de Control Interno           Q DUI del Cliente
+  H NIT o NRC del Cliente               R Tipo de Operacion (Renta)
+  I Nombre del Cliente                  S Tipo de Ingreso (Renta)
+  J Ventas exentas                      T Numero de anexo
+
+  Fuente: ventas con facturador de credito fiscal. F lleva el codigo de
+  generacion sin guiones (seccion 3). G admite hasta 100 caracteres y es el
+  correlativo interno del sistema.
+
+ANEXO 2 - VENTAS A CONSUMIDOR FINAL (23 columnas, A..W)
+  A Fecha                               M Ventas No Sujetas
+  B Clase de Documento                  N Ventas gravadas locales
+  C Tipo de Documento Emitido           O Exportaciones dentro de CA
+  D Numero de Resolucion                P Exportaciones fuera de CA
+  E Serie de Documento                  Q Exportaciones de servicios
+  F Numero de Control Interno (del)     R Ventas a Zonas Francas y DPA (tasa 0)
+  G Numero de Control Interno (al)      S Ventas a Cuenta de Terceros No Dom.
+  H Numero de documento (del)           T Total Ventas
+  I Numero de documento (al)            U Tipo de Operacion (Renta)
+  J N de Maquina registradora           V Tipo de Ingreso (Renta)
+  K Ventas Exentas                      W Numero de anexo
+  L Ventas Internas Exentas No Sujetas a Proporcionalidad
+
+  OJO: este anexo es POR RANGOS (del/al), no una fila por venta. Se agrupa por
+  dia, caja y tipo de documento, y se informan el primero y el ultimo
+  correlativo del rango. Generar una fila por ticket es un error de diseño que
+  infla el archivo y no cuadra con la casilla.
+
+ANEXO 3 - COMPRAS (21 columnas, A..U)
+  A Fecha de emision                    L Importaciones gravadas de bienes
+  B Clase de documento                  M Importaciones de servicios gravados
+  C Tipo de documento emitido           N Credito Fiscal
+  D Numero Correlativo de Documento     O Total Compras
+  E NIT o NRC del proveedor             P DUI del Proveedor
+  F Nombre del proveedor                Q Tipo de Operacion (Renta)
+  G Compras Internas Exentas            R Clasificacion (Renta)
+  H Internaciones exentas               S Sector (Renta)
+  I Importaciones Exentas y/o no sujetas T Tipo de Costo / Gasto (Renta)
+  J Compras Internas Gravadas           U Numero de Anexo
+  K Internaciones Gravadas de bienes
+
+ANEXO 7 - RETENCION 1% IVA EFECTUADA AL DECLARANTE, CASILLA 162 (9 col, A..I)
+  A NIT Agente                          F Monto sujeto
+  B Fecha de emision                    G Monto Retencion 1%
+  C Tipo de documento                   H DUI Agente
+  D Serie                               I Numero de anexo
+  E Numero de documento
+
+  Fuente: VENTAS donde el 1% se aplico (columna percepcion > 0 en el fuente).
+  El AGENTE es el CLIENTE que retuvo, no la empresa. El "monto sujeto" es la
+  base sin IVA, no el total con IVA.
+
+  Longitudes del manual para este anexo y el 10: NIT 14, fecha 10, tipo de
+  documento 8, resolucion 100, serie 100, numero de documento 100, monto
+  sujeto 10, monto 10, DUI 9.
+
+ANEXO 9 - PERCEPCION 1% EFECTUADA POR EL DECLARANTE, CASILLA 169 (10 col, A..J)
+  A NIT Sujeto / B Fecha emision / C Tipo de documento / D Resolucion /
+  E Serie / F Numero de documento o Num. de Control / G Monto sujeto /
+  H Monto Percepcion 1% / I DUI Sujeto / J Numero de anexo
+
+  Solo si la empresa PERCIBE de verdad (el 1% suma al total).
+
+CAMPOS DE RENTA. Las columnas "Tipo de Operacion", "Tipo de Ingreso",
+"Clasificacion", "Sector" y "Tipo de Costo / Gasto" son catalogos de Renta con
+codigos propios, no texto libre. El manual los enumera por anexo. Si el destino
+no los tiene, hay que crearlos como catalogo y permitir un valor por defecto
+configurable por empresa; no los inventes ni los dejes vacios.
+
+
+5. EL 1% DEL FUENTE ES RETENCION, AUNQUE LA COLUMNA SE LLAME PERCEPCION
+
+NO "corrijas" esto. Documentado porque induce a un error que rompe la emision.
+
+En el fuente el POS calcula un 1% cuando el CLIENTE es categoria GRANDE, lo
+RESTA del total ('total' => $sub - $percepcion) y lo guarda asi:
+
+    'ivaPerci1' => 0,
+    'ivaRete1'  => $percepcion,
+
+que el generador emite como resumen.ivaRete. Eso es CORRECTO: por el Art. 162
+del Codigo Tributario el gran contribuyente retiene el 1% al comprar, o sea el
+cliente le retiene a la empresa, y la retencion baja el total a cobrar. El
+nombre de la variable y de la columna esta mal puesto; el campo del DTE no.
+
+Cambiarlo a ivaPerci1 declararia una retencion como percepcion y ademas
+descuadraria el total, porque la percepcion suma en vez de restar.
+
+CONSECUENCIA PARA LOS ANEXOS: una empresa en esta situacion necesita el
+ANEXO 7 (Retencion 1% IVA efectuada AL Declarante, casilla 162) alimentado
+desde VENTAS donde percepcion > 0, informando al CLIENTE como agente. NO el
+anexo 9, que es para quien de verdad percibe.
+
+Antes de escribir el anexo, confirma en el destino:
+  - si el 1% se resta del total -> retencion -> anexo 7 desde ventas;
+  - si se suma -> percepcion -> anexo 9 desde ventas;
+  - si se lo aplican a la empresa al comprar -> anexo 8 desde compras.
+
+Si te encuentras nombres de variables o columnas que contradigan el calculo,
+gana el calculo. Considera renombrar la columna solo si el cliente lo pide y
+con migracion; no es obligatorio y no vale el riesgo por si solo.
+
+
+6. LIBROS DE IVA: MISMO DISEÑO Y MISMA PALETA QUE EL DTE
+
+Aplica a los libros el diseño de resources/views/pdf/dteFactura.blade.php:
+
+- Encabezado suave con logo a la izquierda y titulo centrado.
+- Tarjetas de datos del contribuyente y del periodo.
+- Tabla de detalle con encabezado de color, filas alternas y totales.
+- Pie con numero de pagina.
+- Toda la paleta desde DtePaletteService, por empresa. Sin colores fijos.
+
+Al inicio de cada libro:
+
+@php
+    $paletaDte = app(\App\Services\DtePaletteService::class)
+        ->obtener((int) $empresa->id);
+@endphp
+
+No uses @php($paletaDte = ...) en una sola linea: produce el error
+"syntax error, unexpected identifier html".
+
+Libros a rediseñar: ventas a consumidor final, ventas a contribuyentes,
+compras y anulaciones/invalidaciones. Si el destino no tiene libro de compras,
+crealo: es el respaldo del anexo 3.
+
+CONTENIDO LEGAL DEL LIBRO, que no es lo mismo que el anexo: correlativo por
+folio, totales por dia, resumen del periodo, y espacio de FIRMA DEL CONTADOR.
+Un libro sin totales diarios no cumple.
+
+
+6.b TRAMPAS DE DOMPDF. TODAS SE PAGARON EN EL FUENTE
+
+- border-radius NO aplica a <table>, solo a elementos de bloque. Para una tabla
+  con esquinas redondeadas hay que envolverla en un div con border-radius y
+  overflow:hidden, y quitarle el borde exterior a la tabla.
+
+- CUIDADO CON overflow:hidden: recorta lo que se desborda en vez de dejarlo
+  salir. Una tabla que antes se desbordaba sin que nadie lo notara, al meterla
+  en la tarjeta pierde la ultima columna. Sintoma exacto: los ultimos
+  caracteres cortados, "$ 515.0" en vez de "$ 515.00".
+
+- LA CAUSA DE ESE DESBORDE suele ser un margen heredado. Las tablas del fuente
+  traian style="margin:1%" del diseño viejo; con width="100%" mas ese margen se
+  salen del contenedor. Ponlo a cero al envolverlas.
+
+- Agrega table-layout:fixed y word-wrap:break-word para que las columnas se
+  repartan el ancho disponible en vez de crecer con el contenido. Efecto
+  secundario: quedan de ancho parejo. Si el cliente quiere anchos distintos,
+  declaralos por columna en el <th>.
+
+- NUNCA uses height:100% en un div dentro de una celda de tabla. DomPDF lo
+  interpreta como el alto completo de la pagina: la caja se estira hasta el
+  fondo y arrastra paginas vacias detras. En el fuente, la caja de firmas con
+  height:100% convirtio un libro de 2 registros en 3 paginas.
+
+- El pie de pagina va con position:fixed y counter(page) para que se repita en
+  todas las hojas.
+
+- Usa @php ... @endphp en bloque, NUNCA @php(...) de una linea: la forma corta
+  produce "syntax error, unexpected identifier html".
+
+- COMPILAR NO ES PROBAR. Un @php mal cerrado pasa el compilador de Blade y
+  revienta al ejecutarse. Renderiza cada vista de verdad con datos falsos y
+  comprueba que el HTML resultante no contenga "{{" sin interpolar. Si la base
+  local no responde, levanta sqlite en memoria: DtePaletteService consulta
+  Schema::hasTable y sin base lanza excepcion.
+
+    config(['database.default' => 'sqlite',
+            'database.connections.sqlite.database' => ':memory:']);
+    $html = view('pdf.libroX', $datosFalsos)->render();
+
+- CUIDADO CON LOS GUARDS "ya aplicado". Si compruebas la presencia de una clase
+  CSS para decidir si insertar el markup, el guard se dispara con la propia
+  regla del <style> y el bloque nunca se agrega, informando exito. Paso dos
+  veces en el fuente (encabezado y pie). Comprueba el markup concreto
+  (class="lb-header") y no el nombre suelto.
+
+
+6.c LIBRO DE COMPRAS: CASI SIEMPRE HAY QUE CREARLO, Y LA TABLA NO ALCANZA
+
+El destino suele tener libros de ventas y ninguno de compras, aunque el Anexo 3
+lo exija. Pero antes de la pantalla hay un problema de datos.
+
+EL MODULO DE COMPRAS NO GUARDA LO QUE EL ANEXO PIDE. En el fuente la tabla
+compras solo tenia numero, tipo, correlativo, serie, fecha, condicion de pago,
+proveedor, estado y user. Faltaba TODO el desglose fiscal. Reconstruirlo al
+generar el anexo dividiendo el total entre 1.13 da un numero plausible pero no
+declarable: no distingue gravado de exento ni interno de importado.
+
+Crea una migracion que agregue a compras:
+  - empresa y sucursal (aislamiento por contribuyente)
+  - clase_documento, tipo_documento, numero_resolucion (identificacion)
+  - codigo_generacion y sello_recibido (compras amparadas en DTE del proveedor)
+  - compras_exentas, internaciones_exentas, importaciones_exentas,
+    compras_gravadas, internaciones_gravadas, importaciones_gravadas,
+    importaciones_servicios, credito_fiscal, total_compra
+  - renta_tipo_operacion, renta_clasificacion, renta_sector,
+    renta_tipo_costo_gasto
+  - indice (empresa, fecha)
+
+Nullable o default 0, y con Schema::hasColumn antes de crear cada una: en el
+fuente la columna empresa YA existia en la base aunque no estuviera en el
+modelo, y sin ese guard la migracion fallaba.
+
+REVISA EL fillable ANTES DE CULPAR AL FORMULARIO. En el fuente,
+Compras::create ya recibia 'sucursal' pero la columna NO estaba en el $fillable
+del modelo, asi que Eloquent la descartaba EN SILENCIO. Todas las compras
+historicas quedaron sin sucursal y sin empresa, y el reporte de compras -que si
+filtraba por compras.empresa- no mostraba nada. Un campo que "no se guarda" casi
+siempre es esto, no el formulario.
+
+ACTUALIZA EL CONTROLADOR QUE CREA LA COMPRA. La migracion sola no sirve de
+nada: si nadie llena las columnas nuevas, todas las compras siguen entrando en
+cero y el anexo sale vacio. Hay que tocar el controlador de nueva compra
+(NuevaCompraController en el fuente) para que en el mismo create() guarde:
+
+  - empresa (de Auth::user()->empresa) y sucursal
+  - tipo_documento, y clase_documento si la pantalla lo captura
+  - el desglose completo: gravadas, exentas, credito fiscal y total
+  - numero_resolucion y codigo_generacion cuando la compra venga de un DTE del
+    proveedor; si la pantalla aun no los captura, agregalos al formulario o
+    dejalo dicho explicitamente
+
+Revisa tambien el controlador de EDITAR compra: si edita montos o cambia el
+tipo de documento, tiene que recalcular el desglose igual que el de creacion.
+Una compra editada que conserva el desglose viejo descuadra el anexo sin dejar
+rastro.
+
+CALCULA EL DESGLOSE AL CREAR LA COMPRA, no al generar el anexo. Un CCF da
+derecho a credito fiscal y una factura de consumidor final no; esa decision se
+toma con el tipo de documento que el usuario eligio.
+
+EL CALCULO DEBE CUADRAR AL CENTAVO. Es dinero que se declara ante Hacienda:
+un centavo de diferencia entre el libro y la declaracion es una inconsistencia.
+
+  - Calcula UNA parte y obten la otra por RESTA, nunca las dos por redondeo:
+
+        $gravada = round($total / 1.13, 2);
+        $credito = round($total - $gravada, 2);   // no round($total*0.13/1.13)
+
+    Redondear ambas por separado produce sumas que no dan el total. Con
+    $total = 450.00: gravada 398.23 + credito 51.77 = 450.00 exacto.
+
+  - La suma de las columnas del desglose debe ser IGUAL al total guardado.
+    Comprueba esa igualdad en una prueba con importes de frontera: 0.01, 0.05,
+    valores que terminen en 5 centavos, y totales grandes.
+
+  - Guarda los montos en columnas decimal(12,2), nunca float ni double: la
+    aritmetica binaria de punto flotante arrastra colas que rompen la
+    comparacion exacta.
+
+  - La misma regla aplica a la retencion del 1% y a la percepcion: calcula
+    sobre la base SIN IVA, redondea a dos decimales, y verifica que el total
+    del documento siga cuadrando despues de restarla o sumarla.
+
+  - Al totalizar el periodo, suma los valores YA redondeados de cada fila. Si
+    sumas primero y redondeas al final, el total del libro no coincide con la
+    suma de sus lineas y el cuadre manual del contador falla.
+
+AVISA DE LAS COMPRAS SIN DESGLOSE. Las anteriores a la migracion quedan en
+cero. Muestra en pantalla cuantas son y advierte que saldrian en cero en el
+anexo, en vez de dejar que el usuario lo descubra al cargar el archivo en
+Hacienda. Si hay que declarar periodos anteriores, entrega un comando aparte
+que recalcule el desglose desde compras_detalles, con simulacion primero.
+
+CAMPOS QUE LA PANTALLA DE COMPRAS SUELE NO CAPTURAR y el anexo pide: numero de
+resolucion y codigo de generacion del DTE del proveedor. Y el modelo de
+proveedores puede no tener DUI, con lo que la columna P del anexo 3 queda
+vacia. Reportalo; no lo inventes.
+
+PERMISOS DE LA PANTALLA NUEVA. Si creas un permiso nuevo, la pantalla dara 403
+hasta que exista en la base y este asignado a los roles. O reutilizas un
+permiso existente del mismo modulo, o entregas el INSERT junto al cambio y lo
+dices explicitamente.
+
+
+7. PANTALLA DE GENERACION
+
+Una sola pantalla para los anexos:
+
+- Selector de mes y año, no rango libre: la carga en Hacienda es por periodo.
+- Casillas para elegir cuales anexos generar.
+- Vista previa con el conteo de filas y los totales por anexo, ANTES de
+  descargar. El usuario debe poder cuadrar contra su declaracion.
+- Descarga individual o un ZIP con todos.
+- Nombre de archivo predecible: anexo1_202603.csv o equivalente.
+- Aviso en pantalla de los documentos excluidos y por que (anulados,
+  contingencia sin sellar, fuera de periodo).
+- Todo filtrado por Auth::user()->empresa. Ningun listado sin ese filtro.
+
+NO TE QUEDES EN EL PDF: la pantalla tambien se rediseña. Lo que el cliente pide
+como "dejarlo profesional" incluye la pantalla desde donde se genera, no solo
+el documento. Como minimo:
+
+- Spinner en CADA boton mientras Livewire trabaja, con wire:loading.attr y
+  wire:target. Sin eso el usuario no sabe si el clic hizo algo y vuelve a
+  pulsar, disparando la accion dos veces:
+
+    <button wire:click="accion" wire:loading.attr="disabled" wire:target="accion">
+        <span wire:loading wire:target="accion" class="spinner-border spinner-border-sm"></span>
+        Generar
+    </button>
+
+- Estado vacio explicito. Una tabla en blanco no distingue "no hay
+  movimientos" de "la consulta fallo". Muestra un aviso: "No hay datos en las
+  fechas seleccionadas."
+
+- Filtro con opcion "Todas" cuando el tipo de documento sea opcional. Si el
+  valor centinela es 0, la consulta debe OMITIR el filtro con when(), no
+  buscar un tipo inexistente. Y aplicalo en la pantalla Y en el PDF.
+
+- Totales al pie de la tabla, no solo en el PDF.
+
+Los anulados e invalidados NO van en los anexos de ventas del periodo con su
+monto original. Verifica el tratamiento en el manual segun la fecha de la
+invalidacion, porque cambia si la anulacion es del mismo periodo o de uno
+anterior.
+
+
+8. PRUEBAS
+
+- Un periodo con datos reales cuadra contra los totales del libro.
+- El CSV sale con ";" y SIN encabezados.
+- Fechas DD/MM/AAAA y todas dentro del periodo elegido.
+- El correlativo lleva codigo de generacion sin guiones para DTE posteriores a
+  noviembre 2022, y numero de control sin guiones para los anteriores.
+- El anexo 2 agrupa por rangos del/al, no una fila por ticket.
+- El anexo 9 solo trae ventas con percepcion > 0 y el monto sujeto es la base
+  sin IVA.
+- Los montos suman exactamente lo que declara la casilla correspondiente.
+- Un periodo sin movimientos genera archivo vacio o avisa, pero no revienta.
+- Los libros PDF respetan la paleta de la empresa y siguen respetandola cuando
+  la empresa no tiene fila de personalizacion (valores por defecto).
+- Aislamiento por empresa en libros y anexos.
+- El conteo de filas de la PANTALLA coincide con el del PDF para el mismo
+  periodo. Si no, falta un filtro en una de las dos consultas.
+- Cada libro sale en PDF y no como HTML en el navegador.
+- Ninguna columna aparece cortada en el PDF: revisa el ultimo valor de la
+  ultima columna, que es donde se ve el desborde.
+- Un libro con pocos registros ocupa UNA pagina, no tres.
+- Todos los botones que disparan una accion Livewire tienen spinner.
+- Un periodo sin datos muestra el aviso, no una tabla en blanco.
+- Cada pantalla que editaste tiene ruta y aparece en el menu: compruebalo con
+  php artisan route:list, no asumiendo por el nombre del archivo.
+- Se pregunto al cliente si genera ventas exentas o no sujetas, y la respuesta
+  quedo registrada. Si dijo que si, el desglose se guarda por venta y el IVA se
+  calcula solo sobre la porcion gravada.
+- Ninguna celda de monto queda vacia: si no aplica, va 0.00.
+- El controlador de nueva compra guarda empresa, sucursal y el desglose
+  completo. Una compra recien creada aparece en el libro y en el anexo con sus
+  montos, no en cero.
+- El controlador de editar compra recalcula el desglose.
+- La suma del desglose es EXACTAMENTE igual al total en cada fila, y el total
+  del periodo es la suma de los valores ya redondeados de las filas.
+- Hay pruebas de redondeo con importes de frontera (0.01, 0.05, terminados en
+  5 centavos y totales grandes).
+
+Carga de verdad un archivo generado en el portal de Hacienda con un periodo de
+prueba antes de dar esto por terminado. Es la unica validacion que cuenta.
+
+
+8.b DESPLIEGUE AL VPS
+
+Si se solicita y existe .vscode/sftp.json:
+
+- Usa las credenciales sin mostrarlas.
+- Sube SOLO los archivos modificados, no el proyecto.
+- Excluye .env, .vscode, vendor, storage y caches.
+- DIFF CONTRA EL REMOTO ANTES DE SUBIR. En el fuente aparecieron cambios
+  remotos que no estaban en local y se habrian perdido.
+- Respalda cada archivo remoto antes de reemplazarlo.
+- FTP pasivo, y --ftp-create-dirs para archivos en carpetas nuevas.
+- Descarga de nuevo cada archivo subido y compara contra el local.
+- No declares terminado hasta que todos coincidan.
+- Si tras subir el comportamiento no cambia, sospecha de opcache o de
+  bootstrap/cache: puede requerir view:clear o reiniciar PHP-FPM.
+
+Los archivos de este modulo son vistas Blade y controladores: no hace falta
+regenerar el manifiesto de Livewire salvo que crees un COMPONENTE nuevo, como
+el libro de compras. En ese caso, sin acceso a artisan hay que editar a mano
+bootstrap/cache/livewire-components.php y agregar el alias en kebab-case
+(LibroComprasController -> libro-compras-controller).
+
+
+8.c AGENTE QA: CICLO DE VERIFICACION HASTA CERO ERRORES
+
+Al terminar, actua como AGENTE QA independiente. No asumas que lo que acabas de
+escribir esta bien: tu trabajo aqui es encontrar lo que falla.
+
+REGLA CENTRAL: NO DECLARES LA TAREA TERMINADA MIENTRAS QUEDE UN SOLO ERROR.
+Cada correccion obliga a repetir la bateria COMPLETA, porque un arreglo puede
+romper algo que ya pasaba.
+
+BATERIA COMPLETA:
+
+  a) php -l en cada archivo creado o modificado.
+
+  b) Compilacion de vistas: view:clear y view:cache.
+
+  c) RENDERIZADO REAL de cada PDF con datos falsos. Compilar NO es probar: un
+     @php mal cerrado pasa el compilador y revienta al ejecutarse. Comprueba
+     que el HTML resultante no contenga "{{" sin interpolar ni colores fijos.
+
+  d) Rutas: php artisan route:list --path=libro
+     Cada pantalla que tocaste debe aparecer. Si no aparece, editaste codigo
+     muerto (ver seccion 0, punto 7).
+
+  e) Resolucion de clases por reflexion, no por grep:
+       method_exists('App\Http\Livewire\XController', 'metodoNuevo')
+     Un "use TraitX;" dentro de la clase sin el "use App\Traits\TraitX;" de
+     importacion pasa php -l limpio y revienta al cargar la clase.
+
+  f) Conteo de filas: pantalla vs PDF para el mismo periodo. Deben coincidir.
+
+  g) Cuadre aritmetico: la suma del desglose es igual al total en cada fila, y
+     el total del periodo es la suma de las filas ya redondeadas.
+
+  h) Prueba funcional con datos reales: genera un periodo, abre el PDF, revisa
+     que ninguna columna quede cortada y que el numero de paginas sea razonable.
+
+  i) CARGA UN ANEXO GENERADO EN EL PORTAL DE HACIENDA con un periodo de prueba.
+     Es la unica validacion que cuenta. Que el portal acepte el archivo NO
+     prueba que las columnas esten alineadas: compara ademas el total que
+     totaliza la casilla contra el total del libro.
+
+NO SE PERMITE:
+
+- Declarar terminado con errores conocidos.
+- Confundir "compila" con "funciona", ni "el portal lo acepto" con "los datos
+  son correctos".
+- Editar un archivo sin haber comprobado que se ejecuta.
+- Dar por buena una correccion hecha por script sin comparar el contenido antes
+  y despues: un preg_replace que no coincide informa exito sin escribir nada.
+
+INFORME DE QA: iteraciones hasta cero errores, cada error con su causa y
+correccion, resultado de cada punto de la bateria, y lo que quedo fuera de
+alcance y por que.
+
+
+9. CRITERIOS DE ACEPTACION
+
+- Los libros usan el diseño del DTE y la paleta por empresa.
+- Existen libro de ventas a consumidor, a contribuyentes, de compras y de
+  anulaciones, con totales diarios y firmas.
+- Se generan los anexos 1, 2, 3 y 9 en CSV separado por punto y coma y sin
+  encabezados.
+- El correlativo respeta la regla de noviembre 2022.
+- El anexo 2 va por rangos.
+- La percepcion se guarda en ivaPerci1 y el historico esta migrado o reportado.
+- La pantalla muestra conteos y totales antes de descargar.
+- Un archivo generado carga sin errores en el portal de Hacienda.
+- Todo aislado por empresa.
+
+Al finalizar informa: archivos creados y modificados, de que tabla sale cada
+columna de cada anexo, catalogos de Renta creados, cuantos DTE tenian la
+percepcion mal declarada, y el resultado de la carga de prueba en el portal.

@@ -1,0 +1,877 @@
+PROMPT PARA COPIAR CATALOGOS, ESQUEMAS JSON Y EVENTO DE RETORNO A OTRO PROYECTO
+
+ORDEN DE APLICACION DE LOS TRES PROMPTS
+
+Este trabajo esta repartido en tres prompts que NO son independientes. Aplicalos
+en este orden; saltarse el orden hace perder tiempo o corrompe datos:
+
+  1) prompt_copiar_actualizacion_dte_2_0.txt
+     Modulo DTE, invalidaciones, PDF nuevo, personalizacion de colores
+     (DtePaletteService) y blindaje de catalogos. Es la base: los otros dos lo
+     dan por hecho.
+
+  2) prompt_copiar_catalogos_esquemas_y_eventos.txt
+     Importador de catalogos oficiales, esquemas JSON y eventos. Va DESPUES del
+     1 porque su sincronizacion de catalogos puede desactivar filas que la
+     facturacion necesita, y el apartado 26 del prompt 1 es lo que protege
+     contra eso.
+
+  3) prompt_libros_iva_y_anexos_f07.txt
+     Libros de IVA y anexos del F07. Va al final porque necesita la paleta del
+     prompt 1 y los catalogos correctos del prompt 2.
+
+Despues de CADA prompt, corre su ciclo de QA y una venta de prueba antes de
+pasar al siguiente. Si el destino ya tiene alguno aplicado, verificalo en vez de
+asumirlo: la seccion de auditoria de cada prompt dice como.
+
+Este documento continua a prompt_copiar_actualizacion_dte_2_0.txt. Aquel cubre
+el modulo DTE, invalidaciones, PDF, correos, compresion y personalizacion. Este
+cubre lo implementado despues: importador de catalogos oficiales, administracion
+de JSON Schemas, version de emision como dato, validacion real contra el schema,
+Evento de Retorno (CAT-002 codigo 18) y correcciones del punto de venta.
+
+Trabaja sobre el proyecto Laravel ubicado en:
+
+PROYECTO DESTINO:
+[ESCRIBIR AQUI LA RUTA DEL OTRO PROYECTO]
+
+Usa como proyecto fuente y referencia funcional:
+
+PROYECTO FUENTE:
+C:\laragon\www\servimangueras.cpc.lat
+
+Antes de modificar archivos:
+
+1. Inspecciona ambos proyectos y anota versiones de Laravel, Livewire y PHP.
+2. Verifica que exista ext-zip en el servidor; sin esa extension no se puede
+   leer el Excel de catalogos ni el ZIP de esquemas.
+3. Respalda cada archivo del destino que sera reemplazado.
+4. No sobrescribas .env, credenciales, certificados, vendor, storage ni datos.
+5. HAZ PRIMERO LA AUDITORIA DE MODELOS Y RELACIONES DE LA SECCION 0. No es
+   opcional: es la causa numero uno de errores al trasladar este codigo.
+
+
+0. AUDITORIA OBLIGATORIA DE MODELOS, RELACIONES Y COLUMNAS
+
+HAZ ESTO ANTES DE COPIAR UNA SOLA LINEA.
+
+El codigo fuente llama relaciones Eloquent por nombre (Rproductos, RmedidasMH,
+Ractividad, etc.). Esos nombres son convenciones del proyecto fuente y NO
+existen necesariamente en el destino. Si faltan, el error tipico es:
+
+  Call to undefined relationship [RmedidasMH] on model [App\Models\Productos]
+
+y aparece recien en ejecucion, no al copiar ni al hacer php -l. Lo mismo pasa
+con columnas: un $modelo->campo inexistente devuelve null en silencio y produce
+un DTE mal formado que Hacienda rechaza sin explicar.
+
+PASO 1. Lista las relaciones que realmente existen en el destino:
+
+  grep -rn "public function R" app/Models/ | sed 's/.*public function //'
+
+PASO 2. Compara contra este inventario. Es lo que el codigo de esta entrega
+espera encontrar. Marca cada una como EXISTE, EQUIVALENTE (con otro nombre) o
+FALTA:
+
+Productos
+  Rmedidas ......... presentacion interna del producto
+  RmedidasMH ....... unidad de medida del CAT-014; de aqui sale uniMedida
+  Rcategoria, Rfamilias, Rempresa
+
+VentasDetalles
+  Rproductos ....... el producto de la linea
+  Rventas .......... la venta
+
+Clientes
+  RactividadEconomica ... codActividad y descActividad del receptor
+  Rdepartamento, Rmunicipio, Rdistrito ... direccion del receptor
+  RidentificacionReceptor ... tipo y numero de documento
+
+Empresas
+  Ractividad ....... actividad economica del emisor; define el plazo de 3 o 24
+                     meses del Evento de Retorno
+  Rambientes
+
+Sucursales
+  Rempresa, Rdepartamento, Rmunicipio, Rdistrito, RtipoEstable
+
+dte
+  RtipoDte ......... codigo del CAT-002; el generador hace str_pad a 2 digitos
+  Rambiente, RtipoModelo, RtipoOperacion, RtipoContingencia
+  Remisor .......... sucursal emisora
+  Rreceptor ........ cliente
+  Rventa / Rventas . ojo: en el fuente existen las dos, revisa cual usa cada
+                     consulta antes de copiar
+
+PASO 3. Columnas que el codigo lee y que suelen llamarse distinto. Verifica una
+por una en el destino:
+
+  productos.codebar3 ......... va como "codigo" en cuerpoDocumento
+  productos.nombreProducto ... descripcion del item
+  ventas_detalles.descargar .. lo que realmente sale de inventario; NO siempre
+                               es igual a "cantidad" (presentaciones)
+  ventas_detalles.unidad ..... se usa para buscar Precios por "presentacion"
+  ventas.correlativo, ventas.total, ventas.empresa, ventas.sucursal, ventas.caja
+  clientes.nombreCliente, nit, dui, registro, telefono, celular, email
+  empresas.empresa (razon social) y empresas.razon (nombre comercial)
+  empresas.nit, empresas.registro, empresas.ambiente
+  sucursales.codEstableMH, sucursales.numero, sucursales.direccion
+  parametros.codPuntoVentaMH, parametros.caja
+  precios.presentacion, precios.costociva
+  inventarios.existencia, inventarios.producto, sucursal, empresa
+  kardex: ingresoCantidad, ingresoValor, egresoCantidad, egresoValor,
+          saldoCantidad, saldoValor
+  tipo_documentos.codigo y .valor
+  Las 28 tablas de catalogo: codigo, valor, status
+
+PASO 4. Para cada relacion o columna que FALTE, elige una y dejala documentada:
+
+  a) Crear la relacion en el modelo del destino si la tabla equivalente existe.
+  b) Adaptar la llamada al nombre que use el destino.
+  c) Si no hay equivalente, usar un valor por defecto seguro y dejar comentario.
+     Ejemplo del fuente para la unidad de medida:
+
+       'uniMedida' => (int) ($detalle->Rproductos?->RmedidasMH?->codigo ?? 59)
+
+     El 59 es "Otra" del CAT-014. Sirve como respaldo, pero si el destino nunca
+     resuelve la relacion, TODOS los items saldran con unidad "Otra". Eso pasa
+     validacion pero es incorrecto: hay que crear la relacion, no vivir del
+     respaldo.
+
+PASO 5. Usa el operador nullsafe en toda la cadena (?->) y nunca encadenes sobre
+un resultado de first() sin comprobarlo. Una relacion que devuelve null no debe
+tumbar la emision, pero tampoco debe pasar desapercibida.
+
+PASO 6. Antes de dar por buena la adaptacion, genera un DTE de cada tipo y un
+Evento de Retorno en ambiente de pruebas y revisa el JSON campo por campo. Que
+compile y que no lance excepcion no significa que los datos sean correctos.
+
+PASO 7. Si el destino tiene otra convencion de nombres de relacion (por ejemplo
+sin el prefijo R), NO renombres los modelos del destino para que encajen con el
+fuente: adapta el codigo copiado. Renombrar relaciones existentes rompe el resto
+del proyecto destino.
+
+
+1. IMPORTADOR DE CATALOGOS OFICIALES
+
+Objetivo: que actualizar los catalogos de Hacienda sea subir el Excel oficial,
+revisar que cambiaria y confirmar. Nunca aplicar a ciegas.
+
+Archivos de referencia:
+
+- app/Services/CatalogoDteLector.php
+- app/Services/CatalogoDteImportador.php
+- app/Http/Livewire/CatalagosImportarController.php
+- resources/views/livewire/catalagos/importar.blade.php
+- tests/Unit/CatalogoDteImportadorTest.php
+
+Estructura real del archivo de Hacienda (verificada al 06-08-2026):
+
+- Es UN solo libro con UNA sola hoja, no una hoja por catalogo.
+- Los catalogos se delimitan con filas "CAT-0XX <nombre>" seguidas de un
+  encabezado "Codigo | Valores".
+- Contiene 33 catalogos y 1427 filas utiles.
+
+TRAMPAS DEL ARCHIVO. Un lector ingenuo importa basura:
+
+- CAT-014 Unidad de Medida trae 6 notas al pie donde el "codigo" es un parrafo
+  completo. Reales: 40, no 46.
+- CAT-015 Tributos trae 3 subtitulos de seccion sin codigo. Reales: 49, no 52.
+- CAT-019 Actividad Economica trae 111 subtitulos sin codigo. Reales: 774.
+- CAT-015 repite los codigos D4 y D5 con el mismo valor en dos subsecciones; es
+  inofensivo, pero el conteo de duplicados debe mostrarse.
+
+Filtro que funciona: descartar filas sin codigo, sin valor, o con codigo de mas
+de 12 caracteres (el codigo real mas largo es "1041.020", 8 caracteres).
+
+REGLAS QUE NO SE NEGOCIAN:
+
+- Match por "codigo" y update in place. NUNCA truncar y reinsertar: los DTE
+  historicos referencian estas tablas por "id", no por codigo. Reemplazar filas
+  corrompe reimpresiones, invalidaciones y libros de IVA de forma silenciosa.
+- Un codigo que Hacienda retira se marca status 'Desactivado', no se elimina.
+- Las 28 tablas de catalogo usan SoftDeletes. Consulta SIEMPRE con withTrashed()
+  o el importador insertara un duplicado del mismo codigo; si el codigo existe
+  borrado logicamente y Hacienda lo sigue publicando, restauralo.
+- Todo dentro de una transaccion.
+
+- LAS FILAS SIN CODIGO NO SE TOCAN. Varias tablas tienen una fila interna con
+  codigo NULL que la facturacion busca con whereNull('codigo'): el tributo y el
+  tipo de contingencia comodin. Hacienda NO las publica, asi que quedan fuera
+  del match Y fuera del barrido de retiro. Indexar por codigo las convierte en
+  clave vacia, nunca coinciden con el Excel y el retiro las marca
+  'Desactivado': con eso se cae TODA la facturacion. Ver el incidente en la
+  seccion 7.
+
+- EL MATCH IGNORA LOS CEROS A LA IZQUIERDA. "01", "1" y "001" son el mismo
+  registro. Los seeders historicos guardaron unos catalogos con relleno y otros
+  sin el, y Hacienda tampoco es uniforme: CAT-002 publica "01" y "03", CAT-014
+  publica "1" y "2" sin relleno. Comparar el texto crudo produce el peor
+  resultado posible: inserta un duplicado Y desactiva el original por "no
+  publicado". Normaliza con ltrim del cero (cuidando que "0" y "00" queden en
+  "0") tanto al buscar como al contar el dry-run, o la vista previa mentira.
+  No reescribas el codigo almacenado: solo empata por el valor normalizado.
+  Y si UN MISMO catalogo del Excel trajera "01" y "1", la normalizacion los
+  vuelve el mismo registro y uno pisaria al otro sin dejar rastro: ante esa
+  ambiguedad hay que ABORTAR la importacion nombrando los dos codigos, no
+  elegir uno. Perder una fila en silencio es el origen de todo este incidente.
+
+- SI HACIENDA LO SIGUE PUBLICANDO, REACTIVALO. Un codigo presente en el Excel
+  cuya fila esta 'Desactivado' vuelve a 'Activo'. Sin esto, un solo error de
+  una pasada anterior obliga a activar catalogos a mano uno por uno.
+
+DRY-RUN OBLIGATORIO. Antes de aplicar, mostrar por catalogo: nuevos, a
+actualizar, sin cambios, a retirar, filas omitidas y codigos repetidos, con
+detalle fila por fila y seleccion por catalogo.
+
+DOS COMANDOS DE REPARACION, OBLIGATORIOS. Un destino que ya importo con un
+importador defectuoso llega con el dano hecho, y la pantalla de importacion no
+lo repara. Entrega:
+
+- catalogos:diagnostico  (solo lectura, no modifica nada)
+  Recorre las 28 tablas y reporta:
+    * filas comodin sin codigo que quedaron 'Desactivado', con el UPDATE
+      puntual para revivir cada una;
+    * grupos de filas que comparten codigo normalizado, marcando cual conservar
+      -el id mas antiguo- y cuales sobran.
+
+- catalogos:fusionar  (simula por defecto; exige --ejecutar para escribir)
+  Conserva SIEMPRE el id mas antiguo del grupo, porque es el que referencian
+  los DTE sellados, los productos y las cotizaciones. Repunta las referencias
+  al id conservado, reactiva la fila si Hacienda la sigue publicando y elimina
+  el sobrante, todo en una transaccion. Para localizar referencias barre
+  information_schema COMPLETO -no una lista fija de tablas- filtrando por tipo
+  entero, y exige una bandera aparte (--repuntar) antes de mover datos, porque
+  el criterio por nombre de columna puede acertar de mas.
+
+NO borres y recargues los catalogos para "dejar solo lo nuevo", aunque el
+cliente lo pida en esos terminos. Explicale que la fusion conserva el id viejo
+con el texto nuevo de Hacienda: es el mismo resultado que quiere, sin romper el
+historico. Verifica el motor de las tablas antes de confiar en el rollBack: una
+tabla creada a mano en el servidor puede ser MyISAM y no revertir nada.
+
+MAPEO. 28 catalogos tienen tabla propia con columnas identicas (codigo, valor,
+status):
+
+CAT-001 AmbienteDestino          CAT-020 Pais
+CAT-002 TipoDocumento            CAT-021 DocumentosAsociados
+CAT-003 ModeloFacturacion        CAT-022 IdentificacionReceptor
+CAT-004 TipoTransmision          CAT-024 TipoInvalidacion
+CAT-005 TipoContigencia          CAT-025 TituloRemiteBienes
+CAT-006 Retencion                CAT-026 Donacion
+CAT-007 TipoGeneracionDocumento  CAT-027 RecintoFiscal
+CAT-009 TipoEstablecimiento      CAT-028 Regimen
+CAT-010 ServicioMedico           CAT-029 TipoPersona
+CAT-011 TipoItem                 CAT-030 Transporte
+CAT-014 UnidadMedida             CAT-031 Incoterms
+CAT-015 Tributo                  CAT-032 DomicilioFiscal
+CAT-016 CondicionOperacion
+CAT-017 FormaPagos  (ojo: FormaPago singular suele ser codigo muerto)
+CAT-018 Plazo
+CAT-019 ActividadEconomica
+
+EXCLUIDOS: CAT-008 Distrito, CAT-012 Departamento, CAT-013 Municipio. El Excel
+NO trae la columna del padre y los codigos se repiten entre padres (el "14" es
+Ahuachapan Centro y tambien Santa Ana Norte), asi que no se pueden importar de
+forma confiable. Verificar aparte que el destino tenga la division territorial
+vigente: 15 departamentos, 44 municipios + 1, 262 distritos + 1. Si tiene ~262
+municipios, la division es anterior a la reorganizacion y todas las direcciones
+de los DTE van mal sin que Hacienda las rechace.
+
+CATALOGOS SIN TABLA: CAT-023 Operaciones Especiales y CAT-033 Tipo de Regimen.
+No crear tablas nuevas: usar el par generico catalagos + catalagos_estructuras,
+que ya existe en el proyecto fuente y tiene columna "dependencia" para
+jerarquias. Un catalogo desconocido se registra ahi y se avisa en pantalla.
+
+LIMITE HONESTO: guardar un catalogo nuevo es automatico, pero que participe en
+la generacion del DTE no puede serlo. Si Hacienda agrega CAT-034 y el schema
+nuevo pide un campo que sale de ahi, alguien tiene que escribir el codigo. Lo
+que se gana es enterarse a tiempo en vez de por un rechazo.
+
+
+2. ADMINISTRACION DE JSON SCHEMAS
+
+Objetivo: que actualizar la version de un DTE sea subir el esquema, no editar
+codigo.
+
+Archivos de referencia:
+
+- database/migrations/2026_08_06_120000_create_esquema_dtes_table.php
+- app/Models/EsquemaDte.php
+- app/Services/EsquemaDteLector.php
+- app/Http/Livewire/EsquemasDteController.php
+- resources/views/livewire/esquemas_dte/esquemas.blade.php
+
+Tabla esquema_dtes: tipoDte(5), nombre(150), version, archivo(150), ruta(255),
+hash(64), publicado, status enum Activo/Desactivado, softDeletes, timestamps,
+unique(tipoDte, version), index(tipoDte, status).
+
+- El hash sha256 detecta que Hacienda republico un esquema aunque conserve el
+  mismo nombre y numero de version.
+- Se conserva el historial: varias versiones por tipo, una sola Activo.
+
+LA VERSION SALE DEL PROPIO ARCHIVO. Los schemas la declaran como const:
+
+  fe-ccf-v4.json -> properties.identificacion.properties.version.const = 4
+
+Leerla de ahi y no pedir que se digite. Digitarla a mano fue el origen del
+incidente descrito en la seccion 7. Dejar el campo manual solo como respaldo,
+precargado con el valor detectado, avisando en rojo si el usuario lo cambia.
+
+Acepta el ZIP completo svfe-json-schemas (15 esquemas de una) o un .json suelto.
+
+Mapeo nombre de archivo -> codigo CAT-002:
+
+  fe-f 01, fe-ccf 03, fe-nr 04, fe-nc 05, fe-nd 06, fe-cr 07, fe-cl 08,
+  fe-dcl 09, fe-fex 11, fe-fse 14, fe-cd 15, fe-eop 17, fe-eret 18,
+  invalidacion-schema INV, contingencia-schema CON
+
+Invalidacion y contingencia no tienen codigo de CAT-002; usar las claves INV y
+CON y agregarlas al select como opciones extra.
+
+NORMALIZACION DE CODIGOS. En tipo_documentos suelen convivir '3' y '03'. La
+clave canonica es la de 2 digitos, que es la que consulta el generador tras
+hacer str_pad. Normalizar el codigo del select y al guardar:
+
+  ctype_digit($c) ? str_pad($c, 2, '0', STR_PAD_LEFT) : $c
+
+Si no se normaliza, se crean filas con tipoDte '3' que el generador nunca lee, y
+el sistema queda emitiendo con una version distinta a la que se ve en pantalla.
+
+BOTONES OBLIGATORIOS en el listado de esquemas guardados:
+
+- "Usar esta": activa una version ya guardada sin resubir el archivo.
+- "Desactivar": quita la vigencia sin activar otra; el generador cae al respaldo
+  del codigo. Es la salida de emergencia cuando no hay version anterior a la
+  cual volver. Sin este boton, la unica salida es SQL directo.
+
+La pantalla debe contrastar tres versiones por tipo y marcar en rojo cuando no
+coinciden: la del esquema subido, la guardada y la que usa el generador hoy.
+
+
+3. LA VERSION DE EMISION COMO DATO, NO COMO CODIGO
+
+Punto unico: GeneradorDteV2Service::version($tipoDte).
+
+- Manda EsquemaDte::versionVigente($tipoDte).
+- Si no hay esquema, si la tabla no existe o si la consulta falla, cae a la
+  constante VERSIONES del codigo. Envolver en try/catch: un problema de base
+  NUNCA debe impedir facturar.
+- Memoizar por request; version() se llama varias veces al armar un DTE.
+- Las claves de 3 letras (INV, CON) no se rellenan con ceros.
+
+Reemplazar TODOS los literales por ese metodo:
+
+- dtes.version al crear el registro (en el controlador de POS, no solo en el
+  generador: son dos lugares distintos y desincronizarse es facil).
+- identificacion.version del JSON.
+- La comparacion de validarEstructura.
+- El campo "version" del sobre de recepcion en los traits RecepcionDTE*.
+
+EL SOBRE Y EL DOCUMENTO DEBEN SALIR DEL MISMO LUGAR. Hacienda elige el schema
+con el que valida segun el "version" del sobre de recepcion. Si el sobre dice 3
+y el documento dice 4, rechaza con:
+
+  "Valor ingresado no es de los permitidos en el campo #/identificacion/version"
+
+y el mensaje apunta al documento, no al sobre, lo que despista.
+
+
+4. VALIDACION CONTRA EL JSON SCHEMA
+
+Dependencia: composer require opis/json-schema:^2.3
+
+Archivos de referencia:
+
+- app/Services/ValidadorEsquemaDte.php
+- config/dte.php  (clave validar_esquema)
+- tests/Unit/ValidadorEsquemaDteTest.php
+
+Comparar nombres de campos NO alcanza. Hay que validar tipos, patrones,
+longitudes, enums y additionalProperties. Prueba de que importa: el CCF del
+proyecto fuente valida contra fe-ccf-v4 pero falla contra fe-ccf-v3 con "The
+required properties (extension) are missing" — o sea que se venia emitiendo un
+documento v4 etiquetado v3, y Hacienda lo aceptaba por tolerancia.
+
+Modos en config/dte.php, via DTE_VALIDAR_ESQUEMA:
+
+  off      no valida
+  aviso    valida, escribe el detalle en el log, deja pasar   <- por defecto
+  bloqueo  valida e impide transmitir
+
+USAR "aviso" POR DEFECTO. En "bloqueo", si el destino esta en la misma situacion
+del fuente (estructura v4 con etiqueta v3), no sale ni una factura. Pasar a
+"bloqueo" solo despues de confirmar que todo valida limpio.
+
+El validador NUNCA lanza excepcion propia: si no hay esquema, si el archivo no
+se lee o si la libreria falta, devuelve "no evaluado" con el motivo. Eso permite
+desplegar el codigo antes de instalar la dependencia.
+
+Enganchar en GeneradorDteV2Service::generar() despues de armar el JSON y antes
+de persistirlo, y en el generador de cada evento.
+
+
+5. EVENTO DE RETORNO (CAT-002 codigo 18)
+
+Base normativa: Manual Funcional del Sistema de Transmision V 2.0, romano X.
+
+QUE ES: mensaje firmado por retorno de bienes amparados en un DTE ya emitido.
+Aplica a reembolsos, recuperacion de depositos de envases o empaques, y
+disminucion en FEXE/FSEE.
+
+APLICA A: Factura (01), Factura de Exportacion (11), Sujeto Excluido (14).
+NO APLICA A CREDITO FISCAL. Para CCF se usa Nota de Credito.
+
+REGLAS DE LA NORMATIVA que deben validarse en servidor:
+
+- Solo a DTE con sello de recepcion; nunca a transitorios.
+- Plazo maximo 3 meses desde la fecha de generacion del DTE. Excepcion: 2 anos
+  si la actividad economica del emisor es 01282, 21001, 46484 o 47721.
+- La fecha del evento no puede ser anterior a la del DTE.
+- El monto no puede exceder el del DTE, contando lo ya retornado en eventos
+  anteriores sobre la misma factura.
+- Maximo 50 DTE por evento, mismo Emisor, Receptor y Tercero.
+- Si hay cambio de producto, se genera un DTE nuevo por la operacion de
+  reemplazo; el evento no lo sustituye.
+- Hay que entregar al cliente el archivo JSON y la representacion grafica.
+
+UN EVENTO NO ES UN DTE: no lleva numeroControl ni consume correlativos, solo un
+codigoGeneracion (UUID). Modelarlo sobre el modulo de invalidacion, NO sobre la
+Nota de Credito: la NC es un DTE con correlativo y registros de caja que el
+evento no debe tocar.
+
+Archivos de referencia:
+
+- database/migrations/2026_08_06_140000_create_evento_retornos_table.php
+- database/migrations/2026_08_06_140100_create_evento_retorno_detalles_table.php
+- database/migrations/2026_08_06_140200_create_temp_evento_retornos_table.php
+- app/Models/EventoRetorno.php
+- app/Models/EventoRetornoDetalle.php
+- app/Models/TempEventoRetorno.php
+- app/Services/GeneradorEventoRetorno.php
+- app/Traits/RecepcionEventoRetorno.php
+- app/Http/Livewire/NuevoEventoRetornoController.php
+- app/Http/Livewire/EventoRetornoController.php
+- resources/views/livewire/evento_retorno/nuevo.blade.php
+- resources/views/livewire/evento_retorno/listado.blade.php
+- resources/views/pdf/eventoRetorno.blade.php
+- tests/Unit/EventoRetornoTest.php
+
+Estructura del JSON (fe-eret-v1, 9 secciones): identificacion,
+documentoRelacionado (max 50), emisor, documento (el receptor), ventaTercero,
+compraTercero, cuerpoDocumento, resumen (17 campos), apendice. Todo con
+additionalProperties false: un campo de mas tambien se rechaza.
+
+INVENTARIO. El retorno reingresa a stock y genera movimiento de Kardex como
+ingreso. Dos detalles:
+
+- El reingreso es PROPORCIONAL: la venta descarga "descargar", que no siempre
+  coincide con "cantidad" por las presentaciones. Reingresar
+  descargar * (cantidad_devuelta / cantidad_vendida).
+- Dejar una bandera "reingresado" en la cabecera para que un reproceso o
+  reenvio del evento no sume el stock dos veces.
+
+DEVOLUCION PARCIAL. Guardar en el temporal "cantidad" junto a "vendida", y en el
+detalle el "ventaDetalle" de origen, para descontar lo ya retornado en eventos
+anteriores sobre esa misma linea y no permitir devolver de mas.
+
+FILTRO DE FACTURAS. No usar funciones SQL para normalizar el codigo:
+
+  MAL:  whereIn(DB::raw('LPAD(td.codigo, 2, "0")'), ['01','11','14'])
+  BIEN: whereIn('td.codigo', ['01','1','11','14'])
+
+La primera forma depende del dialecto y falla en bases donde conviven '3' y
+'03'. Mostrar ademas una columna con el tipo de documento en el listado, para
+que un filtro mal aplicado se vea de inmediato.
+
+REINTENTO. Al retransmitir un evento rechazado hay que generar un
+codigoGeneracion NUEVO; Hacienda no acepta reutilizar el de un evento rechazado.
+
+ENDPOINT. Los eventos comparten el endpoint de la invalidacion. Preferir un
+registro propio en la tabla Apis con nombre "EventoRetorno" por si Hacienda los
+separa, y caer al registro "Invalidacion" si no existe, para que funcione sin
+configurar nada.
+
+NO IMPLEMENTADO: Evento de Operaciones Especiales (17). Solo aplica a quienes
+emiten Facturas Simplificadas (art. 107 inc. 4 CT) o Comprobantes de Control
+Interno (art. 113 CT). Si el destino los emite, hay que construirlo: es un
+informe periodico por periodo tributario, maximo 500 items, cada documento se
+informa una sola vez, los anulados en evento separado referenciando con
+codigoGeneracionRef el evento donde se informaron activos.
+
+
+6. CORRECCIONES DEL PUNTO DE VENTA
+
+Referencia: app/Http/Livewire/PosController.php
+
+SALTOS DE CORRELATIVO. obtenerCodigoDTE() escribe en ControlNumeracion. Si se
+llama ANTES de DB::beginTransaction(), corre en autocommit y el numero queda
+consumido aunque la venta falle. Mover la obtencion del correlativo y del
+codigoGeneracion DENTRO de la transaccion, y leer Parametros con lockForUpdate.
+
+CATCH DEMASIADO ESTRECHO. catch(\Exception) no atrapa \Error ni \TypeError. Un
+"$in->existencia" sobre null se escapa y deja la transaccion sin rollBack
+explicito. Usar catch(\Throwable).
+
+LLAMADAS HTTP DENTRO DE LA TRANSACCION. El envio a Hacienda y la generacion del
+token no deben estar dentro de la transaccion: mantienen bloqueos abiertos y un
+timeout revierte una venta valida. Token antes, envio despues del commit.
+
+GUARDS CON MENSAJE. Reemplazar "Call to a member function on null" por mensajes
+utiles: producto sin inventario en la sucursal, corte de caja no abierto,
+precio inexistente (costo 0 en vez de reventar).
+
+BUG DE SUCURSAL. Revisar que la busqueda de Inventarios use el id de sucursal y
+no el de caja; en el fuente estaba mezclado en uno de los tres metodos.
+
+PERCEPCION 1%. Regla verificada con el cliente:
+
+- Solo a clientes con categoria GRANDE.
+- Desde $113 CON IVA inclusive (equivalen a $100 netos).
+- La base del 1% es el monto SIN IVA.
+- Se resta al total.
+- Redondear a 2 decimales: 113/1.13 arrastra cola decimal y da 1.0000000000002.
+- El tiquete no lleva percepcion.
+- Comparar el umbral contra el total CON IVA, no contra la base sin IVA; en el
+  fuente se comparaba "$tt > 113" siendo $tt el monto neto, lo que exigia $127.69
+  reales para que aplicara.
+- Guardar la percepcion tambien en Ventas y Caja del credito fiscal; en el fuente
+  se calculaba y se mandaba al DTE pero no se grababa, y los totales de caja no
+  cuadraban contra el DTE.
+
+
+7. INCIDENTES REALES Y COMO SE DIAGNOSTICARON
+
+Documentados para que no se repitan:
+
+- RECHAZO POR VERSION. Sobre de recepcion en 3 y documento en 4. El mensaje de
+  Hacienda apunta a #/identificacion/version del documento, no al sobre. Se
+  diagnostica comparando ambos valores, no revisando solo el generador.
+
+- VERSION CORRECTA SEGUN EL ARCHIVO. Al 27-07-2026 los schemas vigentes son
+  fe-f-v2, fe-ccf-v4, fe-nc-v4, fe-fse-v2, invalidacion-v3, contingencia-v4.
+  No confiar en memoria ni en documentacion secundaria: leer el "const" del
+  archivo descargado.
+
+- HACIENDA PUEDE NO HABER HABILITADO LA VERSION VIGENTE. Al 06-08-2026 el CCF
+  oficial es v4 pero la recepcion solo acepta v3. Por eso la version debe ser un
+  dato conmutable y no una constante.
+
+- COLUMNA GUARDADA VS JSON. El controlador de POS grababa dtes.version con un
+  literal y el generador lo sobrescribia despues. Entre "guardar la venta" y
+  "transmitir" la fila mostraba un valor y se enviaba otro.
+
+- NUNCA BUSQUES UN CATALOGO POR SU TEXTO. En el fuente habia seis consultas
+  where('valor','FACTURA') y where('valor','COMPROBANTE DE CREDITO FISCAL').
+  El texto es propiedad de Hacienda y el importador lo reescribe: tras
+  actualizar, "FACTURA" paso a "Factura" y "COMPROBANTE DE CREDITO FISCAL" a
+  "Comprobante de credito fiscal" CON TILDE. Sobrevivio de milagro, porque la
+  intercalacion de MySQL ignoraba mayusculas y tildes; con una intercalacion
+  binaria o sensible a acentos todas esas consultas devuelven null. Dos de
+  ellas estaban en RecepcionDTEC y RecepcionDTEF y mandan $tipoDte->codigo a
+  Hacienda, o sea reventaban en plena transmision. Busca SIEMPRE por
+  where('codigo','01') / '03' / '05' / '14', que es la llave estable, y
+  convierte cualquier busqueda por texto que encuentres en el destino.
+
+- CODIGOS '3' VS '03'. Conviven en tipo_documentos. Hay codigo que busca literal
+  where('codigo','03') y where('codigo','05'); si se normaliza uno hay que
+  normalizarlos todos. Ademas hay TipoDocumento::find(4) y find(10) con id fijo:
+  verificar que sigan apuntando a Nota de Credito y Sujeto Excluido.
+
+- EL IMPORTADOR TUMBO LA FACTURACION (incidente real, 08-08-2026). Tras subir
+  el Excel, toda venta -consumidor y credito fiscal- moria con
+  'Attempt to read property "id" on null'. Dos fallas del importador, una sola
+  causa: comparar codigos como texto crudo.
+  1. El barrido de retiro desactivo las filas comodin con codigo NULL de
+     tributos y tipo_contigencias, que son las que el POS exige con
+     whereNull('codigo').
+  2. En CAT-014 la base tenia '01','02','06','09' y Hacienda publica '1','2',
+     '6','9': no empataron, se insertaron 4 filas nuevas Y se desactivaron las
+     4 originales, que son las que referencian los productos por id.
+  Se diagnostico leyendo el codigo, no la base: el mensaje sale del listener
+  item-error, o sea la excepcion ocurre dentro del try/catch de la venta, lo
+  que reduce la busqueda al bloque que resuelve catalogos antes de dte::create.
+  Que la venta haga rollBack es lo que hace el sintoma invisible en la base.
+
+- FALSO POSITIVO AL BUSCAR REFERENCIAS. Al rastrear quien apunta a una fila
+  duplicada, comparar una columna VARCHAR contra un id entero da falsos
+  positivos: MySQL convierte el texto a numero y esquema_dtes.tipoDte, que es
+  varchar y guarda el CODIGO del CAT-002 ('01','14','INV'), empataba con el id
+  14. Repuntar eso habria destruido la asociacion del esquema de Sujeto
+  Excluido. Filtra por DATA_TYPE entero en information_schema: una llave
+  foranea a estas tablas siempre lo es. Y no muevas datos por coincidencia de
+  nombre de columna sin autorizacion explicita: unidad_medidas busca "medida" y
+  "unidad", y ventas_detalles tiene columnas asi que no apuntan a ese catalogo.
+
+
+8. DESPLIEGUE POR FTP SIN ACCESO A ARTISAN
+
+Si el destino solo tiene FTP:
+
+- bootstrap/cache/livewire-components.php es el manifiesto de Livewire 2 y
+  normalmente lo regenera "php artisan livewire:discover". Por FTP hay que
+  editarlo: descargarlo, agregar la entrada alias => clase, reordenar con ksort
+  y volver a subirlo. Sin eso el componente nuevo no carga.
+  Alias = kebab-case del nombre de clase: NuevoEventoRetornoController ->
+  nuevo-evento-retorno-controller.
+- FTP no crea directorios: usar curl --ftp-create-dirs para archivos en carpetas
+  nuevas.
+- Verificar si existe bootstrap/cache/routes-v7.php; si existe, la ruta nueva no
+  toma efecto hasta regenerar la cache.
+- Si tras subir un archivo el comportamiento no cambia, sospechar de opcache:
+  requiere reiniciar PHP-FPM u opcache_reset().
+- Descargar de nuevo cada archivo subido y comparar contra el local antes de
+  declarar terminado.
+- Diff contra el remoto ANTES de subir: en el fuente aparecieron cambios remotos
+  que no estaban en local y se habrian perdido.
+
+
+9. MIGRACIONES
+
+No ejecutarlas sin autorizacion. Entregar el comando:
+
+  php artisan migrate
+
+Si el destino no tiene terminal, entregar tambien el CREATE TABLE equivalente y
+el INSERT en la tabla migrations, porque sin ese registro un artisan migrate
+posterior intentaria crearla de nuevo:
+
+  INSERT INTO migrations (migration, batch)
+  VALUES ('NOMBRE_DE_LA_MIGRACION',
+          (SELECT COALESCE(MAX(batch),0)+1 FROM (SELECT batch FROM migrations) t));
+
+Migraciones de esta entrega:
+
+- 2026_08_06_120000_create_esquema_dtes_table.php
+- 2026_08_06_140000_create_evento_retornos_table.php
+- 2026_08_06_140100_create_evento_retorno_detalles_table.php
+- 2026_08_06_140200_create_temp_evento_retornos_table.php
+
+
+10. MENU Y PERMISOS
+
+- Catalogos DTE: agregar "Actualizar Catalogos" y "Esquemas JSON" antes de
+  Ambiente Destino.
+- Crear un grupo "Documentos DTE" que agrupe Nueva Nota Credito, Notas Credito,
+  Sujeto Excluido, Nuevo Retorno y Eventos de Retorno.
+- Usar @canany con los permisos existentes para que el grupo no aparezca vacio.
+- No inventar permisos nuevos que exijan correr el seeder: reutilizar los que ya
+  existen (AdminCatalagos_Index para catalogos y esquemas, NuevaNotaCredito_Index
+  para retorno) o entregar el seeder junto al cambio.
+
+
+11. MANEJO DE ERRORES EN PANTALLA
+
+Un error NUNCA debe llegar al usuario como pantalla de excepcion de Laravel, ni
+como Whoops, ni como pagina 500, ni como el modal rojo de Livewire. El usuario
+esta en una caja atendiendo a un cliente: tiene que leer que paso y poder
+seguir trabajando.
+
+REGLA: todo fallo previsible se comunica con el evento item-error del proyecto,
+con el motivo concreto. Todo exito, con item-added.
+
+  $this->emit('item-error', 'El producto "X" no tiene inventario en esta sucursal.');
+  $this->emit('item-added', 'Evento de retorno creado.');
+
+(Si el destino usa Livewire 3, la llamada es $this->dispatch(...); conserva los
+mismos nombres de evento que ya use el proyecto y su componente de avisos.)
+
+COMO SE APLICA:
+
+- Envuelve cada accion publica del componente Livewire en try/catch(\Throwable)
+  y emite item-error con el mensaje. No uses catch(\Exception): no atrapa
+  \Error ni \TypeError, que son justamente los de "Call to a member function
+  sobre null" y "Call to undefined relationship".
+- Dentro de una transaccion, el catch va por fuera del DB::transaction para que
+  el rollBack ocurra y el usuario reciba el aviso, no la pantalla de error.
+- Valida antes de actuar y devuelve el motivo, en vez de dejar que reviente:
+  producto sin inventario, corte de caja no abierto, DTE sin sello, evento fuera
+  de plazo, monto mayor al del DTE, esquema no configurado.
+- Los mensajes van en lenguaje del usuario y dicen que hacer:
+
+    MAL:  Call to a member function id() on null
+    MAL:  SQLSTATE[23000]: Integrity constraint violation
+    BIEN: El producto "Manguera 1/2" no tiene inventario en esta sucursal.
+    BIEN: No hay un corte de caja abierto para esta caja.
+    BIEN: Vencio el plazo para aplicar el evento: son 3 meses desde el 20/07/2026.
+    BIEN: No esta configurada la URL del servicio de eventos. Revise
+          Transmision > Apis.
+
+- Cuando el error viene de Hacienda, muestra descripcionMsg junto con
+  observaciones, que es donde explica el motivo real del rechazo. Solo el codigo
+  de estado no sirve para corregir nada.
+- Errores de programacion (relacion inexistente, columna mal escrita) tambien
+  deben salir por item-error, pero ADEMAS quedar en el log con traza. Que el
+  usuario no vea la pantalla de excepcion no significa esconder el problema.
+- Una validacion de formulario usa los mensajes de validate(); item-error es
+  para lo que no se puede expresar como regla de campo.
+
+VERIFICACION: recorre cada accion del componente y confirma que no exista un
+camino que llegue al navegador como excepcion sin atrapar. Provoca errores a
+proposito (seccion 14, punto g) y comprueba que en los tres casos aparezca el
+aviso y la pantalla siga usable.
+
+
+12. PRUEBAS
+
+Agregar y ejecutar:
+
+  php artisan test tests/Unit/CatalogoDteImportadorTest.php
+  php artisan test tests/Unit/EventoRetornoTest.php
+  php artisan test tests/Unit/ValidadorEsquemaDteTest.php
+  php artisan test --testsuite Unit
+
+Cubrir como minimo:
+
+- Los 3 catalogos territoriales excluidos y los 28 mapeados.
+- Que ningun catalogo excluido tenga destino y que dos catalogos no escriban
+  sobre la misma tabla.
+- Que CAT-023 y CAT-033 no esten en el mapa.
+- Que el retorno no admita CCF ni Nota de Credito.
+- Que el filtro de codigos acepte '1' y '01' y rechace '3' y '03'.
+- Plazo 3 meses y excepcion de 24 meses por actividad economica.
+- Que el validador no evalue sin esquema y no reviente con entrada basura.
+- Idempotencia del importador: aplicar dos veces el mismo Excel debe dar cero
+  cambios en la segunda corrida.
+- SoftDeletes: borrar logicamente un codigo y reimportar debe restaurarlo, no
+  duplicarlo.
+
+OJO: si el destino tiene un test que afirma version('03') === 4, va a fallar. No
+lo cambies en silencio: decide con el cliente si la constante de respaldo debe
+ser la version oficial (4) o la que Hacienda acepta hoy (3), y documenta el
+motivo en el propio test.
+
+
+13. CRITERIOS DE ACEPTACION
+
+La tarea termina cuando:
+
+- La auditoria de la seccion 0 esta hecha y documentada: cada relacion y cada
+  columna del inventario marcada como EXISTE, EQUIVALENTE o RESUELTA.
+- No queda ninguna llamada a una relacion inexistente. Comprobado ejecutando el
+  flujo completo, no solo con php -l.
+- Ningun error llega al usuario como pantalla de excepcion: todos salen por
+  item-error con el motivo concreto y la pantalla sigue usable.
+- Ningun item sale con uniMedida 59 "por respaldo" cuando el destino si tiene la
+  unidad de medida del CAT-014 disponible.
+- Subir el Excel de catalogos muestra el dry-run por catalogo y no aplica nada
+  hasta confirmar.
+- Aplicar dos veces el mismo Excel no produce cambios en la segunda corrida.
+- Los codigos retirados quedan Desactivado y ningun id cambia.
+- CAT-023 y CAT-033 se registran solos en el mecanismo generico.
+- Subir el ZIP de esquemas detecta tipo y version de los 15 archivos sin que
+  nadie digite un numero.
+- La pantalla marca en rojo cuando la version que usa el sistema no coincide con
+  la del esquema oficial.
+- "Usar esta" y "Desactivar" cambian la version de emision sin tocar codigo.
+- El sobre de recepcion y identificacion.version salen del mismo metodo.
+- La validacion contra el schema corre en modo aviso y deja el detalle en el log.
+- Un retorno solo se puede crear sobre Factura, FEXE o FSEE con sello, dentro de
+  plazo y sin exceder el monto.
+- El retorno reingresa el stock en la proporcion correcta y registra el Kardex.
+- Un retorno rechazado se puede retransmitir con codigoGeneracion nuevo.
+- El PDF del retorno dice PENDIENTE DE TRANSMISION mientras no tenga sello.
+- Las ventas no generan saltos de correlativo cuando fallan.
+- La percepcion aplica desde $113 con IVA, solo a categoria GRANDE, y queda
+  guardada en Ventas y Caja tanto en consumidor como en credito fiscal.
+- php -l pasa en todos los archivos tocados, Blade compila y la suite Unit pasa.
+- Si hubo despliegue, cada archivo remoto coincide con el local.
+
+Al finalizar informa: la tabla de auditoria de la seccion 0 con el resultado de
+cada relacion y columna, archivos creados y modificados, migraciones entregadas
+y si se ejecutaron, catalogos comparados con conteos de nuevos/actualizados/
+retirados, esquemas cargados con su version, modo de validacion configurado,
+pruebas ejecutadas, adaptaciones al esquema del destino y, si se desplego, la
+verificacion archivo por archivo.
+
+
+14. AGENTE QA: CICLO DE VERIFICACION HASTA CERO ERRORES
+
+Al terminar la implementacion, actua como AGENTE QA independiente. No asumas que
+lo que acabas de escribir esta bien. Tu trabajo aqui es encontrar lo que falla,
+no confirmar que funciona.
+
+REGLA CENTRAL: NO DECLARES LA TAREA TERMINADA MIENTRAS QUEDE UN SOLO ERROR.
+Corregir y seguir adelante no alcanza. Cada correccion obliga a volver a
+ejecutar la bateria COMPLETA desde el principio, porque un arreglo puede romper
+algo que ya pasaba. Repite el ciclo cuantas veces haga falta.
+
+CICLO:
+
+  1. Ejecuta la bateria completa (abajo).
+  2. Si hay cualquier error, warning relevante o prueba que no corre, corrigelo.
+  3. Vuelve al paso 1. NO continues al paso 4 sin una corrida limpia entera.
+  4. Recien ahi informa, indicando cuantas iteraciones hicieron falta.
+
+BATERIA COMPLETA:
+
+  a) Sintaxis de cada archivo creado o modificado:
+       php -l <archivo>
+
+  b) Suite de pruebas completa, no solo los tests nuevos:
+       php artisan test --testsuite Unit
+     Una prueba existente que empieza a fallar es un error tuyo, no un
+     inconveniente. Investiga por que y decide con el cliente si la expectativa
+     cambio de verdad; no la ajustes en silencio para que pase.
+
+  c) Compilacion de vistas:
+       php artisan view:clear
+       php artisan view:cache
+     Revisa las vistas compiladas y confirma que PHP cierre antes de <!DOCTYPE>.
+
+  d) Rutas registradas y sin nombres duplicados:
+       php artisan route:list --path=evento_retorno
+       php artisan route:list --path=catalogos
+       php artisan route:list --path=esquemas
+
+  e) Resolucion de clases: comprueba que cada controlador, servicio, trait y
+     modelo nuevo exista y cargue:
+       class_exists() / trait_exists() sobre la lista completa.
+
+  f) AUDITORIA DE RELACIONES DE LA SECCION 0, ejecutada de verdad. No basta con
+     leer los modelos: recorre cada relacion usada por el codigo copiado y
+     confirma que resuelve. Este es el punto que mas errores produjo en
+     traslados anteriores.
+
+  g) Ejecucion real de cada flujo, no solo verificacion estatica:
+     - Subir el Excel de catalogos y revisar el dry-run.
+     - Aplicar y volver a aplicar el mismo Excel: la segunda corrida debe dar
+       cero cambios.
+     - Subir el ZIP de esquemas y confirmar los 15 con su version.
+     - Activar y desactivar una version y verificar que la version de emision
+       cambia.
+     - Generar un DTE de cada tipo soportado y revisar el JSON CAMPO POR CAMPO
+       contra el schema oficial.
+     - Crear un Evento de Retorno, revisar su JSON, transmitirlo en pruebas y
+       abrir el PDF.
+     - Provocar un error a proposito (producto sin inventario, factura fuera de
+       plazo, monto mayor al DTE) y confirmar que sale por item-error con el
+       motivo concreto, que NO aparece la pantalla de excepcion de Laravel, que
+       la pantalla sigue usable y que no quedan datos a medias.
+     - Provocar un error de programacion a proposito (renombrar temporalmente
+       una relacion) y confirmar que tampoco llega como pantalla de excepcion,
+       aunque si quede registrado en el log.
+
+  h) Revision del log despues de ejercitar los flujos:
+       grep -i "error\|exception\|fuera del schema" storage/logs/laravel.log
+     Una excepcion atrapada que nadie mira sigue siendo un error.
+
+NO SE PERMITE:
+
+- Declarar terminado con errores conocidos, aunque parezcan menores.
+- Saltar una prueba porque "no aplica" sin explicar por que y dejarlo escrito.
+- Descartar un fallo como "no es un error real" sin evidencia que lo demuestre.
+- Confundir "compila y no lanza excepcion" con "los datos son correctos". Un DTE
+  puede generarse sin errores y tener la unidad de medida, el codigo de
+  actividad o la direccion equivocados.
+- Silenciar un error con ?? o try/catch para que la corrida quede limpia. Si un
+  valor no se resuelve, el problema es la relacion faltante, no el mensaje.
+- Dar por buena la seccion 0 sin haberla ejecutado contra el destino real.
+
+INFORME DE QA. Al cerrar, entrega:
+
+- Cantidad de iteraciones del ciclo hasta llegar a cero errores.
+- Lista de cada error encontrado, su causa y como se corrigio.
+- Resultado de cada punto de la bateria, con el comando y su salida resumida.
+- Relaciones y columnas que hubo que crear o adaptar.
+- Lo que quedo fuera de alcance y por que, si aplica.
