@@ -5,6 +5,13 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.21] - 2026-09-24
+
+### Corregido
+- `sync:local-vps`: `ventas_detalles` fallaba con `1390 Prepared statement contains too many placeholders`. El filtro por sucursal traía todos los IDs de `ventas` de la sucursal y los mandaba en un `WHERE venta IN (...)`, que supera el límite de 65,535 parámetros de MySQL cuando hay muchas ventas. Ahora se usa una subconsulta (`WHERE venta IN (SELECT id FROM ventas WHERE sucursal = ?)`). Se aplicó lo mismo a `ajustes_detalles`, `compras_detalles`, `solicitudes_detalles`, `kardexes`, `cuentas_pagars` y `pagos`, que tenían el mismo problema a futuro.
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.20] - 2026-09-24
 
 ### Corregido

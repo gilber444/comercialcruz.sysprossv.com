@@ -494,63 +494,35 @@ class SyncLocalAVPSTablas extends Command
             case 'ajustes_detalles':
                 $fkCol = $this->primeraColumnaExistente(['ajuste_id', 'ajuste'], $cols);
                 if ($fkCol && $schema->hasTable('ajustes')) {
-                    $ids = DB::connection($connLocal)
-                        ->table('ajustes')
-                        ->where('sucursal', $sucursalId)
-                        ->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn($fkCol, $ids);
-                    } else {
-                        $query->whereRaw('1 = 0'); // no hay padres; omitir todo
-                    }
+                    $this->whereInPadresDeSucursal($query, $fkCol, 'ajustes', $sucursalId);
                 }
                 break;
 
             case 'compras_detalles':
                 $fkCol = $this->primeraColumnaExistente(['compra_id', 'compra'], $cols);
                 if ($fkCol && $schema->hasTable('compras')) {
-                    $ids = DB::connection($connLocal)
-                        ->table('compras')
-                        ->where('sucursal', $sucursalId)
-                        ->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn($fkCol, $ids);
-                    } else {
-                        $query->whereRaw('1 = 0');
-                    }
+                    $this->whereInPadresDeSucursal($query, $fkCol, 'compras', $sucursalId);
                 }
                 break;
 
             case 'solicitudes_detalles':
                 $fkCol = $this->primeraColumnaExistente(['solicitud_id', 'solicitud'], $cols);
                 if ($fkCol && $schema->hasTable('solicitudes')) {
-                    $ids = DB::connection($connLocal)
-                        ->table('solicitudes')
-                        ->where(function ($q) use ($sucursalId) {
-                            $q->where('sucursal', $sucursalId)
-                              ->orWhere('destino', $sucursalId);
-                        })
-                        ->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn($fkCol, $ids);
-                    } else {
-                        $query->whereRaw('1 = 0');
-                    }
+                    $query->whereIn($fkCol, function ($sub) use ($sucursalId) {
+                        $sub->select('id')
+                            ->from('solicitudes')
+                            ->where(function ($q) use ($sucursalId) {
+                                $q->where('sucursal', $sucursalId)
+                                  ->orWhere('destino', $sucursalId);
+                            });
+                    });
                 }
                 break;
 
             case 'ventas_detalles':
                 $fkCol = $this->primeraColumnaExistente(['venta_id', 'venta'], $cols);
                 if ($fkCol && $schema->hasTable('ventas')) {
-                    $ids = DB::connection($connLocal)
-                        ->table('ventas')
-                        ->where('sucursal', $sucursalId)
-                        ->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn($fkCol, $ids);
-                    } else {
-                        $query->whereRaw('1 = 0');
-                    }
+                    $this->whereInPadresDeSucursal($query, $fkCol, 'ventas', $sucursalId);
                 }
                 break;
 
@@ -559,15 +531,7 @@ class SyncLocalAVPSTablas extends Command
                 if (in_array('sucursal', $cols, true)) {
                     $query->where('sucursal', $sucursalId);
                 } elseif (in_array('inventario', $cols, true) && $schema->hasTable('inventarios')) {
-                    $ids = DB::connection($connLocal)
-                        ->table('inventarios')
-                        ->where('sucursal', $sucursalId)
-                        ->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn('inventario', $ids);
-                    } else {
-                        $query->whereRaw('1 = 0');
-                    }
+                    $this->whereInPadresDeSucursal($query, 'inventario', 'inventarios', $sucursalId);
                 }
                 break;
 
@@ -575,15 +539,7 @@ class SyncLocalAVPSTablas extends Command
                 if (in_array('sucursal', $cols, true)) {
                     $query->where('sucursal', $sucursalId);
                 } elseif ($schema->hasTable('compras')) {
-                    $ids = DB::connection($connLocal)
-                        ->table('compras')
-                        ->where('sucursal', $sucursalId)
-                        ->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn('compra', $ids);
-                    } else {
-                        $query->whereRaw('1 = 0');
-                    }
+                    $this->whereInPadresDeSucursal($query, 'compra', 'compras', $sucursalId);
                 }
                 break;
 
@@ -591,17 +547,13 @@ class SyncLocalAVPSTablas extends Command
                 if (in_array('sucursal', $cols, true)) {
                     $query->where('sucursal', $sucursalId);
                 } elseif ($schema->hasTable('cuentas_pagars')) {
-                    $cpCols = $schema->getColumnListing('cuentas_pagars');
-                    $cpQuery = DB::connection($connLocal)->table('cuentas_pagars');
-                    if (in_array('sucursal', $cpCols, true)) {
-                        $cpQuery->where('sucursal', $sucursalId);
-                    }
-                    $ids = $cpQuery->pluck('id');
-                    if ($ids->isNotEmpty()) {
-                        $query->whereIn('cuenta_pagar', $ids);
-                    } else {
-                        $query->whereRaw('1 = 0');
-                    }
+                    $cpTieneSucursal = in_array('sucursal', $schema->getColumnListing('cuentas_pagars'), true);
+                    $query->whereIn('cuenta_pagar', function ($sub) use ($cpTieneSucursal, $sucursalId) {
+                        $sub->select('id')->from('cuentas_pagars');
+                        if ($cpTieneSucursal) {
+                            $sub->where('sucursal', $sucursalId);
+                        }
+                    });
                 }
                 break;
 
@@ -613,6 +565,19 @@ class SyncLocalAVPSTablas extends Command
                 // Tablas sin sucursal (productos, clientes, etc.) no se filtran
                 break;
         }
+    }
+
+    /**
+     * Filtra $fkCol por los padres de la sucursal con una subconsulta
+     * (WHERE fk IN (SELECT id FROM padre WHERE sucursal = ?)). No se usa pluck()
+     * + whereIn() porque con miles de padres se supera el límite de 65,535
+     * placeholders de MySQL (error 1390).
+     */
+    protected function whereInPadresDeSucursal($query, string $fkCol, string $tablaPadre, int $sucursalId): void
+    {
+        $query->whereIn($fkCol, function ($sub) use ($tablaPadre, $sucursalId) {
+            $sub->select('id')->from($tablaPadre)->where('sucursal', $sucursalId);
+        });
     }
 
     protected function primeraColumnaExistente(array $candidatas, array $colsTabla): ?string
