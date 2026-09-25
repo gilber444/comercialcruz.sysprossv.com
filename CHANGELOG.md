@@ -5,6 +5,13 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.20] - 2026-09-24
+
+### Corregido
+- `app:update-from-git`: restaurada la versión compatible con Windows de la 1.0.15, que el commit de la 1.0.17 había revertido sin querer. En las PCs locales fallaba con `"which" no se reconoce...` y `El sistema no puede encontrar la ruta especificada` porque buscaba `/usr/bin/php82` y `/usr/bin/composer`. Ahora usa el PHP con el que corre artisan y el `composer.phar` de Laragon en Windows, y `/usr/bin/php82` en el VPS. Se pueden forzar con `UPDATE_PHP_BINARY` y `UPDATE_COMPOSER_PATH` en el `.env`.
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.19] - 2026-09-24
 
 ### Corregido
