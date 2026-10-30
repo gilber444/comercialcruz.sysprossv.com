@@ -64,7 +64,7 @@ class SyncDaemon extends Command
         try {
             while (time() < $fin) {
                 if (!$unaVez && !SyncDaemonEstado::activo()) {
-                    $this->warn('Daemon desactivado (feature flag o SYNC_DAEMON). Saliendo.');
+                    $this->warn('Daemon desactivado (SYNC_DAEMON no está en on). Saliendo.');
                     break;
                 }
 

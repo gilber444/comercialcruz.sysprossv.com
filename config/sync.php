@@ -9,15 +9,12 @@ return [
     | Un solo proceso por PC que corre todas las sincronizaciones en orden,
     | una a la vez (máximo una conexión al VPS por PC).
     |
-    | daemon:
-    |   auto → se activa con el feature flag del VPS: 'sync_daemon' (todas las
-    |          sucursales) o 'sync_daemon_suc_{ID}' (una sucursal). Requiere
-    |          activo=1 y produccion=1.
-    |   on   → forzado en esta PC (pruebas).
-    |   off  → apagado en esta PC (emergencia: vuelve a los comandos de antes).
+    | daemon (SYNC_DAEMON en el .env de cada PC):
+    |   on  → corre el daemon y se apagan los comandos de sync separados.
+    |   off → (por defecto) siguen los comandos de sync separados de siempre.
     |
     */
-    'daemon' => env('SYNC_DAEMON', 'auto'),
+    'daemon' => env('SYNC_DAEMON', 'off'),
 
     // Minutos que corre cada ciclo del daemon antes de salir; el scheduler lo
     // vuelve a lanzar al minuto siguiente (libera memoria y toma código nuevo).

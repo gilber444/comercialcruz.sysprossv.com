@@ -5,6 +5,12 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.24] - 2026-10-30
+
+### Cambiado
+- `sync:daemon` ya no depende de la tabla `features` (en este sistema todavía no se usa). Se activa por PC con `SYNC_DAEMON=on` en el `.env`; por defecto está apagado (`off`) y siguen los comandos de sync separados. Las PCs ya no consultan el VPS para leer el flag.
+- Se eliminó la migración `2026_10_30_000001_add_sync_daemon_feature_flag.php` (nunca se ejecutó en el VPS).
+
 ## [1.0.23] - 2026-10-30
 
 ### Agregado

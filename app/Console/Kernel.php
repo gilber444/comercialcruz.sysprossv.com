@@ -42,8 +42,7 @@ class Kernel extends ConsoleKernel
 
             if ($sucursalId > 0) {
                 // Daemon de sync: un solo proceso que corre todas las sincronizaciones
-                // cada pocos segundos. Se activa con el feature flag 'sync_daemon'
-                // (o 'sync_daemon_suc_{ID}') en el VPS, o con SYNC_DAEMON=on.
+                // cada pocos segundos. Se activa por PC con SYNC_DAEMON=on en el .env.
                 // Cuando está activo, los comandos separados de abajo no corren.
                 $usarSeparados = fn () => \App\Support\SyncDaemon::usarComandosSeparados();
 
