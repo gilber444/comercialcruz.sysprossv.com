@@ -56,7 +56,7 @@ class Kernel extends ConsoleKernel
                     ->name('pull vps->local')
                     ->everyFiveMinutes()
                     ->runInBackground()
-                    ->withoutOverlapping(59)
+                    ->withoutOverlapping(25)
                     ->appendOutputTo(storage_path('logs/sync_vps_local.log'));
 
                 // VPS → LOCAL (aparte): reconciliar estado de DTEs RECHAZADO contra el VPS.

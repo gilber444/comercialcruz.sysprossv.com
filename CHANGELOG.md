@@ -5,6 +5,17 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.22] - 2026-10-30
+
+### Corregido
+- Conexiones al VPS que quedaban abiertas o colgadas por los comandos de sync:
+  - Al terminar cualquier comando de consola (bien, con error o por error fatal) Laravel cierra todas las conexiones a BD, incluida `vpsmysql`. Antes `producto:nuevo`, `sync:orden-pedido` y `sync:dtes-estado` nunca la cerraban, y `sync:vps-local`, `sync:existencias-vps` y `sync:solicitudes` solo la cerraban si terminaban sin error.
+  - Conexión `vpsmysql`: máximo 10 s para conectar (`PDO::ATTR_TIMEOUT`) y `net_read_timeout`/`net_write_timeout` de 60 s, para que el servidor corte la conexión si la PC pierde internet a mitad de la sync.
+  - En la PC local, los comandos `sync:*`, `producto:nuevo` y `push:inventario-vps` tienen un tiempo máximo de 1200 s (configurable con `SYNC_MAX_SEGUNDOS`). En Windows corta los procesos que quedaron esperando una red caída.
+  - `sync:vps-local`: `withoutOverlapping` bajó de 59 a 25 minutos, para que un proceso colgado no bloquee la bajada de datos casi una hora.
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.21] - 2026-09-24
 
 ### Corregido

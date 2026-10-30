@@ -100,7 +100,10 @@ return [
             'engine' => 'InnoDB',
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION wait_timeout=90, interactive_timeout=90",
+                // Si el internet de la PC falla, no quedarse esperando: 10s para conectar
+                // y el servidor corta la conexión si el cliente deja de responder 60s.
+                PDO::ATTR_TIMEOUT => 10,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION wait_timeout=90, interactive_timeout=90, net_read_timeout=60, net_write_timeout=60",
             ]) : [],
         ],
 
