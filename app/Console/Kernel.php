@@ -41,11 +41,26 @@ class Kernel extends ConsoleKernel
                 ->appendOutputTo(storage_path('logs/procesar_dtes_pendientes.log'));
 
             if ($sucursalId > 0) {
+                // Daemon de sync: un solo proceso que corre todas las sincronizaciones
+                // cada pocos segundos. Se activa con el feature flag 'sync_daemon'
+                // (o 'sync_daemon_suc_{ID}') en el VPS, o con SYNC_DAEMON=on.
+                // Cuando está activo, los comandos separados de abajo no corren.
+                $usarSeparados = fn () => \App\Support\SyncDaemon::usarComandosSeparados();
+
+                $schedule->command('sync:daemon')
+                    ->name('sync daemon local<->vps')
+                    ->everyMinute()
+                    ->runInBackground()
+                    ->withoutOverlapping(30)
+                    ->when(fn () => \App\Support\SyncDaemon::activo())
+                    ->appendOutputTo(storage_path('logs/sync_daemon.log'));
+
                 // LOCAL → VPS: un solo proceso maestro reemplaza los 3 comandos separados
                 // (sync:local-vps + sync:solicitudes + sync:bitacora-local-vps)
                 // → menos conexiones simultáneas al VPS
                 $schedule->command("sync:maestro --sucursal={$sucursalId} --limit=1000")
                     ->name('push maestro local->vps')
+                    ->when($usarSeparados)
                     ->everyTwoMinutes()
                     ->runInBackground()
                     ->withoutOverlapping(4)
@@ -54,6 +69,7 @@ class Kernel extends ConsoleKernel
                 // VPS → LOCAL: descarga cambios del servidor
                 $schedule->command("sync:vps-local --sucursales={$sucursalId}")
                     ->name('pull vps->local')
+                    ->when($usarSeparados)
                     ->everyFiveMinutes()
                     ->runInBackground()
                     ->withoutOverlapping(25)
@@ -63,6 +79,7 @@ class Kernel extends ConsoleKernel
                 // Si en el VPS terminaron PROCESADO/INVALIDADO, corrige estado+sello en la local.
                 $schedule->command('sync:dtes-estado --limit=500')
                     ->name('reconciliar estado dtes vps->local')
+                    ->when($usarSeparados)
                     ->everyThirtyMinutes()
                     ->runInBackground()
                     ->withoutOverlapping()
@@ -71,6 +88,7 @@ class Kernel extends ConsoleKernel
                 // VPS → LOCAL: inventarios de productos nuevos
                 $schedule->command("producto:nuevo {$sucursalId}")
                     ->name('producto nuevo sync')
+                    ->when($usarSeparados)
                     ->everyFiveMinutes()
                     ->runInBackground()
                     ->withoutOverlapping(4)
@@ -79,6 +97,7 @@ class Kernel extends ConsoleKernel
                 // LOCAL → VPS: órdenes de pedido
                 $schedule->command('sync:orden-pedido')
                     ->name('sync ordenes pedido local->vps')
+                    ->when($usarSeparados)
                     ->everyFiveMinutes()
                     ->runInBackground()
                     ->withoutOverlapping(4)
@@ -87,6 +106,7 @@ class Kernel extends ConsoleKernel
                 // LOCAL → VPS: sincroniza existencias cada 10 minutos (sin kardex)
                 $schedule->command('sync:existencias-vps')
                     ->name('sync existencias local->vps')
+                    ->when($usarSeparados)
                     ->everyTenMinutes()
                     ->runInBackground()
                     ->withoutOverlapping(9)

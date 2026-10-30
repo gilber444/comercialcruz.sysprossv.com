@@ -5,6 +5,20 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.23] - 2026-10-30
+
+### Agregado
+- `sync:daemon`: daemon de sincronización LOCAL ↔ VPS (Fase 1). Un solo proceso por PC corre en orden, una a la vez, todas las sincronizaciones que antes eran comandos separados del scheduler:
+  - subir al VPS (`sync:maestro`) cada 20 s, bajar del VPS (`sync:vps-local`) cada 60 s, `sync:orden-pedido` cada 60 s, `producto:nuevo` cada 2 min, `sync:existencias-vps` cada 10 min y `sync:dtes-estado` cada 30 min. Intervalos configurables en `config/sync.php` / `.env` (`SYNC_CADA_*`);
+  - máximo una conexión al VPS por PC a la vez;
+  - cada tarea corre en un proceso hijo con timeout (600 s); si se cuelga se mata junto con su conexión;
+  - si una tarea falla seguido (sin internet), los reintentos se espacian hasta 5 min;
+  - cada ciclo dura 10 min y el scheduler lo vuelve a lanzar cada minuto si no está corriendo (no hace falta instalar nada en las PCs).
+- Feature flag `sync_daemon` (migración, `activo=1`, `produccion=0`). Cada PC lo lee **en el VPS** cada 5 min. Con `produccion=1` en `sync_daemon` se activa en todas las sucursales; para una sola sucursal se crea `sync_daemon_suc_{ID}` con `activo=1` y `produccion=1`. En una PC se puede forzar con `SYNC_DAEMON=on` o apagar con `SYNC_DAEMON=off`.
+- Mientras el daemon está activo, los comandos de sync separados del scheduler no corren, y el daemon no ejecuta un comando si el separado todavía está corriendo (cambio sin choques).
+
+> Registrado en estado de **prueba** (`activo=1`, `produccion=0`). El usuario decide cuándo pasar a producción.
+
 ## [1.0.22] - 2026-10-30
 
 ### Corregido

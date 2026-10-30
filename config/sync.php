@@ -1,0 +1,42 @@
+<?php
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Daemon de sincronización (sync:daemon)
+    |--------------------------------------------------------------------------
+    |
+    | Un solo proceso por PC que corre todas las sincronizaciones en orden,
+    | una a la vez (máximo una conexión al VPS por PC).
+    |
+    | daemon:
+    |   auto → se activa con el feature flag del VPS: 'sync_daemon' (todas las
+    |          sucursales) o 'sync_daemon_suc_{ID}' (una sucursal). Requiere
+    |          activo=1 y produccion=1.
+    |   on   → forzado en esta PC (pruebas).
+    |   off  → apagado en esta PC (emergencia: vuelve a los comandos de antes).
+    |
+    */
+    'daemon' => env('SYNC_DAEMON', 'auto'),
+
+    // Minutos que corre cada ciclo del daemon antes de salir; el scheduler lo
+    // vuelve a lanzar al minuto siguiente (libera memoria y toma código nuevo).
+    'minutos_por_ciclo' => (int) env('SYNC_DAEMON_MINUTOS', 10),
+
+    // Pausa entre vueltas del loop (segundos).
+    'pausa' => (int) env('SYNC_DAEMON_PAUSA', 5),
+
+    // Tiempo máximo de cada tarea antes de matarla (segundos).
+    'timeout_tarea' => (int) env('SYNC_DAEMON_TIMEOUT_TAREA', 600),
+
+    // Tareas en el orden en que se ejecutan. 'cada' = segundos entre corridas.
+    // {sucursal} se reemplaza por APP_SUCURSAL_ID.
+    'tareas' => [
+        'push'         => ['comando' => 'sync:maestro',         'args' => ['--sucursal={sucursal}', '--limit=1000'], 'cada' => (int) env('SYNC_CADA_PUSH', 20)],
+        'pull'         => ['comando' => 'sync:vps-local',       'args' => ['--sucursales={sucursal}'],              'cada' => (int) env('SYNC_CADA_PULL', 60)],
+        'orden_pedido' => ['comando' => 'sync:orden-pedido',    'args' => [],                                       'cada' => (int) env('SYNC_CADA_ORDEN_PEDIDO', 60)],
+        'producto'     => ['comando' => 'producto:nuevo',       'args' => ['{sucursal}'],                           'cada' => (int) env('SYNC_CADA_PRODUCTO', 120)],
+        'existencias'  => ['comando' => 'sync:existencias-vps', 'args' => [],                                       'cada' => (int) env('SYNC_CADA_EXISTENCIAS', 600)],
+        'dtes_estado'  => ['comando' => 'sync:dtes-estado',     'args' => ['--limit=500'],                          'cada' => (int) env('SYNC_CADA_DTES_ESTADO', 1800)],
+    ],
+];
