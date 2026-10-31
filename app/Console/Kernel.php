@@ -46,6 +46,16 @@ class Kernel extends ConsoleKernel
                 // Cuando está activo, los comandos separados de abajo no corren.
                 $usarSeparados = fn () => \App\Support\SyncDaemon::usarComandosSeparados();
 
+                // Una sola vez: descarga del VPS los inventarios que faltan en esta sucursal.
+                // Al terminar sin pendientes deja una marca en storage/app y ya no hace nada.
+                $schedule->command("inventario:completar-desde-vps --sucursal={$sucursalId}")
+                    ->name('completar inventario desde vps (una vez)')
+                    ->hourly()
+                    ->runInBackground()
+                    ->withoutOverlapping(30)
+                    ->skip(fn () => is_file(storage_path("app/inventario_completar_sucursal_{$sucursalId}.done")))
+                    ->appendOutputTo(storage_path('logs/completar_inventario.log'));
+
                 $schedule->command('sync:daemon')
                     ->name('sync daemon local<->vps')
                     ->everyMinute()

@@ -5,6 +5,22 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.25] - 2026-10-30
+
+### Corregido
+- Ajustes: al guardar un ajuste de un producto sin inventario en la sucursal se intentaba crear el inventario sin `empresa` → `SQLSTATE[HY000] 1364 Field 'empresa' doesn't have a default value`.
+- Ajustes: al escanear un código de barras se pasaba el id del **producto** como id de **precio**, por lo que se abría un producto distinto al escaneado.
+- Compras (escáner y agregar producto): ya no fallan cuando el producto no tiene inventario en ninguna sucursal; se usa el id de precio correcto al escanear.
+- Solicitudes: al despachar se creaba el inventario destino sin `empresa`.
+
+### Cambiado
+- Nuevo servicio `InventarioSucursalService`: en ajustes, compras, precompras y solicitudes, si falta el inventario del producto en la sucursal:
+  - en el **VPS** se crea (con la empresa de la sucursal);
+  - en las **PC locales ya no se crea**: se descarga del VPS (mismo `sincro_id`). Si el VPS no lo tiene o no hay conexión, se muestra un aviso claro.
+
+### Agregado
+- Comando `inventario:completar-desde-vps` (solo PC local): detecta los productos que no tienen inventario en la sucursal de la PC (`APP_SUCURSAL_ID`) y los descarga del VPS. Corre **una sola vez**: al terminar sin pendientes deja la marca `storage/app/inventario_completar_sucursal_{ID}.done`. Opciones `--dry-run` y `--force`. Queda programado cada hora en el scheduler local y se salta solo cuando existe la marca.
+
 ## [1.0.24] - 2026-10-30
 
 ### Cambiado

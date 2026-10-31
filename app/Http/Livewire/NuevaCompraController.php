@@ -20,6 +20,7 @@ use App\Models\tipoCompras;
 use App\Models\TipoPersona;
 use App\Models\tmpCompras;
 use App\Models\User;
+use App\Services\InventarioSucursalService;
 use Darryldecode\Cart\Cart;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -183,18 +184,23 @@ class NuevaCompraController extends Component
             $this->increaseQty($product->precio);
         }else{
         $product = Productos::join('precios as p', 'productos.id', '=', 'p.producto')
-            ->join('inventarios as i', 'i.producto', 'productos.id')
             ->where('p.codebar', 'like', '%' . $barcode . '%')
-            //->where('i.sucursal', $user->sucursal)
-            ->select('productos.*', 'i.existencia', 'p.codebar', 'i.id as inventario', 'p.costosiva', 'i.sucursal', 'p.id as idpre', 'p.costociva')
+            ->whereNull('p.deleted_at')
+            ->whereNull('productos.deleted_at')
+            ->select('productos.*', 'p.codebar', 'p.costosiva', 'p.id as idpre', 'p.costociva')
             ->first();
-            //$p = Precios::find($id);
-            $insert = Inventarios::create([
-                'producto' => $product->id,
-                'empresa' => $user->empresa,
-                'sucursal' => $user->sucursal,
-                'existencia' => 0
-            ]);
+            if(!$product){
+                $this->emit('item-error', 'El producto no esta registrado');
+                return;
+            }
+            // En PC local no se crea inventario: si falta se jala del VPS
+            try {
+                $insert = InventarioSucursalService::obtener((int) $product->id, (int) $user->sucursal);
+            } catch (\RuntimeException $e) {
+                $this->emit('item-error', $e->getMessage());
+                return;
+            }
+            if($insert->wasRecentlyCreated)
             $kardex = Kardex::create([
                 'producto' => $product->id,
                 'inventario' => $insert->id,
@@ -209,7 +215,7 @@ class NuevaCompraController extends Component
                 'saldoCantidad' => 0.00,
                 'saldoValor' => 0.00
              ]);
-             $this->increaseQty($product->precio);
+             $this->increaseQty($product->idpre);
         }  //$this->emit('scan-notfound', 'Producto no encontrado');
     }
     public function InCart($id)
@@ -329,19 +335,23 @@ class NuevaCompraController extends Component
             //$p = Precios::find($id);
             if(!$product){
                 $prod = Productos::join('precios as p', 'productos.id', '=', 'p.producto')
-                    ->join('inventarios as i', 'i.producto', 'productos.id')
                     ->where('p.id', $id)
-                    //->where('i.sucursal', $user->sucursal)
                     ->whereNull('p.deleted_at')
                     ->whereNull('productos.deleted_at')
-                    ->select('productos.*', 'i.existencia', 'p.codebar', 'i.id as inventario', 'p.costosiva', 'i.sucursal', 'p.id as idpre', 'p.costociva')
+                    ->select('productos.*', 'p.codebar', 'p.costosiva', 'p.id as idpre', 'p.costociva')
                     ->first();
-                $insert = Inventarios::create([
-                    'producto' => $prod->id,
-                    'empresa' => $user->empresa,
-                    'sucursal' => $user->sucursal,
-                    'existencia' => 0
-                ]);
+                if(!$prod){
+                    $this->emit('item-error', 'El producto no esta registrado');
+                    return;
+                }
+                // En PC local no se crea inventario: si falta se jala del VPS
+                try {
+                    $insert = InventarioSucursalService::obtener((int) $prod->id, (int) $user->sucursal);
+                } catch (\RuntimeException $e) {
+                    $this->emit('item-error', $e->getMessage());
+                    return;
+                }
+                if($insert->wasRecentlyCreated)
                 $kardex = Kardex::create([
                     'producto' => $prod->id,
                     'inventario' => $insert->id,
@@ -571,20 +581,10 @@ class NuevaCompraController extends Component
                         'total' => $item->total,
                         'fechaVencimiento' => $venci,
                     ]);
-                    $existencia = Inventarios::where('producto', $item->producto)->where('sucursal', $this->sucursal)->first();
-                    if(!$existencia)
+                    // En PC local no se crea inventario: si falta se jala del VPS
+                    $existencia = InventarioSucursalService::obtener((int) $item->producto, (int) $this->sucursal);
+                    if($existencia->wasRecentlyCreated)
                     {
-                        $sucursal = Sucursales::find($this->sucursal);
-                        if(!$sucursal)
-                        {
-                            throw new \RuntimeException('No se encontró la sucursal seleccionada.');
-                        }
-                        $existencia = Inventarios::create([
-                            'producto' => $item->producto,
-                            'empresa' => $sucursal->empresa,
-                            'sucursal' => $sucursal->id,
-                            'existencia' => 0
-                        ]);
                         \Log::info('Inventario creado en Store Compra', [
                             'inventario_id' => $existencia->id,
                             'producto' => $item->producto,

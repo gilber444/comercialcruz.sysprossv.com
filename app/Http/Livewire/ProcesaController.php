@@ -14,6 +14,7 @@ use App\Models\Productos;
 use App\Models\Proveedores;
 use App\Models\Sucursales;
 use App\Models\tipoCompras;
+use App\Services\InventarioSucursalService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
@@ -157,20 +158,10 @@ class ProcesaController extends Component
                         'total' => $item->ventaGravada,
                         'fechaVencimiento' => $venci,
                     ]);
-                    $existencia = Inventarios::where('producto', $item->producto)->where('sucursal', $this->sucursal)->first();
-                    if(!$existencia)
+                    // En PC local no se crea inventario: si falta se jala del VPS
+                    $existencia = InventarioSucursalService::obtener((int) $item->producto, (int) $this->sucursal);
+                    if($existencia->wasRecentlyCreated)
                     {
-                        $sucursal = Sucursales::find($this->sucursal);
-                        if(!$sucursal)
-                        {
-                            throw new \RuntimeException('No se encontró la sucursal seleccionada.');
-                        }
-                        $existencia = Inventarios::create([
-                            'producto' => $item->producto,
-                            'empresa' => $sucursal->empresa,
-                            'sucursal' => $sucursal->id,
-                            'existencia' => 0
-                        ]);
                         \Log::info('Inventario creado en GuardarCompra Precompra', [
                             'inventario_id' => $existencia->id,
                             'producto' => $item->producto,

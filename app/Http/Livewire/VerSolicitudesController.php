@@ -10,6 +10,8 @@ use Livewire\Component;
 
 use App\Models\Inventarios;
 
+use App\Services\InventarioSucursalService;
+
 use App\Models\Kardex;
 
 use App\Models\Solicitudes;
@@ -889,25 +891,8 @@ class VerSolicitudesController extends Component
 
         //dd($detalle->destino);
 
-        $inven = Inventarios::firstOrCreate(
-
-            [
-
-                //'empresa' => 1,
-
-                'sucursal' => $detalle->destino,
-
-                'producto' => $detalle->producto,
-
-            ],
-
-            //[
-
-            //     'existencia' => 0, // si no existe lo crea con 0
-
-            // ]
-
-        );
+        // En PC local no se crea inventario: si falta se jala del VPS
+        $inven = InventarioSucursalService::obtener((int) $detalle->producto, (int) $detalle->destino);
 
 
 

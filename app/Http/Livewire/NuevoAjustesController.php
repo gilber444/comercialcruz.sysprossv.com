@@ -295,13 +295,16 @@ class NuevoAjustesController extends Component
     {
         //dd($barcode);
         $user_id = Auth::user()->id;
+        // ScanCode2 recibe el id del PRECIO, no el del producto
         $product = Productos::join('precios as p', 'productos.id', '=', 'p.producto')
-            ->leftJoin('inventarios as i', 'i.producto', 'productos.id')
             ->where('p.codebar', 'like', '%' . $barcode . '%')
-            ->select('productos.id')
+            ->where('p.escala', 'No')
+            ->whereNull('p.deleted_at')
+            ->whereNull('productos.deleted_at')
+            ->select('productos.id', 'p.id as pprecio')
             ->first();
         if ($product) {
-            $this->ScanCode2($product->id);
+            $this->ScanCode2($product->pprecio);
         } else {
             $this->emit('item-error', 'El producto no esta registrado');
         }
@@ -467,18 +470,8 @@ class NuevoAjustesController extends Component
                     ]);
 
                     // Bloqueo pesimista para evitar condiciones de carrera en inventario
-                    $existencia = Inventarios::where('producto', $item->producto)
-                        ->where('sucursal', $this->sucursal)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (!$existencia) {
-                        $existencia = Inventarios::create([
-                            'producto' => $item->producto,
-                            'sucursal' => $this->sucursal,
-                            'existencia' => 0.00,
-                        ]);
-                    }
+                    // En PC local no se crea inventario: si falta se jala del VPS
+                    $existencia = InventarioSucursalService::obtener((int) $item->producto, (int) $this->sucursal, true);
 
                     if (!$existencia || !$existencia->id) {
                         throw new \Exception("No se pudo obtener o crear inventario para el producto '{$item->name}'.");
