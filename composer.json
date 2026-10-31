@@ -19,6 +19,7 @@
         "laravel/ui": "^4.2",
         "livewire/livewire": "2.12",
         "maatwebsite/excel": "^3.1",
+        "opis/json-schema": "^2.3",
         "phpmailer/phpmailer": "^6.9",
         "phpseclib/phpseclib": "^3.0",
         "simplesoftwareio/simple-qrcode": "^4.2",

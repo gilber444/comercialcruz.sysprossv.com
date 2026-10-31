@@ -278,7 +278,7 @@
 
         <li
 
-            class="menu-item {{ Request::is('departamentos') ? 'active' : '' }} {{ Request::is('municipios') ? 'active' : '' }} {{ Request::is('actividad_economica') ? 'active' : '' }} {{ Request::is('pais') ? 'active' : '' }} {{ Request::is('distritos') ? 'active' : '' }} {{ Request::is('ambiente_destinos') ? 'active' : '' }} {{ Request::is('tipo_documentos') ? 'active' : '' }} {{ Request::is('modelo_facturacion') ? 'active' : '' }} {{ Request::is('tipo_transmision') ? 'active' : '' }} {{ Request::is('tipo_contingencias') ? 'active' : '' }} {{ Request::is('retencion') ? 'active' : '' }} {{ Request::is('tipo_generacion_documento') ? 'active' : '' }} {{ Request::is('tipo_establecimiento') ? 'active' : '' }} {{ Request::is('servicio_medico') ? 'active' : '' }} {{ Request::is('tipo_item') ? 'active' : '' }} {{ Request::is('unidad_medida') ? 'active' : '' }} {{ Request::is('tributos') ? 'active' : '' }} {{ Request::is('condicion_operacion') ? 'active' : '' }} {{ Request::is('forma_pago') ? 'active' : '' }} {{ Request::is('plazos') ? 'active' : '' }} {{ Request::is('documentos_asociados') ? 'active' : '' }} {{ Request::is('identificacion_receptor') ? 'active' : '' }} {{ Request::is('tipo_invalidacion') ? 'active' : '' }} {{ Request::is('titulo_remiten_bienes') ? 'active' : '' }} {{ Request::is('donacion') ? 'active' : '' }} {{ Request::is('recinto_fiscal') ? 'active' : '' }} {{ Request::is('regimen') ? 'active' : '' }} {{ Request::is('tipo_persona') ? 'active' : '' }} {{ Request::is('transporte') ? 'active' : '' }} {{ Request::is('incoterms') ? 'active' : '' }} {{ Request::is('domicilio_fiscal') ? 'active' : '' }} {{ Request::is('clase_documento') ? 'active' : '' }}">
+            class="menu-item {{ Request::is('esquemas_dte') ? 'active' : '' }} {{ Request::is('departamentos') ? 'active' : '' }} {{ Request::is('municipios') ? 'active' : '' }} {{ Request::is('actividad_economica') ? 'active' : '' }} {{ Request::is('pais') ? 'active' : '' }} {{ Request::is('distritos') ? 'active' : '' }} {{ Request::is('ambiente_destinos') ? 'active' : '' }} {{ Request::is('tipo_documentos') ? 'active' : '' }} {{ Request::is('modelo_facturacion') ? 'active' : '' }} {{ Request::is('tipo_transmision') ? 'active' : '' }} {{ Request::is('tipo_contingencias') ? 'active' : '' }} {{ Request::is('retencion') ? 'active' : '' }} {{ Request::is('tipo_generacion_documento') ? 'active' : '' }} {{ Request::is('tipo_establecimiento') ? 'active' : '' }} {{ Request::is('servicio_medico') ? 'active' : '' }} {{ Request::is('tipo_item') ? 'active' : '' }} {{ Request::is('unidad_medida') ? 'active' : '' }} {{ Request::is('tributos') ? 'active' : '' }} {{ Request::is('condicion_operacion') ? 'active' : '' }} {{ Request::is('forma_pago') ? 'active' : '' }} {{ Request::is('plazos') ? 'active' : '' }} {{ Request::is('documentos_asociados') ? 'active' : '' }} {{ Request::is('identificacion_receptor') ? 'active' : '' }} {{ Request::is('tipo_invalidacion') ? 'active' : '' }} {{ Request::is('titulo_remiten_bienes') ? 'active' : '' }} {{ Request::is('donacion') ? 'active' : '' }} {{ Request::is('recinto_fiscal') ? 'active' : '' }} {{ Request::is('regimen') ? 'active' : '' }} {{ Request::is('tipo_persona') ? 'active' : '' }} {{ Request::is('transporte') ? 'active' : '' }} {{ Request::is('incoterms') ? 'active' : '' }} {{ Request::is('domicilio_fiscal') ? 'active' : '' }} {{ Request::is('clase_documento') ? 'active' : '' }}">
 
             <a href="javascript:void(0);" class="menu-link menu-toggle">
 
@@ -289,6 +289,13 @@
             </a>
 
             <ul class="menu-sub">
+
+                <li class="menu-item {{ Request::is('esquemas_dte') ? 'active' : '' }}">
+                    <a href="{{ route('esquemas_dte') }}" class="menu-link">
+                        <i class="menu-icon fa-solid fa-code"></i>
+                        <div data-i18n="Esquemas JSON">Esquemas JSON</div>
+                    </a>
+                </li>
 
                 @can('AmbienteDestino_Index')
 

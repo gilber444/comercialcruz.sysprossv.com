@@ -215,6 +215,7 @@ use App\Http\Livewire\SujetoExcluidosController;
 use App\Http\Livewire\TipoContigenciaController;
 
 use App\Http\Livewire\TipoDocumentoController;
+use App\Http\Livewire\EsquemasDteController;
 
 use App\Http\Livewire\TipoEstablecimientoController;
 
@@ -370,6 +371,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('ambiente_destinos', AmbienteDestinoController::class)->name('ambiente_destinos')->can('AmbienteDestino_Index');
 
     Route::get('tipo_documentos', TipoDocumentoController::class)->name('tipo_documentos')->can('TipoDocumentos_Index');
+    Route::get('esquemas_dte', EsquemasDteController::class)->name('esquemas_dte')->can('AdminCatalagos_Index');
 
     Route::get('modelo_facturacion', ModeloFacturacionController::class)->name('modelo_facturacion')->can('ModeloFacturacion_Index');
 

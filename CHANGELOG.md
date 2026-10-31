@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.27] - 2026-10-31
+
+### Agregado (Normativa DTE 2.0 — paso 1: esquemas JSON de Hacienda)
+- Paquete `opis/json-schema` 2.6.0 (validación de JSON contra los esquemas de Hacienda).
+- Tabla `esquema_dtes` (migración `2026_08_06_120000_create_esquema_dtes_table`) y modelo `EsquemaDte`.
+- `EsquemaDteLector` (lee esquemas `.json` o `.zip` y detecta tipo y versión), `ValidadorEsquemaDte` y `Support/EsquemaDteParser` (decimales exactos en `multipleOf`), traídos de servimangueras.
+- Pantalla **Catálogos DTE → Esquemas JSON** (`esquemas_dte`, permiso `AdminCatalagos_Index`) para subir, activar y desactivar esquemas. La columna "Usa el sistema" muestra la versión del último DTE emitido de cada tipo y avisa si no coincide con el esquema.
+
+> No cambia el POS ni la emisión de DTE: el validador queda instalado pero todavía no se usa al firmar. Se conectará en un paso posterior.
+
 ## [1.0.26] - 2026-10-31
 
 ### Corregido
