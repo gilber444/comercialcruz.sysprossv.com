@@ -28,6 +28,10 @@ return [
      *   off      no valida
      *   aviso    valida y deja el detalle en el log, pero deja pasar
      *   bloqueo  valida e impide transmitir un documento que no cumple
+     *            (todavia NO implementado: por ahora se comporta como "aviso")
+     *
+     * Lo aplica App\Services\RevisionEsquemaDte en FirmadorDTE, FirmadorLocal
+     * y Firmador2; el detalle queda en storage/logs/dte_esquema-AAAA-MM-DD.log.
      *
      * El valor por defecto es "aviso" a proposito: hoy el CCF se emite con
      * version 3 mientras Hacienda habilita la 4, y su estructura ya es v4, asi

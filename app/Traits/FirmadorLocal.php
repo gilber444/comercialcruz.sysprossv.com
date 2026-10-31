@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\dte;
+use App\Services\RevisionEsquemaDte;
 use App\Models\Firmador;
 use App\Traits\FirmadorTrait;
 
@@ -20,6 +21,9 @@ trait FirmadorLocal
      */
     public function FirmadorLocal($id, $json)
     {
+        // Normativa 2.0: solo deja aviso en storage/logs/dte_esquema.log, no detiene la firma
+        RevisionEsquemaDte::revisar($json, $id);
+
         $dte = dte::find($id);
 
         if (!$dte) {

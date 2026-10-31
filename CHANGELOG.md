@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.29] - 2026-10-31
+
+### Agregado (Normativa DTE 2.0 — paso 2: revisión contra el esquema antes de firmar)
+- `RevisionEsquemaDte`: justo antes de firmar, revisa el JSON contra el esquema vigente de `esquema_dtes` (facturas, CCF, notas, sujeto excluido, invalidaciones `INV` y contingencias `CON`).
+- Enganchado en `FirmadorDTE`, `FirmadorLocal` y `Firmador2`.
+- **Solo avisa, nunca detiene la firma.** El resultado queda en `storage/logs/dte_esquema-AAAA-MM-DD.log` (canal propio, 30 días, no depende de `LOG_LEVEL`): `DTE cumple el esquema` o `DTE fuera del esquema oficial` con los campos que fallan.
+- Si no hay esquema cargado para ese tipo no hace nada. Se apaga con `DTE_VALIDAR_ESQUEMA=off`.
+
+> No cambia el POS ni el JSON que se manda a Hacienda.
+
 ## [1.0.28] - 2026-10-31
 
 > Se registró en el VPS como 1.0.28 (el commit dice v1.0.27): `version:release` incrementó sobre el `config/version.php` que ya se había subido con 1.0.27.

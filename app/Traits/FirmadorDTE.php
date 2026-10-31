@@ -1,5 +1,6 @@
 <?php
 namespace App\Traits;
+use App\Services\RevisionEsquemaDte;
 use App\Models\Apis;
 use App\Models\dte;
 use App\Models\Empresas;
@@ -10,6 +11,8 @@ trait FirmadorDTE
 {
     public function FirmadorDTE($id, $json)
     {
+        // Normativa 2.0: solo deja aviso en storage/logs/dte_esquema.log, no detiene la firma
+        RevisionEsquemaDte::revisar($json, $id);
         $client = new Client();
         $user = Auth::user();
         $dte = dte::find($id);
