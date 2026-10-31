@@ -5,7 +5,9 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-## [1.0.27] - 2026-10-31
+## [1.0.28] - 2026-10-31
+
+> Se registró en el VPS como 1.0.28 (el commit dice v1.0.27): `version:release` incrementó sobre el `config/version.php` que ya se había subido con 1.0.27.
 
 ### Agregado (Normativa DTE 2.0 — paso 1: esquemas JSON de Hacienda)
 - Paquete `opis/json-schema` 2.6.0 (validación de JSON contra los esquemas de Hacienda).
