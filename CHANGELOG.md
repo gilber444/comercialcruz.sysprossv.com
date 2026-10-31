@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.26] - 2026-10-31
+
+### Corregido
+- Ajustes: faltaba el `use App\Services\InventarioSucursalService` en `NuevoAjustesController` → `Class "App\Http\Livewire\InventarioSucursalService" not found` al guardar un ajuste.
+
 ## [1.0.25] - 2026-10-30
 
 ### Corregido

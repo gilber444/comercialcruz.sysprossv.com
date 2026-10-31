@@ -11,6 +11,7 @@ use App\Models\Precios;
 use App\Models\Productos;
 use App\Models\Sucursales;
 use App\Models\tmpAjuste;
+use App\Services\InventarioSucursalService;
 use App\Traits\GenerarJsonAjuste;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
