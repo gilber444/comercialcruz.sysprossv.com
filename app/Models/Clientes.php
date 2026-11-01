@@ -25,4 +25,29 @@ class Clientes extends Model
             }
         });
     }
+
+    public function Rdepartamento()
+    {
+        return $this->belongsTo(Departamentos::class, 'departamento');
+    }
+
+    public function Rmunicipio()
+    {
+        return $this->belongsTo(Municipios::class, 'municipio');
+    }
+
+    public function Rdistrito()
+    {
+        return $this->belongsTo(Distritos::class, 'distrito');
+    }
+
+    public function RidentificacionReceptor()
+    {
+        return $this->belongsTo(IdentificacionReceptor::class, 'idenReceptor');
+    }
+
+    public function RactividadEconomica()
+    {
+        return $this->belongsTo(ActividadEconomica::class, 'actividad');
+    }
 }

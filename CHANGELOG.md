@@ -5,6 +5,20 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.30] - 2026-10-31
+
+### Corregido
+- **Nota de crédito**: `GeneraJsonNota` usaba relaciones que no existían en los modelos (`dte::Rambiente`, `Remisor`, `Rventas`, `Clientes::RactividadEconomica`, etc.), así que generar una nota fallaba desde v1.0.16. Se agregaron las relaciones a `dte`, `Sucursales`, `Clientes` y `Empresas` (solo se agregan; no cambia ninguna existente).
+
+### Agregado (Normativa DTE 2.0 — paso 3a/3b: generador 2.0 sin activar)
+- `GeneradorDteV2Service`: arma Factura v2, CCF v4, Nota de Crédito v4 y Sujeto Excluido v2. **No recalcula montos**: parte del JSON del generador actual (con el descuento por caja, la retención y los códigos MH de este sistema) y solo lo pasa a la estructura 2.0 (sin `extension`; emisor sin `tipoEstablecimiento`/códigos MH; direcciones con `distrito`; `ivaRete`/`ivaPerci`; DUI/NIT solo dígitos; montos redondeados a 2 y 8 decimales; ítems numerados).
+- `GeneradorDteLegacy`: da acceso a los generadores actuales fuera de los componentes.
+- Comando `dte:comparar-generador {ids*}`: compara el JSON actual con el 2.0 **sin guardar nada** (transacción revertida): montos del resumen, ítems, códigos de establecimiento, direcciones, documento del receptor, cambios de estructura y validación contra el esquema oficial. Guarda ambos JSON en `storage/app/comparacion-dte/`.
+- Esquemas oficiales de Hacienda (27-07-2026) en `resources/dte/esquemas/`.
+- Probado sin BD con SQLite en memoria: los cuatro tipos cumplen los esquemas oficiales.
+
+> El POS y la emisión siguen usando el generador actual. El 2.0 se activará por tipo de documento en el paso 3c, después de revisar la comparación con DTE reales.
+
 ## [1.0.29] - 2026-10-31
 
 ### Agregado (Normativa DTE 2.0 — paso 2: revisión contra el esquema antes de firmar)

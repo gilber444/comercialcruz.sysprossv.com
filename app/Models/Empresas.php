@@ -63,4 +63,9 @@ class Empresas extends Model
     {
         return $this->hasOne(PersonalizacionDte::class, 'empresa_id');
     }
+
+    public function Ractividad()
+    {
+        return $this->belongsTo(ActividadEconomica::class, 'actividad');
+    }
 }

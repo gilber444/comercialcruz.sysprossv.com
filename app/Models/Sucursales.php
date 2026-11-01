@@ -50,4 +50,24 @@ class Sucursales extends Model
     {
         return $this->belongsTo(Empresas::class, 'empresa');
     }
+
+    public function RtipoEstable()
+    {
+        return $this->belongsTo(TipoEstablecimiento::class, 'tipo');
+    }
+
+    public function Rdepartamento()
+    {
+        return $this->belongsTo(Departamentos::class, 'departamento');
+    }
+
+    public function Rmunicipio()
+    {
+        return $this->belongsTo(Municipios::class, 'municipio');
+    }
+
+    public function Rdistrito()
+    {
+        return $this->belongsTo(Distritos::class, 'distrito');
+    }
 }

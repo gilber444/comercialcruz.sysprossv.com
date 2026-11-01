@@ -80,6 +80,44 @@ class dte extends Model
         return $this->belongsTo(Sucursales::class, 'emisor');
     }
 
+    // Relaciones con prefijo R: las usan los generadores de DTE (nota de credito y 2.0)
+    public function RtipoDte()
+    {
+        return $this->belongsTo(TipoDocumento::class, 'tipoDte');
+    }
 
+    public function Rambiente()
+    {
+        return $this->belongsTo(AmbienteDestino::class, 'ambiente');
+    }
 
+    public function RtipoOperacion()
+    {
+        return $this->belongsTo(TipoTransmision::class, 'tipoOperacion');
+    }
+
+    public function RtipoContingencia()
+    {
+        return $this->belongsTo(TipoContigencia::class, 'tipoContingencia');
+    }
+
+    public function RtipoModelo()
+    {
+        return $this->belongsTo(ModeloFacturacion::class, 'tipoModelo');
+    }
+
+    public function Remisor()
+    {
+        return $this->belongsTo(Sucursales::class, 'emisor');
+    }
+
+    public function Rventas()
+    {
+        return $this->belongsTo(Ventas::class, 'venta');
+    }
+
+    public function Rreceptor()
+    {
+        return $this->belongsTo(Clientes::class, 'receptor');
+    }
 }
