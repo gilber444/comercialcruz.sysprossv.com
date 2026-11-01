@@ -33,6 +33,74 @@ class GeneradorDteV2Service
     private const FLAGS_JSON = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION;
 
     /**
+     * Mientras construir() llama a los generadores actuales, el interruptor no
+     * aplica: asi se obtiene siempre el JSON actual para transformarlo.
+     */
+    private static bool $omitirInterruptor = false;
+
+    /**
+     * Interruptor por tipo (DTE_GENERADOR_V2=01,03 en .env). Apagado por defecto:
+     * si el tipo no esta en la lista, los generadores actuales no cambian nada.
+     */
+    public static function activo(string $tipo): bool
+    {
+        if (self::$omitirInterruptor) {
+            return false;
+        }
+
+        $tipos = array_map(
+            fn ($t) => str_pad(trim($t), 2, '0', STR_PAD_LEFT),
+            explode(',', (string) config('dte.generador_v2', ''))
+        );
+
+        return isset(self::VERSIONES[$tipo]) && in_array($tipo, $tipos, true);
+    }
+
+    /**
+     * Version para el sobre de recepcion. Con el interruptor apagado devuelve la
+     * de siempre; encendido, la del documento firmado (asi coincide aunque la
+     * firma se haya hecho antes de encender o apagar el interruptor).
+     */
+    public static function versionEnvio(string $tipo, $firma, int $actual): int
+    {
+        if (!self::activo($tipo)) {
+            return $actual;
+        }
+
+        $partes = explode('.', (string) $firma);
+        if (count($partes) === 3) {
+            $payload = json_decode(base64_decode(strtr($partes[1], '-_', '+/')), true);
+            if (isset($payload['identificacion']['version'])) {
+                return (int) $payload['identificacion']['version'];
+            }
+        }
+
+        return $actual;
+    }
+
+    /**
+     * Lo llaman los generadores actuales cuando el interruptor esta encendido:
+     * recibe el JSON que acaban de armar, lo pasa a 2.0, lo guarda y lo devuelve.
+     */
+    public function desdeActual(int $dteId, string $tipo, string $jsonActual): string
+    {
+        $dte = dte::findOrFail($dteId);
+        $actual = json_decode($jsonActual, true);
+        if (!is_array($actual)) {
+            throw new RuntimeException("El generador actual no devolvio un JSON valido para el DTE {$dteId}.");
+        }
+
+        $v2 = $this->transformar($dte, $tipo, $actual);
+        $json = json_encode($v2, self::FLAGS_JSON | JSON_THROW_ON_ERROR);
+
+        $dte->version = $v2['identificacion']['version'];
+        $dte->jsonDte = $json;
+        $dte->save();
+
+        return $json;
+    }
+
+    /**
      * Arma el JSON actual y el 2.0 de un DTE. OJO: los generadores actuales de
      * factura, CCF y nota guardan su jsonDte; quien solo quiera comparar debe
      * llamar esto dentro de una transaccion y revertirla.
@@ -53,14 +121,17 @@ class GeneradorDteV2Service
             throw new RuntimeException("El generador actual no devolvio un JSON valido para el DTE {$dteId}.");
         }
 
-        $v2 = match ($tipo) {
+        return ['tipo' => $tipo, 'actual' => $actual, 'v2' => $this->transformar($dte, $tipo, $actual)];
+    }
+
+    private function transformar(dte $dte, string $tipo, array $actual): array
+    {
+        return match ($tipo) {
             '01' => $this->factura($dte, $actual),
             '03' => $this->creditoFiscal($dte, $actual),
             '05' => $this->notaCredito($dte, $actual),
             '14' => $this->sujetoExcluido($dte, $actual),
         };
-
-        return ['tipo' => $tipo, 'actual' => $actual, 'v2' => $v2];
     }
 
     /** Genera el JSON 2.0, lo guarda en el DTE y lo devuelve. */
@@ -95,14 +166,19 @@ class GeneradorDteV2Service
     private function jsonActual(dte $dte, string $tipo): string
     {
         $legacy = new GeneradorDteLegacy();
+        self::$omitirInterruptor = true;
 
-        return match ($tipo) {
-            '01' => $legacy->GeneraJsonF($dte->id),
-            '03' => $legacy->GeneraJsonC($dte->id),
-            '05' => $legacy->GeneraJsonNota($dte->id),
-            // El de sujeto excluido recibe el id de la operacion, no el del DTE
-            '14' => $legacy->GeneraJsonS($dte->venta),
-        };
+        try {
+            return match ($tipo) {
+                '01' => $legacy->GeneraJsonF($dte->id),
+                '03' => $legacy->GeneraJsonC($dte->id),
+                '05' => $legacy->GeneraJsonNota($dte->id),
+                // El de sujeto excluido recibe el id de la operacion, no el del DTE
+                '14' => $legacy->GeneraJsonS($dte->venta),
+            };
+        } finally {
+            self::$omitirInterruptor = false;
+        }
     }
 
     private function factura(dte $dte, array $a): array

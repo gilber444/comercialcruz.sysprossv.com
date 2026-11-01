@@ -39,6 +39,16 @@ return [
      */
     'validar_esquema' => env('DTE_VALIDAR_ESQUEMA', 'aviso'),
 
+    /*
+     * Tipos que se emiten con el generador de la Normativa 2.0, separados por
+     * coma: 01 factura, 03 CCF, 05 nota de credito, 14 sujeto excluido.
+     * Vacio (por defecto) = todos con el generador actual.
+     * Ejemplo: DTE_GENERADOR_V2=01
+     * Lo aplica App\Services\GeneradorDteV2Service; tambien cambia la version
+     * del sobre de recepcion a la del documento firmado.
+     */
+    'generador_v2' => env('DTE_GENERADOR_V2', ''),
+
     /* Fechas YYYY-MM-DD adicionales, separadas por coma. */
     'feriados_adicionales' => array_values(array_filter(array_map(
         'trim',

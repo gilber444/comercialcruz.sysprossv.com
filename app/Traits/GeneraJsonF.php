@@ -177,6 +177,9 @@ trait GeneraJsonF
         $update = dte::find($id);
         $update->jsonDte = $jsonString;
         $update->save();
+        if (\App\Services\GeneradorDteV2Service::activo('01')) {
+            return app(\App\Services\GeneradorDteV2Service::class)->desdeActual((int) $id, '01', $jsonString);
+        }
         return $jsonString;
     }
 }

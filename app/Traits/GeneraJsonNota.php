@@ -151,6 +151,9 @@ trait GeneraJsonNota
         $jsonString = json_encode($datosArray);
         $dte->jsonDte = $jsonString;
         $dte->save();
+        if (\App\Services\GeneradorDteV2Service::activo('05')) {
+            return app(\App\Services\GeneradorDteV2Service::class)->desdeActual((int) $dte->id, '05', $jsonString);
+        }
         return $jsonString;
     }
 }

@@ -85,7 +85,7 @@ trait RecepcionDTEF
             $data = [
                 'ambiente' => $ambiente->codigo,
                 'idEnvio' => 1,
-                'version' => 1,
+                'version' => \App\Services\GeneradorDteV2Service::versionEnvio('01', $firma, 1),
                 'tipoDte' => $tipoDte->codigo,
                 'documento' => $firma,
                 'codigoGeneracion' => $dte->codigoGeneracion,

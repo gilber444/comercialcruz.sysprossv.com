@@ -159,6 +159,9 @@ trait GeneraJsonS
             ],
             'apendice' => null
         ];
+        if (\App\Services\GeneradorDteV2Service::activo('14')) {
+            return app(\App\Services\GeneradorDteV2Service::class)->desdeActual((int) $identificacion->id, '14', json_encode($datosArray));
+        }
         return json_encode($datosArray);
     }
 }

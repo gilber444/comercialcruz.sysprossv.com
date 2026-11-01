@@ -181,6 +181,9 @@ trait GeneraJsonC
         $update = dte::find($id);
         $update->jsonDte = $jsonString;
         $update->save();
+        if (\App\Services\GeneradorDteV2Service::activo('03')) {
+            return app(\App\Services\GeneradorDteV2Service::class)->desdeActual((int) $id, '03', $jsonString);
+        }
         return json_encode($json);
     }
 }

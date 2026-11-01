@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.32] - 2026-11-01
+
+### Agregado (Normativa DTE 2.0 — paso 3c: interruptor del generador 2.0)
+- `DTE_GENERADOR_V2` en `.env` (`config('dte.generador_v2')`): lista de tipos que se emiten con el generador 2.0, por ejemplo `DTE_GENERADOR_V2=01` o `01,03`. **Vacío por defecto: nada cambia.**
+- Lo aplican los mismos generadores actuales (`GeneraJsonF`, `GeneraJsonC`, `GeneraJsonNota`, `GeneraJsonS`) justo antes de devolver el JSON. Así lo usan todos los caminos de emisión (POS, DTE, cuentas por cobrar, recepción, lotes y sujeto excluido) sin tocar ninguno. Si el tipo está activo, el JSON pasa a 2.0 y se guarda en el DTE junto con su versión.
+- El sobre de recepción (`RecepcionDTEF/C/Nota/Sujeto`) toma la versión del documento firmado cuando el tipo está activo. Si está apagado, manda la misma versión de siempre (1, 3, 3 y 1).
+- `dte:comparar-generador` sigue comparando contra el JSON actual aunque el interruptor esté encendido.
+
+> Cada caja emite con su propio `.env`: el interruptor se enciende en el VPS y en cada PC por separado.
+
 ## [1.0.31] - 2026-11-01
 
 ### Corregido
