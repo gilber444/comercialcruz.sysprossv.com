@@ -56,4 +56,14 @@ class resumenDte extends Model
             }
         });
     }
+
+    public function RcondicionOperacion()
+    {
+        return $this->belongsTo(CondicionOperacion::class, 'condicionOperacion');
+    }
+
+    public function Rpagos()
+    {
+        return $this->belongsTo(FormaPagos::class, 'pagos');
+    }
 }

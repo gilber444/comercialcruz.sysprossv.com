@@ -5,6 +5,13 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.31] - 2026-11-01
+
+### Corregido
+- **Nota de crédito**: faltaban las relaciones `RcondicionOperacion` (con `CondicionOperacion`) y `Rpagos` (con `FormaPagos`) en `resumenDte`, que `GeneraJsonNota` precarga. Era el último error que impedía generar el JSON de la nota. Se detectó con `dte:comparar-generador` en el VPS.
+
+> Comparación con DTE reales en el VPS: 2 facturas (v1 → v2) y 2 CCF (v3 → v4) con los mismos montos, y todos cumplen el esquema oficial.
+
 ## [1.0.30] - 2026-10-31
 
 > En el VPS este paso se registró como 1.0.29, porque el paso 2 no se había registrado. El paso 2 se registró después como 1.0.30.
