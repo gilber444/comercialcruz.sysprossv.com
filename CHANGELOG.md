@@ -7,6 +7,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.0.30] - 2026-10-31
 
+> En el VPS este paso se registró como 1.0.29, porque el paso 2 no se había registrado. El paso 2 se registró después como 1.0.30.
+
 ### Corregido
 - **Nota de crédito**: `GeneraJsonNota` usaba relaciones que no existían en los modelos (`dte::Rambiente`, `Remisor`, `Rventas`, `Clientes::RactividadEconomica`, etc.), así que generar una nota fallaba desde v1.0.16. Se agregaron las relaciones a `dte`, `Sucursales`, `Clientes` y `Empresas` (solo se agregan; no cambia ninguna existente).
 
@@ -20,6 +22,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 > El POS y la emisión siguen usando el generador actual. El 2.0 se activará por tipo de documento en el paso 3c, después de revisar la comparación con DTE reales.
 
 ## [1.0.29] - 2026-10-31
+
+> En el VPS este paso se registró como 1.0.30, después del paso 3a/3b.
 
 ### Agregado (Normativa DTE 2.0 — paso 2: revisión contra el esquema antes de firmar)
 - `RevisionEsquemaDte`: justo antes de firmar, revisa el JSON contra el esquema vigente de `esquema_dtes` (facturas, CCF, notas, sujeto excluido, invalidaciones `INV` y contingencias `CON`).
