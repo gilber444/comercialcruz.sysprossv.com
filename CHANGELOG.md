@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.33] - 2026-11-04
+
+### Agregado (Normativa DTE 2.0 — paso 8: esquemas en las cajas)
+- Columna `contenido` en `esquema_dtes`: el JSON del esquema queda en la misma fila. La migración la llena con los archivos que ya están en `storage` (solo si el hash coincide), y la pantalla Esquemas DTE la guarda al subir un ZIP o un archivo.
+- Comando `esquemas:bajar-desde-vps {--dry-run}` (solo PC locales): copia `esquema_dtes` del VPS. El VPS manda: lo activo allá queda activo en la caja, y una fila local que el VPS no tiene se desactiva. Solo baja el contenido de los esquemas nuevos o cambiados.
+- Programado cada hora en las PC (`storage/logs/esquemas_dte.log`).
+- `ValidadorEsquemaDte` usa el archivo de `storage` y, si no está (como en las cajas), el `contenido` de la fila.
+- La lista de la pantalla Esquemas DTE ya no carga el contenido.
+- Probado con SQLite: migración, primera copia, segunda corrida sin cambios y validación en la caja sin archivo.
+
 ## [1.0.32] - 2026-11-01
 
 ### Agregado (Normativa DTE 2.0 — paso 3c: interruptor del generador 2.0)

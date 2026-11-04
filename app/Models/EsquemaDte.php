@@ -18,6 +18,7 @@ class EsquemaDte extends Model
         'archivo',
         'ruta',
         'hash',
+        'contenido',
         'publicado',
         'status',
     ];

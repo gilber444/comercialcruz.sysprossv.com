@@ -50,7 +50,9 @@ class EsquemasDteController extends Component
         // Si todavia no se corrio la migracion de esquema_dtes, la pantalla debe
         // explicarlo, no mostrar la excepcion de tabla inexistente.
         try {
-            $guardados = EsquemaDte::orderBy('tipoDte')->orderByDesc('version')->get();
+            // Sin el contenido: la lista no lo usa y cada esquema pesa decenas de KB
+            $guardados = EsquemaDte::orderBy('tipoDte')->orderByDesc('version')
+                ->get(['id', 'tipoDte', 'nombre', 'version', 'archivo', 'ruta', 'hash', 'publicado', 'status', 'created_at', 'updated_at']);
             $tipos = $this->tiposDocumento();
         } catch (\Throwable $e) {
             $this->reportar($e, 'No se pudo leer los esquemas guardados. Verifique que la migracion esquema_dtes este aplicada');
@@ -199,6 +201,7 @@ class EsquemasDteController extends Component
                         'archivo' => $nombreArchivo,
                         'ruta' => $destino,
                         'hash' => hash('sha256', $contenido),
+                        'contenido' => $contenido,
                         'status' => 'Activo',
                         'deleted_at' => null,
                     ]
@@ -291,6 +294,7 @@ class EsquemasDteController extends Component
                             'archivo' => $e['archivo'],
                             'ruta' => $destino,
                             'hash' => $e['hash'],
+                            'contenido' => $e['contenido'],
                             'status' => 'Activo',
                             'deleted_at' => null,
                         ]

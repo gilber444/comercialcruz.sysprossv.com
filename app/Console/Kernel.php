@@ -40,6 +40,15 @@ class Kernel extends ConsoleKernel
                 ->withoutOverlapping()
                 ->appendOutputTo(storage_path('logs/procesar_dtes_pendientes.log'));
 
+            // Esquemas JSON de Hacienda: se cargan en el VPS y se copian aqui para
+            // que la revision antes de firmar funcione tambien en la caja.
+            $schedule->command('esquemas:bajar-desde-vps')
+                ->name('bajar esquemas dte desde vps')
+                ->hourly()
+                ->runInBackground()
+                ->withoutOverlapping(30)
+                ->appendOutputTo(storage_path('logs/esquemas_dte.log'));
+
             if ($sucursalId > 0) {
                 // Daemon de sync: un solo proceso que corre todas las sincronizaciones
                 // cada pocos segundos. Se activa por PC con SYNC_DAEMON=on en el .env.

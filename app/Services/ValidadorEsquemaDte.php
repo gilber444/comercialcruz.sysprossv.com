@@ -132,18 +132,24 @@ class ValidadorEsquemaDte
         }
     }
 
+    /**
+     * El archivo de storage solo existe donde se subio el ZIP; en las cajas el
+     * esquema llega en la columna contenido (esquemas:bajar-desde-vps).
+     */
     private function contenido(EsquemaDte $esquema): ?string
     {
         try {
-            if (!Storage::exists($esquema->ruta)) {
-                return null;
-            }
-
-            $contenido = Storage::get($esquema->ruta);
-
-            return trim((string) $contenido) === '' ? null : $contenido;
+            $contenido = $esquema->ruta && Storage::exists($esquema->ruta)
+                ? Storage::get($esquema->ruta)
+                : null;
         } catch (\Throwable $e) {
-            return null;
+            $contenido = null;
         }
+
+        if (trim((string) $contenido) === '') {
+            $contenido = $esquema->contenido ?? null;
+        }
+
+        return trim((string) $contenido) === '' ? null : $contenido;
     }
 }
