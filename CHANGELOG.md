@@ -7,6 +7,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [1.0.33] - 2026-11-04
 
+> En el VPS este paso se registró como 1.0.32, porque el paso 3c no se había registrado. El paso 3c se registró después como 1.0.33.
+
 ### Agregado (Normativa DTE 2.0 — paso 8: esquemas en las cajas)
 - Columna `contenido` en `esquema_dtes`: el JSON del esquema queda en la misma fila. La migración la llena con los archivos que ya están en `storage` (solo si el hash coincide), y la pantalla Esquemas DTE la guarda al subir un ZIP o un archivo.
 - Comando `esquemas:bajar-desde-vps {--dry-run}` (solo PC locales): copia `esquema_dtes` del VPS. El VPS manda: lo activo allá queda activo en la caja, y una fila local que el VPS no tiene se desactiva. Solo baja el contenido de los esquemas nuevos o cambiados.
@@ -16,6 +18,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Probado con SQLite: migración, primera copia, segunda corrida sin cambios y validación en la caja sin archivo.
 
 ## [1.0.32] - 2026-11-01
+
+> En el VPS este paso se registró como 1.0.33, después del paso 8.
 
 ### Agregado (Normativa DTE 2.0 — paso 3c: interruptor del generador 2.0)
 - `DTE_GENERADOR_V2` en `.env` (`config('dte.generador_v2')`): lista de tipos que se emiten con el generador 2.0, por ejemplo `DTE_GENERADOR_V2=01` o `01,03`. **Vacío por defecto: nada cambia.**
