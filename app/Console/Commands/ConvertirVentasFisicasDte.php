@@ -76,6 +76,18 @@ class ConvertirVentasFisicasDte extends Command
             return self::SUCCESS;
         }
 
+        // Freno: si Hacienda rechazo alguna venta ya convertida (DTE con fecha de
+        // emision anterior al dia en que se creo), no se convierten mas.
+        $rechazadas = dte::where('estado', 'RECHAZADO')
+            ->where('sucursal', $sucursalId)
+            ->where('fecEmi', '>=', $desde)
+            ->whereRaw('fecEmi < DATE(created_at)')
+            ->count();
+        if ($rechazadas > 0) {
+            $this->error("Hacienda rechazo {$rechazadas} ventas convertidas; se detiene la conversion. Revise el motivo en recepcion_dtes.");
+            return self::FAILURE;
+        }
+
         $enCola = dte::whereIn('estado', ['Creado', 'Firmado'])->count();
         if ($enCola >= self::COLA_MAXIMA) {
             $this->warn("Hay {$enCola} DTE pendientes de enviar; se espera a que baje la cola.");

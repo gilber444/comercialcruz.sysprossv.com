@@ -56,7 +56,7 @@ return [
      * --limit=3 que Hacienda acepta las fechas anteriores.
      */
     'convertir_fisicos' => [
-        'activo' => false,
+        'activo' => true,
         'desde' => '2026-10-01',
         'lote' => 100,
     ],

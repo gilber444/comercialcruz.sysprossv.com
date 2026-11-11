@@ -5,6 +5,12 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.35] - 2026-11-11
+
+### Cambiado
+- **Conversión de ventas "Fisico" a DTE encendida** (`dte.convertir_fisicos.activo = true`): las cajas la ejecutan solas cada 5 minutos, de 100 en 100, después de `app:update-from-git`.
+- Freno automático: si Hacienda rechaza alguna venta convertida (DTE con fecha de emisión anterior al día en que se creó), la caja deja de convertir y lo avisa en `storage/logs/convertir_fisicos.log`.
+
 ## [1.0.34] - 2026-11-11
 
 ### Agregado
