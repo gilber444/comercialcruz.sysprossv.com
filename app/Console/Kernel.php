@@ -50,6 +50,16 @@ class Kernel extends ConsoleKernel
                 ->appendOutputTo(storage_path('logs/esquemas_dte.log'));
 
             if ($sucursalId > 0) {
+                // Ventas "Fisico" de consumidor final → factura DTE con su fecha original,
+                // por lotes. Apagado hasta encender dte.convertir_fisicos.activo.
+                $schedule->command("ventas:convertir-fisicos-dte --sucursal={$sucursalId} --limit=" . (int) config('dte.convertir_fisicos.lote', 100))
+                    ->name('convertir ventas fisicas a dte')
+                    ->everyFiveMinutes()
+                    ->runInBackground()
+                    ->withoutOverlapping(30)
+                    ->when(fn () => (bool) config('dte.convertir_fisicos.activo'))
+                    ->appendOutputTo(storage_path('logs/convertir_fisicos.log'));
+
                 // Daemon de sync: un solo proceso que corre todas las sincronizaciones
                 // cada pocos segundos. Se activa por PC con SYNC_DAEMON=on en el .env.
                 // Cuando está activo, los comandos separados de abajo no corren.

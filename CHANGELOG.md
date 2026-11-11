@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.34] - 2026-11-11
+
+### Agregado
+- Comando `ventas:convertir-fisicos-dte {--desde=} {--hasta=} {--limit=100} {--sucursal=} {--dry-run}` (solo PC locales): convierte en factura DTE las ventas "Fisico" de consumidor final (facturador 1, Cancelado/Crédito, total distinto de 0, sin DTE) con la **fecha y hora original** de la venta. Crea el DTE en estado `Creado` con número de control propio (igual que el POS) y marca la venta como DTE. Lo envía `app:procesar-dtes-pendientes` y la sincronización lo sube al VPS.
+- Trabaja por lotes y espera si hay 200 o más DTE pendientes, para no atrasar los del día.
+- Programado cada 5 minutos en las PC, **apagado** hasta encender `dte.convertir_fisicos.activo` en `config/dte.php` (llega a las cajas por git), después de probar a mano con `--limit=3`.
+
+### Corregido
+- Assets publicados de Livewire actualizados a v2.12.0 (los botones de Livewire no respondían).
+
 ## [1.0.33] - 2026-11-04
 
 > En el VPS este paso se registró como 1.0.32, porque el paso 3c no se había registrado. El paso 3c se registró después como 1.0.33.

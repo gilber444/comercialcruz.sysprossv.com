@@ -49,6 +49,18 @@ return [
      */
     'generador_v2' => env('DTE_GENERADOR_V2', ''),
 
+    /*
+     * Conversion automatica en las PC de las ventas "Fisico" de consumidor
+     * final a factura DTE, con su fecha original (ventas:convertir-fisicos-dte).
+     * Se enciende aqui (llega a las cajas por git) despues de probar a mano con
+     * --limit=3 que Hacienda acepta las fechas anteriores.
+     */
+    'convertir_fisicos' => [
+        'activo' => false,
+        'desde' => '2026-10-01',
+        'lote' => 100,
+    ],
+
     /* Fechas YYYY-MM-DD adicionales, separadas por coma. */
     'feriados_adicionales' => array_values(array_filter(array_map(
         'trim',
