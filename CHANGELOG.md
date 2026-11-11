@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.36] - 2026-11-11
+
+### Corregido
+- Migración `parametros.filtro` (tinyint, por defecto 1). El POS la usa como "filtro inversor" del control de envío. Sin la columna llegaba null, `(int) null = 0`, y el POS invertía el envío: las ventas que debían salir como DTE quedaban como "Fisico". Con 1 el envío es normal; 0 lo invierte en esa caja.
+
 ## [1.0.35] - 2026-11-11
 
 ### Cambiado

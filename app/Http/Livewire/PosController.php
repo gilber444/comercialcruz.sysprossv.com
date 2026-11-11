@@ -4085,7 +4085,7 @@ class PosController extends Component
     }
 
     public function CorteZ2($id)
-    { 
+    {
         $user_id = Auth::user()->id;
         $apertura = Aperturas::find($id);
 
