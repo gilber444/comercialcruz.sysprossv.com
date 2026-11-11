@@ -658,9 +658,10 @@
 
                 @can('DocumentoContigencia_Index')
 
-                    <li class="menu-item {{ Request::is('documento_contingencia') ? 'active' : '' }}">
+                    {{-- No existe una pantalla propia: abre la de contingencias --}}
+                    <li class="menu-item {{ Request::is('contingencia') ? 'active' : '' }}">
 
-                        <a href="{{ route('documento_contingencia') }}" class="menu-link">
+                        <a href="{{ route('contingencia') }}" class="menu-link">
 
                             <div data-i18n="Documento Contingencia">Documento Contingencia</div>
 

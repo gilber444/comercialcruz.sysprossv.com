@@ -140,6 +140,7 @@ class PermissionsSeeder extends Seeder
             'TipoContingencia_Create',
             'TipoContingencia_Update',
             'TipoContingencia_Destroy',
+            'DocumentoContigencia_Index',
             'Retencion_Index',
             'Retencion_Update',
             'Retencion_Destroy',

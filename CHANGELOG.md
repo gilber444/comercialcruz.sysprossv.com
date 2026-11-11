@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.39] - 2026-11-11
+
+### Corregido
+- Menú: "Documento Contingencia" (Catálogos DTE) apuntaba a la ruta `documento_contingencia`, que no existe. Si alguien creaba el permiso `DocumentoContigencia_Index`, el menú dejaba de cargar. Ahora abre la pantalla de contingencias (`contingencia`). El permiso se agregó a `PermissionsSeeder`.
+
 ## [1.0.38] - 2026-11-11
 
 Normativa DTE 2.0: se aplicaron los tres prompts de servimangueras.cpc.lat (actualización DTE 2.0; catálogos, esquemas y eventos; libros de IVA y anexos F07), con los ajustes pedidos por el usuario. Sin cambiar la lógica del POS.
