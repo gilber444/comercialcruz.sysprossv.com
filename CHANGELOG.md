@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.37] - 2026-11-11
+
+### Agregado
+- Campo **"Ventas como"** (`filtro`) en la pantalla de Parámetros: `1 - DTE` (por defecto) o `0 - Fisico`, por caja. Se guarda al crear y editar.
+
 ## [1.0.36] - 2026-11-11
 
 ### Corregido

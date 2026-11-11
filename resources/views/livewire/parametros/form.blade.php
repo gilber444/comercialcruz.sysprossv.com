@@ -211,6 +211,15 @@
                             </select>
                         </div>
                         @error('dteAutomatico') <span class="text-danger er">{{ $message }}</span> @enderror
+                        <br>
+                        <div class="input-group">
+                            <label class="input-group-text" for="filtroEnvio">Ventas como</label>
+                            <select class="form-select" id="filtroEnvio" wire:model.lazy='filtro'>
+                                <option value="1">1 - DTE</option>
+                                <option value="0">0 - Fisico</option>
+                            </select>
+                        </div>
+                        @error('filtro') <span class="text-danger er">{{ $message }}</span> @enderror
                     </div>
                 </div>
                 @include('common.modalFooter')

@@ -13,7 +13,7 @@ class ParametrosController extends Component
 {
     use WithPagination;
 
-    public $search, $selected_id, $pageTitle, $modalAction, $componentName, $sucursal, $caja, $token, $full, $slip, $multiple, $centralizada, $tiquet, $tcorrelativo, $tresolucion, $tserie, $consumidor, $concorrelativo, $conresolucion, $conserie, $credito, $crecorrelativo, $creresolucion, $creserie, $notaCredito, $ncCorrelativo, $ncResolucion, $ncSerie, $notaDebito, $ndCorrelativo, $ndResolucion, $ndSerie, $cotizacion, $cocorrelativo, $tasa, $ventamin, $estado, $empresas, $empresa, $sucursales, $dte, $dteAutomatico, $tiquedte, $descuento, $envio;
+    public $search, $selected_id, $pageTitle, $modalAction, $componentName, $sucursal, $caja, $token, $full, $slip, $multiple, $centralizada, $tiquet, $tcorrelativo, $tresolucion, $tserie, $consumidor, $concorrelativo, $conresolucion, $conserie, $credito, $crecorrelativo, $creresolucion, $creserie, $notaCredito, $ncCorrelativo, $ncResolucion, $ncSerie, $notaDebito, $ndCorrelativo, $ndResolucion, $ndSerie, $cotizacion, $cocorrelativo, $tasa, $ventamin, $estado, $empresas, $empresa, $sucursales, $dte, $dteAutomatico, $tiquedte, $descuento, $envio, $filtro = 1;
 
     private $pagination = 10;
 
@@ -115,6 +115,7 @@ class ParametrosController extends Component
             'dteAutomatico' =>$this->dteAutomatico,
             'tiquedte' => $this->tiquedte,
             'envio' => $this->envio,
+            'filtro' => (int) ($this->filtro ?? 1),
             'descuento' => $this->descuento,
             'estado' => $this->estado,
         ]);
@@ -163,6 +164,7 @@ class ParametrosController extends Component
         $this->dteAutomatico = $parametro->dteAutomatico;
         $this->tiquedte = $parametro->tiquedte;
         $this->envio = $parametro->envio;
+        $this->filtro = (int) ($parametro->filtro ?? 1);
         $this->descuento = $parametro->descuento;
         $this->updateEmpresa();
 
@@ -222,6 +224,7 @@ class ParametrosController extends Component
         $parametros->dteAutomatico = $this->dteAutomatico;
         $parametros->tiquedte = $this->tiquedte;
         $parametros->envio = $this->envio;
+        $parametros->filtro = (int) ($this->filtro ?? 1);
         $parametros->descuento = $this->descuento;
         $parametros->estado = $this->estado;
         $parametros->save();
@@ -282,6 +285,7 @@ class ParametrosController extends Component
         $this->estado = '';
         $this->tiquedte = '';
         $this->envio = '';
+        $this->filtro = 1;
         $this->descuento = '';
         $this->resetValidation();
     }
