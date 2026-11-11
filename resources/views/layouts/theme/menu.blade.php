@@ -278,7 +278,7 @@
 
         <li
 
-            class="menu-item {{ Request::is('esquemas_dte') ? 'active' : '' }} {{ Request::is('departamentos') ? 'active' : '' }} {{ Request::is('municipios') ? 'active' : '' }} {{ Request::is('actividad_economica') ? 'active' : '' }} {{ Request::is('pais') ? 'active' : '' }} {{ Request::is('distritos') ? 'active' : '' }} {{ Request::is('ambiente_destinos') ? 'active' : '' }} {{ Request::is('tipo_documentos') ? 'active' : '' }} {{ Request::is('modelo_facturacion') ? 'active' : '' }} {{ Request::is('tipo_transmision') ? 'active' : '' }} {{ Request::is('tipo_contingencias') ? 'active' : '' }} {{ Request::is('retencion') ? 'active' : '' }} {{ Request::is('tipo_generacion_documento') ? 'active' : '' }} {{ Request::is('tipo_establecimiento') ? 'active' : '' }} {{ Request::is('servicio_medico') ? 'active' : '' }} {{ Request::is('tipo_item') ? 'active' : '' }} {{ Request::is('unidad_medida') ? 'active' : '' }} {{ Request::is('tributos') ? 'active' : '' }} {{ Request::is('condicion_operacion') ? 'active' : '' }} {{ Request::is('forma_pago') ? 'active' : '' }} {{ Request::is('plazos') ? 'active' : '' }} {{ Request::is('documentos_asociados') ? 'active' : '' }} {{ Request::is('identificacion_receptor') ? 'active' : '' }} {{ Request::is('tipo_invalidacion') ? 'active' : '' }} {{ Request::is('titulo_remiten_bienes') ? 'active' : '' }} {{ Request::is('donacion') ? 'active' : '' }} {{ Request::is('recinto_fiscal') ? 'active' : '' }} {{ Request::is('regimen') ? 'active' : '' }} {{ Request::is('tipo_persona') ? 'active' : '' }} {{ Request::is('transporte') ? 'active' : '' }} {{ Request::is('incoterms') ? 'active' : '' }} {{ Request::is('domicilio_fiscal') ? 'active' : '' }} {{ Request::is('clase_documento') ? 'active' : '' }}">
+            class="menu-item {{ Request::is('catalogos_importar') ? 'active' : '' }} {{ Request::is('esquemas_dte') ? 'active' : '' }} {{ Request::is('departamentos') ? 'active' : '' }} {{ Request::is('municipios') ? 'active' : '' }} {{ Request::is('actividad_economica') ? 'active' : '' }} {{ Request::is('pais') ? 'active' : '' }} {{ Request::is('distritos') ? 'active' : '' }} {{ Request::is('ambiente_destinos') ? 'active' : '' }} {{ Request::is('tipo_documentos') ? 'active' : '' }} {{ Request::is('modelo_facturacion') ? 'active' : '' }} {{ Request::is('tipo_transmision') ? 'active' : '' }} {{ Request::is('tipo_contingencias') ? 'active' : '' }} {{ Request::is('retencion') ? 'active' : '' }} {{ Request::is('tipo_generacion_documento') ? 'active' : '' }} {{ Request::is('tipo_establecimiento') ? 'active' : '' }} {{ Request::is('servicio_medico') ? 'active' : '' }} {{ Request::is('tipo_item') ? 'active' : '' }} {{ Request::is('unidad_medida') ? 'active' : '' }} {{ Request::is('tributos') ? 'active' : '' }} {{ Request::is('condicion_operacion') ? 'active' : '' }} {{ Request::is('forma_pago') ? 'active' : '' }} {{ Request::is('plazos') ? 'active' : '' }} {{ Request::is('documentos_asociados') ? 'active' : '' }} {{ Request::is('identificacion_receptor') ? 'active' : '' }} {{ Request::is('tipo_invalidacion') ? 'active' : '' }} {{ Request::is('titulo_remiten_bienes') ? 'active' : '' }} {{ Request::is('donacion') ? 'active' : '' }} {{ Request::is('recinto_fiscal') ? 'active' : '' }} {{ Request::is('regimen') ? 'active' : '' }} {{ Request::is('tipo_persona') ? 'active' : '' }} {{ Request::is('transporte') ? 'active' : '' }} {{ Request::is('incoterms') ? 'active' : '' }} {{ Request::is('domicilio_fiscal') ? 'active' : '' }} {{ Request::is('clase_documento') ? 'active' : '' }}">
 
             <a href="javascript:void(0);" class="menu-link menu-toggle">
 
@@ -289,6 +289,13 @@
             </a>
 
             <ul class="menu-sub">
+
+                <li class="menu-item {{ Request::is('catalogos_importar') ? 'active' : '' }}">
+                    <a href="{{ route('catalogos_importar') }}" class="menu-link">
+                        <i class="menu-icon fa-solid fa-file-import"></i>
+                        <div data-i18n="Actualizar Catalogos">Actualizar Catalogos</div>
+                    </a>
+                </li>
 
                 <li class="menu-item {{ Request::is('esquemas_dte') ? 'active' : '' }}">
                     <a href="{{ route('esquemas_dte') }}" class="menu-link">
@@ -1333,6 +1340,48 @@
 
     @endcan
 
+    {{-- Documentos DTE: Evento de Retorno (CAT-002 18). Nota de credito y sujeto
+         excluido siguen ocultos como estaban. --}}
+    @can('NuevaNotaCredito_Index')
+
+        <li class="menu-item {{ Request::is('evento_retorno*') ? 'active open' : '' }}">
+
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+
+                <i class="menu-icon fa-solid fa-file-invoice"></i>
+
+                <div data-i18n="Documentos DTE">Documentos DTE</div>
+
+            </a>
+
+            <ul class="menu-sub">
+
+                <li class="menu-item {{ Request::is('evento_retorno/nuevo') ? 'active' : '' }}">
+
+                    <a href="{{ route('evento_retorno.nuevo') }}" class="menu-link">
+
+                        <div data-i18n="Nuevo Retorno">Nuevo Retorno</div>
+
+                    </a>
+
+                </li>
+
+                <li class="menu-item {{ Request::is('evento_retorno') ? 'active' : '' }}">
+
+                    <a href="{{ route('evento_retorno') }}" class="menu-link">
+
+                        <div data-i18n="Eventos de Retorno">Eventos de Retorno</div>
+
+                    </a>
+
+                </li>
+
+            </ul>
+
+        </li>
+
+    @endcan
+
     @can('Pos_Index')
 
         <li class="menu-item {{ Request::is('actividad') ? 'active' : '' }}">
@@ -1645,7 +1694,7 @@
 
         <li
 
-            class="menu-item {{ request::is('libroVentasConsumidor') ? 'active' : '' }} {{ request::is('cuentas_pagar') ? 'active' : '' }} {{ request::is('pagos') ? 'active' : '' }} {{ request::is('cuentas_cobrar') ? 'active' : '' }} {{ request::is('abonos') ? 'active' : '' }} {{ request::is('libroVentasConsumidor') ? 'active' : '' }} {{ request::is('libroVentasContribuyente') ? 'active' : '' }} {{ request::is('libroInvalidaciones') ? 'active' : '' }}">
+            class="menu-item {{ request::is('libroVentasConsumidor') ? 'active' : '' }} {{ request::is('cuentas_pagar') ? 'active' : '' }} {{ request::is('pagos') ? 'active' : '' }} {{ request::is('cuentas_cobrar') ? 'active' : '' }} {{ request::is('abonos') ? 'active' : '' }} {{ request::is('libroVentasConsumidor') ? 'active' : '' }} {{ request::is('libroVentasContribuyente') ? 'active' : '' }} {{ request::is('libroInvalidaciones') ? 'active' : '' }} {{ request::is('libroCompras') ? 'active' : '' }}">
 
             <a href="javascript:void(0)" class="menu-link menu-toggle">
 
@@ -1692,6 +1741,20 @@
                         <a href="{{ url('libroInvalidaciones') }}" class="menu-link">
 
                             <div data-i18n="Libro Invalidaciones">Libro Invalidaciones</div>
+
+                        </a>
+
+                    </li>
+
+                @endcan
+
+                @can('ReportCompras_Index')
+
+                    <li class="menu-item {{ request::is('libroCompras') ? 'active' : '' }}">
+
+                        <a href="{{ url('libroCompras') }}" class="menu-link">
+
+                            <div data-i18n="Libro de Compras">Libro de Compras</div>
 
                         </a>
 

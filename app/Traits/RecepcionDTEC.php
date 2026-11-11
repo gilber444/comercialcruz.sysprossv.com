@@ -250,9 +250,10 @@ trait RecepcionDTEC
         // Una respuesta tardia no puede degradar un DTE que Hacienda ya sello.
         // La actualizacion es condicional: solo escribe si sigue sin sello y en
         // un estado no final. Antes bastaba con que llegara tarde un RECHAZADO
-        // para marcar como rechazado un documento ya procesado.
+        // para marcar como rechazado un documento ya procesado. Si el rechazo
+        // (HTTP 400) es "ya existe", se consulta y se toma el sello (apartado 28).
         app(\App\Services\ProcesamientoDteService::class)
-            ->guardarEstadoNoFinalizado((int) $id, (string) ($errorResponseData['estado'] ?? 'RECHAZADO'));
+            ->resolverRespuestaRechazada((int) $id, $errorResponseData);
 
     }
 

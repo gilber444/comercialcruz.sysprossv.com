@@ -34,7 +34,17 @@ trait GeneraJsonF
                 'p.codPuntoVentaMH',
                 'e.correo')
             ->find($id);
-        $receptor = dte::join('ventas as v', 'v.id', 'dtes.venta')->join('clientes as c', 'c.id', 'v.cliente')->join('identificacion_receptors as irec', 'irec.id', 'c.idenReceptor')->join('departamentos as d', 'd.id', 'c.departamento')->join('distritos as dis', 'dis.id', 'c.distrito')->select('irec.codigo as tipoDocumento', 'c.dui as numDocumento', 'c.nombreCliente as nombre', 'c.telefono', 'c.email as correo', 'd.codigo as departamento', 'dis.codigo as municipio', 'c.direccion as complemento', 'v.caja')->find($id);
+        $receptor = dte::join('ventas as v', 'v.id', 'dtes.venta')->join('clientes as c', 'c.id', 'v.cliente')->join('identificacion_receptors as irec', 'irec.id', 'c.idenReceptor')->join('departamentos as d', 'd.id', 'c.departamento')->join('distritos as dis', 'dis.id', 'c.distrito')->select('irec.codigo as tipoDocumento', 'c.dui as numDocumento', 'c.nit', 'c.nombreCliente as nombre', 'c.telefono', 'c.email as correo', 'd.codigo as departamento', 'dis.codigo as municipio', 'c.direccion as complemento', 'v.caja')->find($id);
+        // Consumidor final identificado con NIT (CAT-022 "36"): va el NIT real
+        // del cliente, solo digitos (9 o 14). No se cambia por el DUI ni se
+        // convierte en credito fiscal; el DTE sigue siendo 01.
+        if ($receptor && trim((string) $receptor->tipoDocumento) === '36') {
+            $nitReceptor = preg_replace('/\D/', '', (string) $receptor->nit);
+            if (!in_array(strlen($nitReceptor), [9, 14], true)) {
+                throw new \RuntimeException('El NIT del cliente no es valido: debe tener 9 o 14 digitos. Corrijalo en el cliente antes de emitir la factura.');
+            }
+            $receptor->numDocumento = $nitReceptor;
+        }
         $para = Parametros::find($receptor->caja);
         // Traes tu parámetro (incluye: tcorrelativo, envio, descuento…)
         $discountPercent  = $para->descuento;

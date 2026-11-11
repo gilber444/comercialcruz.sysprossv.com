@@ -21,11 +21,13 @@ use App\Models\TipoPersona;
 use App\Models\tmpCompras;
 use App\Models\User;
 use App\Services\InventarioSucursalService;
+use App\Support\AnexosF07;
 use Darryldecode\Cart\Cart;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 class NuevaCompraController extends Component
 {
@@ -528,6 +530,18 @@ class NuevaCompraController extends Component
             $iva = 0.00;
         }
         $total = $subtotal + $iva + $this->percepcion;
+        // Anexo 3 del F07: empresa y desglose fiscal se guardan al crear la
+        // compra (no se reconstruyen al generar el anexo). Solo se agregan si
+        // la migracion 2026_08_08_120000 ya corrio en ESTA base: en una PC
+        // local sin la migracion, mandar columnas inexistentes romperia el
+        // guardado de la compra. No cambia el calculo de costos ni inventario.
+        $datosAnexoF07 = Schema::hasColumn('compras', 'total_compra')
+            ? array_merge(
+                // tipo 1 = credito fiscal: la pantalla captura el costo sin IVA y le suma el 13%.
+                AnexosF07::desgloseCompra($this->factura == 1, $subtotal, $this->correlativo),
+                ['empresa' => Sucursales::where('id', $this->sucursal)->value('empresa') ?? Auth::user()->empresa]
+            )
+            : [];
         DB::beginTransaction();
         try
         {
@@ -555,7 +569,7 @@ class NuevaCompraController extends Component
                 'subtotal' => $subtotal,
                 'iva' => $iva,
                 'percepcion' => $this->percepcion
-            ]);
+            ] + $datosAnexoF07);
             if($compra)
             {
                 $items = tmpCompras::where('usuario', $user_id)->get();

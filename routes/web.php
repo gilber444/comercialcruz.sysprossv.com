@@ -26,6 +26,8 @@ use App\Http\Controllers\ExportVentaController;
 use App\Http\Controllers\LibroContribuyente;
 
 use App\Http\Controllers\LibroInvalidacion;
+use App\Http\Controllers\LibroCompras;
+use App\Http\Livewire\LibroComprasController;
 
 use App\Http\Controllers\LibrosConsumidor;
 
@@ -212,10 +214,15 @@ use App\Http\Livewire\SucursalesController;
 
 use App\Http\Livewire\SujetoExcluidosController;
 
+use App\Http\Livewire\EventoRetornoController;
+
+use App\Http\Livewire\NuevoEventoRetornoController;
+
 use App\Http\Livewire\TipoContigenciaController;
 
 use App\Http\Livewire\TipoDocumentoController;
 use App\Http\Livewire\EsquemasDteController;
+use App\Http\Livewire\CatalagosImportarController;
 
 use App\Http\Livewire\TipoEstablecimientoController;
 
@@ -322,7 +329,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('productoAdmin', ProductoAdminController::class)->name('productoAdmin')->can('Admin_Productos');
 
-    Route::get('/productoAdmin/{imagen}', [ProductoAdminController::class, 'renderImagen'])->name('productoAdmin.mostrar');
+    // ProductoAdminController no tiene renderImagen: las imagenes de producto las sirve ProductosController.
+    Route::get('/productoAdmin/{imagen}', [ProductosController::class, 'renderImagen'])->name('productoAdmin.mostrar');
 
     Route::get('medidas', MedidasController::class)->name('medidas')->can('Medidas_Index');
 
@@ -372,6 +380,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('tipo_documentos', TipoDocumentoController::class)->name('tipo_documentos')->can('TipoDocumentos_Index');
     Route::get('esquemas_dte', EsquemasDteController::class)->name('esquemas_dte')->can('AdminCatalagos_Index');
+    Route::get('catalogos_importar', CatalagosImportarController::class)->name('catalogos_importar')->can('AdminCatalagos_Index');
 
     Route::get('modelo_facturacion', ModeloFacturacionController::class)->name('modelo_facturacion')->can('ModeloFacturacion_Index');
 
@@ -544,7 +553,7 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    Route::get('libroVentasConsumidor', LibroVentasConsumidorController::class)->can('LibroVentasConsumidor_Index')->name('libroVentasConsumidor');
+    // libroVentasConsumidor: su ruta esta en el bloque de libros (aqui estaba duplicada)
 
 
 
@@ -693,6 +702,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('pdf/libroInvalidaciones/{empresa}/{sucursal}/{facturador}/{desde}/{hasta}', [LibroInvalidacion::class, 'generarPDF'])->name('pdfLibroInvalidaciones')->can('GenerarLibroInvalidacion_PDF');
 
+    // Libro de compras (respaldo del anexo 3 del F07)
+    Route::get('libroCompras', LibroComprasController::class)->can('ReportCompras_Index')->name('libroCompras');
+    Route::get('pdf/libroCompras/{empresa}/{sucursal}/{desde}/{hasta}', [LibroCompras::class, 'generarPDF'])->name('pdfLibroCompras')->can('ReportCompras_Index');
+
 
 
     Route::get('sujeto-excluidos', SujetoExcluidosController::class)->middleware('auth')->name('sujeto-excluidos')->can('SujetoExcluidos_Index');
@@ -709,9 +722,17 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('nota_credito', NotaCreditoController::class)->name('nota_credito')->can('NotaCredito_Index');
 
+    // Evento de Retorno (CAT-002 codigo 18): reutiliza el permiso de nota de credito
+    Route::get('evento_retorno', EventoRetornoController::class)->name('evento_retorno')->can('NuevaNotaCredito_Index');
+    Route::get('evento_retorno/nuevo', NuevoEventoRetornoController::class)->name('evento_retorno.nuevo')->can('NuevaNotaCredito_Index');
+    Route::get('evento_retorno/{id}/pdf', [EventoRetornoController::class, 'pdf'])->whereNumber('id')->name('evento_retorno.pdf')->can('NuevaNotaCredito_Index');
+    Route::get('evento_retorno/{id}/json', [EventoRetornoController::class, 'showJson'])->whereNumber('id')->name('evento_retorno.json.show')->can('NuevaNotaCredito_Index');
+    Route::get('evento_retorno/{id}/json/download', [EventoRetornoController::class, 'downloadJson'])->whereNumber('id')->name('evento_retorno.json.download')->can('NuevaNotaCredito_Index');
 
 
-    Route::get('modal_nota', [ModalNota::class, 'modalNota'])->name('modal_nota');
+
+    // modal_nota: apuntaba a ModalNota::modalNota, que no existe (el modal se incluye
+    // con @include en nueva_nota_credito y nadie usaba la ruta). Se retira.
 
     ////Reportes Ventas Sintetizado//////
 

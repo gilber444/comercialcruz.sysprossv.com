@@ -19,7 +19,7 @@ class DomicilioFiscal extends Model
     {
         static::creating(function ($model) {
             if (empty($model->sincro_id)) {
-                $model->sincro_id = (string) Str::uuid();
+                $model->sincro_id = (string) \Illuminate\Support\Str::uuid();
             }
         });
     }

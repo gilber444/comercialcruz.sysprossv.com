@@ -1,178 +1,122 @@
+@php
+    $paletaDte = app(\App\Services\DtePaletteService::class)
+        ->obtener((int) $empresa->id);
+    $titulo = 'Libro de Ventas a Consumidor Final';
+    // Resumen: base por division y debito POR RESTA de valores redondeados.
+    $netoGravadas = \App\Support\AnexosF07::monto(\App\Support\Decimal::div($totales['gravadas'], '1.13'));
+    $debitoGravadas = \App\Support\AnexosF07::monto(\App\Support\Decimal::sub($totales['gravadas'], $netoGravadas));
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Libro de Consumidor</title>
+    <title>{{ $titulo }}</title>
+    @include('pdf.partials.libro-estilos')
 </head>
 
-<body style="font-family: sans-serif; margin: 0.5%; padding:0; margin-left: 0px; margin-top: 0px; margin-right: 0px; margin-bottom:0px;">
-    <table style="width: 100%;" style="border-bottom: 1px solid #00000">
-        <tr>
-            <td width="12%" style="padding-right: 10px; border-bottom:1px solid #0000">
-                <img src="{{-- $imagenUrl --}}" alt="" width="170" height="90" style="margin-bottom: 2px;">
-            </td>
-            <td width="88%">
-                <p style="font-size: 14px; margin: 0; font-weight: bold;">{{ $empresa->empresa }} / {{ $empresa->razon }}</p>
-                <p style="font-size: 11px; margin: 1px 0; line-height: 1.2;">NIT:{{ $empresa->nit }}, NCR: {{ $empresa->registro }}</p>
-                <p style="font-size: 11px; margin: 1px 0; line-height: 1.2;">DIRECCION: {{ $empresa->direccion }}, TEL.{{ $empresa->telefono }}
-                    EMAIL: {{ $empresa->correo }}</p>
-            </td>
-    </table>
-    <table style="width: 100%; border: 1px; ">
-        <thead>
-            <th style="text-align:center;">
-                Libro de Ventas a Consumidor Final
-                <br>
-                DESDE {{ \Carbon\Carbon::parse($desde)->format('d/m/Y') }}
-                HASTA {{ \Carbon\Carbon::parse($hasta)->format('d/m/Y') }}
-            </th>
-        </thead>
-    </table>
-    <table width="100%" border="1" cellpadding="0" cellspacing="0" style="font-size:10px; margin:1%;">
-        <thead class="bg-dark text-white">
-            <th  style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Fecha Emi.</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Clase Doc.</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Tipo Doc.</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Num. Resolución</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Serie</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">DEL</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">AL</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Caja</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Ventas Exentas</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Ventas Gravadas</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Total Ventas</th>
-        </thead>
-        <tbody>
-            @foreach ($data as $d)
-            <tr>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ \Carbon\Carbon::parse( $d->fecha)->format('d/m/Y') }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    4. DOCUMENTO TRIBUTARIO ELECTRONICO (DTE)
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    1.FACTURA
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->primer_codigo }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->ultimo_codigo }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->primer_numero }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->ultimo_numero }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
+<body>
+    @include('pdf.partials.libro-pie')
+    @include('pdf.partials.libro-encabezado')
 
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    {{ !empty($d->ventasExenta) ? '$ ' . number_format($d->ventasExenta, 2) : '' }}
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    {{ '$ ' . number_format($d->ventaGravada ?? 0, 2) }}
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    {{ '$ ' . number_format($d->ventaGravada ?? 0, 2) }}
-                </td>
-            </tr>
-            @endforeach
-            <tr>
-                <td colspan="8" style="text-align: right; border: 1px solid #000000;"><b>TOTALES</b></td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{-- '$ ' . number_format($totalVentasExentas, 2) --}}
-                    </b>
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{ '$ ' . number_format($totalVentas, 2) }}
-                    </b>
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{ '$ ' . number_format($totalVentas, 2) }}
-                    </b>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    <table width="100%" style="text-align: center; font-size: 10px; font-weight: bold; with: 100%">
+    {{-- Solo ventas DTE finalizadas (Procesado + sello) del ambiente de la
+         empresa, agrupadas por dia y caja: es el mismo rango del anexo 2. --}}
+    <div class="lb-tabla-card">
+        <table cellpadding="0" cellspacing="0">
+            <thead>
+                <tr>
+                    <th style="width:6%;">Fecha</th>
+                    <th style="width:9%;">Sucursal / Caja</th>
+                    <th style="width:4%;">Docs.</th>
+                    <th style="width:8%;">Clase / Tipo</th>
+                    <th style="width:17%;">Documento del (cod. generacion)</th>
+                    <th style="width:17%;">Documento al (cod. generacion)</th>
+                    <th style="width:6%;">Correl. del - al</th>
+                    <th style="width:8%;">Ventas exentas</th>
+                    <th style="width:8%;">Ventas no sujetas</th>
+                    <th style="width:8%;">Ventas gravadas (IVA incl.)</th>
+                    <th style="width:9%;">Total ventas</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($data as $i => $d)
+                    <tr class="{{ $i % 2 ? 'par' : '' }}">
+                        <td class="c">{{ \Carbon\Carbon::parse($d['fecha'])->format('d/m/Y') }}</td>
+                        <td>{{ $d['sucursal'] }} / Caja {{ $d['caja'] }}</td>
+                        <td class="c">{{ $d['documentos'] }}</td>
+                        <td class="c">4 DTE / 01 Factura</td>
+                        <td class="mono">{{ \App\Support\AnexosF07::documentoDte($d['fecha'], $d['del_codigo'], $d['del_numero']) }}</td>
+                        <td class="mono">{{ \App\Support\AnexosF07::documentoDte($d['fecha'], $d['al_codigo'], $d['al_numero']) }}</td>
+                        <td class="c">{{ $d['del_correlativo'] }} - {{ $d['al_correlativo'] }}</td>
+                        <td class="r">$ {{ number_format((float) $d['exentas'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['no_sujetas'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['gravadas'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['total'], 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="11" class="lb-vacio">No hay datos en las fechas seleccionadas.</td>
+                    </tr>
+                @endforelse
+                <tr class="lb-totales">
+                    <td colspan="7" class="r">TOTALES ({{ collect($data)->sum('documentos') }} documentos)</td>
+                    <td class="r">$ {{ number_format((float) $totales['exentas'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['no_sujetas'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['gravadas'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['total'], 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <table style="width:100%; border-collapse:separate; border-spacing:0;">
         <tr>
-            <td>
-                <table>
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            RESUMEN DE OPERACIONES
-                        </td>
-                    </tr>
-                </table>
-                <table>
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            DETALLE
-                        </td>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">TOTAL VTAS. NETAS</td>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">DEBITO FISCAL</td>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">TOTAL VENTAS</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            VENTAS NO SUJETAS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentasNetas, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($debitoFiscal, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentas, 2) --}}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            VENTAS EXENTAS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentasNetas, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($debitoFiscal, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentas, 2) --}}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            IMP. RETENIDOS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentasNetas, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($debitoFiscal, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentas, 2) --}}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            VENTAS GRAVADAS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$
-                            {{ number_format($totalVentas, 2) }}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$
-                            {{ number_format($totalVentas - $totalVentas / 1.13, 2) }}</td>
-                        <td style=" font-size: 10px; font-weight: bold;text-align: right;">$
-                            {{ number_format($totalVentas, 2) }}</td>
-                    </tr>
-                </table>
+            <td style="width:68%; vertical-align:top; padding-right:8px;">
+                <div class="lb-resumen">
+                    <p class="titulo">Resumen del periodo</p>
+                    <table>
+                        <tr>
+                            <th>Detalle</th>
+                            <th>Valor neto</th>
+                            <th>Debito fiscal</th>
+                            <th>Total</th>
+                        </tr>
+                        {{-- El negocio NO genera ventas exentas ni no sujetas: se
+                             informan en 0.00 en vez de dejar la celda vacia. --}}
+                        <tr>
+                            <td>Ventas exentas</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                        </tr>
+                        <tr>
+                            <td>Ventas no sujetas</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                        </tr>
+                        <tr>
+                            <td>Ventas gravadas locales</td>
+                            <td>$ {{ number_format((float) $netoGravadas, 2) }}</td>
+                            <td>$ {{ number_format((float) $debitoGravadas, 2) }}</td>
+                            <td>$ {{ number_format((float) $totales['gravadas'], 2) }}</td>
+                        </tr>
+                        <tr class="total">
+                            <td>Total ventas a consumidor final</td>
+                            <td>$ {{ number_format((float) $netoGravadas, 2) }}</td>
+                            <td>$ {{ number_format((float) $debitoGravadas, 2) }}</td>
+                            <td>$ {{ number_format((float) $totales['total'], 2) }}</td>
+                        </tr>
+                    </table>
+                    <p class="lb-nota">Solo DTE procesados y sellados por Hacienda, del ambiente configurado en la empresa.</p>
+                </div>
             </td>
-            <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                <table width="100%">
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            ___________________________________
-                        </td>
-                    </tr>
-                </table>
-                <table width="100%">
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; F. Contador</td>
-                    </tr>
-                </table>
+            <td style="width:32%; vertical-align:top;">
+                <div class="lb-firma">
+                    <p class="titulo">Firma</p>
+                    <div class="linea"></div>
+                    <p class="rol">Contador</p>
+                </div>
             </td>
         </tr>
     </table>

@@ -2973,6 +2973,12 @@ class PosController extends Component
         $tt = $sub - $tiva;
 
         $c = Clientes::find($this->idC);
+        // Un credito fiscal exige el NRC (registro) del cliente: sin el no se
+        // puede mandar a Hacienda, asi que la venta no se guarda.
+        if (!$c || trim((string) $c->registro) === '') {
+            $this->emit('item-error', 'El cliente no tiene NRC (registro): no se puede emitir Credito Fiscal. Agreguele el registro o emita Factura de consumidor final.');
+            return;
+        }
 
         // Misma regla que el consumidor: retencion del 1% (Art. 162 CT) a
         // clientes categoria GRANDE, desde $113 CON IVA, sobre la base sin IVA

@@ -6,7 +6,7 @@ use App\Models\Empresas;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Ililluminate\Support\Str;
+use Illuminate\Support\Str;
 
 class Parametros extends Model
 {

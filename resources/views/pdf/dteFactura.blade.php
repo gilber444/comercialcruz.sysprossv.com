@@ -94,16 +94,16 @@
     <div class="header">
         <table style="width:100%;">
             <tr>
-                <td width="18%" valign="middle">
+                <td width="28%" valign="middle">
                     <div class="logo-box">
                         @if(!empty($imagenUrl))
-                            <img src="{{ $imagenUrl }}" alt="Logo" style="max-height:52px; max-width:120px;">
+                            <img src="{{ $imagenUrl }}" alt="Logo" style="max-height:95px; max-width:200px;">
                         @else
                             <span style="color:{{ $paletaDte['primario'] }}; font-weight:bold; font-size:11px;">{{ $empresa->empresa }}</span>
                         @endif
                     </div>
                 </td>
-                <td width="46%" valign="middle" style="text-align:center;">
+                <td width="38%" valign="middle" style="text-align:center;">
                     <div class="eyebrow">Documento Tributario Electrónico</div>
                     <div class="doc-title">
                         @if ($dte->tipoDte == 1) Factura
@@ -117,7 +117,7 @@
                     @endif
                     <span class="badge badge-env">{{ $dte->modelo }}</span>
                 </td>
-                <td width="36%" valign="middle">
+                <td width="34%" valign="middle">
                     <table align="right" cellpadding="2" cellspacing="0">
                         <tr>
                             @if(!empty($qrCode))
@@ -305,7 +305,7 @@
                 <div class="infobox" style="padding:0; height:170px;">
                     <table class="totals" cellpadding="0" cellspacing="0">
                         <tr><td class="th" colspan="2">SUMA TOTAL DE OPERACIONES</td></tr>
-                        <tr><td class="lbl">Ventas no sujetas:</td><td class="amt">$ {{ number_format($resumen->totaNoSuj, 2) }}</td></tr>
+                        <tr><td class="lbl">Ventas no sujetas:</td><td class="amt">$ {{ number_format((float) $resumen->totalNoSuj, 2) }}</td></tr>
                         <tr><td class="lbl">Total gravada:</td><td class="amt">
                             @if ($dte->tipoDte == 1) $ {{ number_format($resumen->totalGravada, 2) }}
                             @elseif ($dte->tipoDte == 2) $ {{ number_format($resumen->totalGravada - $resumen->totalIva, 2) }}

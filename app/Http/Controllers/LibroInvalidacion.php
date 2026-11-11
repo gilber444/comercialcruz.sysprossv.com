@@ -2,34 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\dte;
 use App\Models\Empresas;
 use App\Models\Sucursales;
+use App\Services\LibrosIvaService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 
 class LibroInvalidacion extends Controller
 {
+    /**
+     * PDF del libro de invalidaciones. Usa la MISMA consulta que la pantalla
+     * (LibrosIvaService::invalidaciones): DTE invalidados con sello y del
+     * ambiente de la empresa.
+     */
     public function generarPDF($empresa, $sucursal, $facturador, $desde, $hasta)
     {
-        $data = dte::with('Rventa', 'RtipoDte')
-            ->whereBetween('fecEmi', [$desde, $hasta])
-            ->when($facturador != 0, function ($q) use ($facturador) {
-                $q->where('tipoDte', $facturador);
-            })
-            ->where('empresa', $empresa)
-            ->where('sucursal', $sucursal)
-            ->where('estado', 'INVALIDADO')
-            ->orderBy('fecEmi', 'asc')
-            ->orderBy('horEmi', 'asc')
-            ->orderBy('numeroControl', 'asc')
-            ->get();
+        $servicio = app(LibrosIvaService::class);
+        abort_unless($servicio->puedeVerEmpresa(Auth::user(), $empresa), 403);
 
-        $empresa = Empresas::find($empresa);
+        $data = $servicio->invalidaciones($empresa, $sucursal, $facturador, $desde, $hasta);
+        $totales = $servicio->totales($data, ['total']);
+
+        $empresa = Empresas::findOrFail($empresa);
         $imagenUrl = asset('logo/' . $empresa->image);
+        $sucursales = Sucursales::where('empresa', $empresa->id)->find($sucursal);
 
-        $sucursales = Sucursales::find($sucursal);
-
-        $pdf = PDF::loadView('pdf.libroInvalidaciones', compact('data', 'sucursales', 'empresa', 'imagenUrl', 'desde', 'hasta'))->setPaper('letter', 'landscape');
+        $pdf = Pdf::loadView('pdf.libroInvalidaciones', compact('data', 'totales', 'sucursales', 'empresa', 'imagenUrl', 'desde', 'hasta'))
+            ->setPaper('letter', 'landscape');
 
         return $pdf->stream('LibroInvalidaciones.pdf');
     }

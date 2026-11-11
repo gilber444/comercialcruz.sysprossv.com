@@ -41,8 +41,15 @@
                         @can('Invalidaciones_Destroy')
                         <a class="btn btn-danger" href="javascript:void(0);" onclick="Confirm('{{$inva->id}}')"><i class="fa-solid fa-trash"></i></a>
                         @endcan
-                        <button class="btn btn-icon btn-label-primary" title="Procesar Invalidacion" wire:click="ProcesarInva({{ $inva->id }})"><i class="fa-solid fa-paper-plane"></i>
+                        <button class="btn btn-icon btn-label-primary" title="Procesar Invalidacion" wire:click="ProcesarInva({{ $inva->id }})" wire:loading.attr="disabled" wire:target="ProcesarInva({{ $inva->id }})"><span wire:loading wire:target="ProcesarInva({{ $inva->id }})" class="spinner-border spinner-border-sm"></span><i class="fa-solid fa-paper-plane"></i>
                         </button>
+                        @else
+                        @can('DTE_ReenviarCorreo')
+                        <button class="btn btn-icon btn-label-info" title="Reenviar correo de la invalidacion" wire:click="reenviarCorreoInvalidacion({{ $inva->id }})" wire:loading.attr="disabled" wire:target="reenviarCorreoInvalidacion({{ $inva->id }})">
+                            <span wire:loading wire:target="reenviarCorreoInvalidacion({{ $inva->id }})" class="spinner-border spinner-border-sm"></span>
+                            <i class="fa-solid fa-envelope"></i>
+                        </button>
+                        @endcan
                         @endif
                     </td>
                 </tr>

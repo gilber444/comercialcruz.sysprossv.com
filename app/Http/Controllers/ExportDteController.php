@@ -26,6 +26,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 use Dompdf\Dompdf;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -83,6 +84,9 @@ class ExportDteController extends Controller
                 ->leftJoin('departamentos as dep', 'dep.id', 'c.departamento')
                 ->leftJoin('municipios as mun', 'mun.id', 'c.municipio')
                 ->leftJoin('distritos as dis', 'dis.id', 'c.distrito')
+                // Si el cliente tiene distrito pero no municipio/departamento, se toman del distrito
+                ->leftJoin('municipios as mun2', 'mun2.id', 'dis.municipio')
+                ->leftJoin('departamentos as dep2', 'dep2.id', 'mun2.departamento')
                 ->select(
                     'sujeto_excluidos.*',
                     'c.nombreCliente',
@@ -93,8 +97,8 @@ class ExportDteController extends Controller
                     'c.direccion',
                     'c.registro',
                     'c.desActividad',
-                    'dep.departamento as departamentoNombre',
-                    'mun.municipio as municipioNombre',
+                    DB::raw('COALESCE(dep.departamento, dep2.departamento) as departamentoNombre'),
+                    DB::raw('COALESCE(mun.municipio, mun2.municipio) as municipioNombre'),
                     'dis.distrito as distritoNombre'
                 )
                 ->find($dte->venta);
@@ -120,6 +124,9 @@ class ExportDteController extends Controller
             ->leftJoin('departamentos as dep', 'dep.id', 'c.departamento')
             ->leftJoin('municipios as mun', 'mun.id', 'c.municipio')
             ->leftJoin('distritos as dis', 'dis.id', 'c.distrito')
+            // Si el cliente tiene distrito pero no municipio/departamento, se toman del distrito
+            ->leftJoin('municipios as mun2', 'mun2.id', 'dis.municipio')
+            ->leftJoin('departamentos as dep2', 'dep2.id', 'mun2.departamento')
             ->select(
                 'ventas.*',
                 'c.nombreCliente',
@@ -130,8 +137,8 @@ class ExportDteController extends Controller
                 'c.direccion',
                 'c.registro',
                 'c.desActividad',
-                'dep.departamento as departamentoNombre',
-                'mun.municipio as municipioNombre',
+                DB::raw('COALESCE(dep.departamento, dep2.departamento) as departamentoNombre'),
+                DB::raw('COALESCE(mun.municipio, mun2.municipio) as municipioNombre'),
                 'dis.distrito as distritoNombre'
             )
             ->find($dte->venta);
@@ -193,11 +200,16 @@ class ExportDteController extends Controller
 
             ->leftJoin('distritos as dis', 'dis.id', 'sucursales.distrito')
 
+            // Si la sucursal tiene distrito pero no municipio/departamento, se toman del distrito
+            ->leftJoin('municipios as mun2', 'mun2.id', 'dis.municipio')
+
+            ->leftJoin('departamentos as dep2', 'dep2.id', 'mun2.departamento')
+
             ->select(
                 'sucursales.*',
                 'te.valor as establecimiento',
-                'dep.departamento as departamentoNombre',
-                'mun.municipio as municipioNombre',
+                DB::raw('COALESCE(dep.departamento, dep2.departamento) as departamentoNombre'),
+                DB::raw('COALESCE(mun.municipio, mun2.municipio) as municipioNombre'),
                 'dis.distrito as distritoNombre'
             )
 
@@ -359,11 +371,16 @@ class ExportDteController extends Controller
 
             ->leftJoin('distritos as dis', 'dis.id', 'sucursales.distrito')
 
+            // Si la sucursal tiene distrito pero no municipio/departamento, se toman del distrito
+            ->leftJoin('municipios as mun2', 'mun2.id', 'dis.municipio')
+
+            ->leftJoin('departamentos as dep2', 'dep2.id', 'mun2.departamento')
+
             ->select(
                 'sucursales.*',
                 'te.valor as establecimiento',
-                'dep.departamento as departamentoNombre',
-                'mun.municipio as municipioNombre',
+                DB::raw('COALESCE(dep.departamento, dep2.departamento) as departamentoNombre'),
+                DB::raw('COALESCE(mun.municipio, mun2.municipio) as municipioNombre'),
                 'dis.distrito as distritoNombre'
             )
 

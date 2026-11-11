@@ -108,7 +108,8 @@ class PlazoInvalidacionDteService
             . $this->limite($dte)->format('d/m/Y') . ' a las 23:59:59.';
     }
 
-    private function codigoTipo(dte $dte): string
+    /** Codigo CAT-002 de dos digitos del DTE (relacion tipoDte o id historico). */
+    public function codigoTipo(dte $dte): string
     {
         // dtes.tipoDte es columna y relacion a la vez: $dte->tipoDte devuelve
         // siempre el entero, nunca el modelo. Hay que pedir la relacion, y

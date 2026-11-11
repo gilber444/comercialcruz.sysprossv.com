@@ -197,6 +197,32 @@
     $documentoReceptor = trim(($documento['tipoDocumento'] ?? '') . ' ' . ($documento['numDocumento'] ?? ''));
     $documentoResponsable = trim(($motivo['tipDocResponsable'] ?? '') . ' ' . ($motivo['numDocResponsable'] ?? ''));
     $documentoSolicitante = trim(($motivo['tipDocSolicita'] ?? '') . ' ' . ($motivo['numDocSolicita'] ?? ''));
+
+    // Departamento, municipio y distrito del emisor (sucursal) y del receptor
+    // (cliente). Si falta el municipio o el departamento se toma del distrito.
+    $ubicacion = function ($modelo) {
+        if (!$modelo) {
+            return ['departamento' => null, 'municipio' => null, 'distrito' => null];
+        }
+        $distrito = optional($modelo->Rdistrito)->distrito;
+        $municipio = $modelo->Rmunicipio;
+        if (!$municipio && $modelo->Rdistrito) {
+            $municipio = \App\Models\Municipios::find($modelo->Rdistrito->municipio);
+        }
+        $departamento = optional($modelo->Rdepartamento)->departamento
+            ?: optional($municipio ? \App\Models\Departamentos::find($municipio->departamento) : null)->departamento;
+
+        return ['departamento' => $departamento, 'municipio' => optional($municipio)->municipio, 'distrito' => $distrito];
+    };
+    try {
+        $ubiEmisor = $ubicacion(\App\Models\Sucursales::find($dte->sucursal));
+        $ubiReceptor = $ubicacion(\App\Models\Clientes::find($dte->receptor));
+    } catch (\Throwable $e) {
+        // La ubicacion es informativa: el PDF del evento sale igual, pero el
+        // fallo queda en el log en vez de esconderse.
+        report($e);
+        $ubiEmisor = $ubiReceptor = ['departamento' => null, 'municipio' => null, 'distrito' => null];
+    }
 @endphp
 
 <body>
@@ -205,22 +231,22 @@
     <div class="header">
         <table style="width:100%;">
             <tr>
-                <td width="18%" valign="middle">
+                <td width="28%" valign="middle">
                     <div class="logo-box">
                         @if($logo)
-                            <img src="{{ $logo }}" alt="Logo" style="max-height:46px; max-width:110px;">
+                            <img src="{{ $logo }}" alt="Logo" style="max-height:95px; max-width:200px;">
                         @else
                             <span style="color:{{ $paletaDte['primario'] }}; font-weight:bold; font-size:11px;">{{ $empresa->empresa }}</span>
                         @endif
                     </div>
                 </td>
-                <td width="46%" valign="middle" style="padding-left:14px;">
+                <td width="38%" valign="middle" style="padding-left:14px;">
                     <div class="eyebrow">Documento Tributario Electrónico</div>
                     <div class="doc-title">Evento de Invalidación</div>
                     <span class="badge badge-ok">{{ strtoupper($invalidacion->estado ?: 'PROCESADO') }}</span>
                     <span class="badge badge-env">{{ $ambiente }}</span>
                 </td>
-                <td width="36%" valign="middle">
+                <td width="34%" valign="middle">
                     <table align="right" cellpadding="2" cellspacing="0">
                         <tr>
                             @if(!empty($qrCode))
@@ -279,6 +305,9 @@
                             <tr><td class="k">Punto de venta MH</td><td class="v">{{ $emisor['codPuntoVentaMH'] ?? '—' }}</td></tr>
                             <tr><td class="k">Teléfono</td><td class="v">{{ $emisor['telefono'] ?? $empresa->telefono }}</td></tr>
                             <tr><td class="k">Correo</td><td class="v">{{ $emisor['correo'] ?? $empresa->correo }}</td></tr>
+                            <tr><td class="k">Departamento</td><td class="v">{{ $ubiEmisor['departamento'] ?? '—' }}</td></tr>
+                            <tr><td class="k">Municipio</td><td class="v">{{ $ubiEmisor['municipio'] ?? '—' }}</td></tr>
+                            <tr><td class="k">Distrito</td><td class="v">{{ $ubiEmisor['distrito'] ?? '—' }}</td></tr>
                         </table>
                     </div>
                 </div>
@@ -293,6 +322,9 @@
                             <tr><td class="k">Identificación</td><td class="v">{{ $documentoReceptor ?: 'No aplica' }}</td></tr>
                             <tr><td class="k">Teléfono</td><td class="v">{{ $documento['telefono'] ?? 'No registrado' }}</td></tr>
                             <tr><td class="k">Correo</td><td class="v">{{ $documento['correo'] ?? $cliente->email }}</td></tr>
+                            <tr><td class="k">Departamento</td><td class="v">{{ $ubiReceptor['departamento'] ?? '—' }}</td></tr>
+                            <tr><td class="k">Municipio</td><td class="v">{{ $ubiReceptor['municipio'] ?? '—' }}</td></tr>
+                            <tr><td class="k">Distrito</td><td class="v">{{ $ubiReceptor['distrito'] ?? '—' }}</td></tr>
                         </table>
                     </div>
                 </div>

@@ -40,30 +40,24 @@ class ProcesamientoDteService
                 return self::YA_PROCESADO;
             }
 
-            // Solo se consulta antes de retransmitir un DTE que ya tuvo una
-            // firma o un rechazo. Un DTE CREADO es un primer envio y debe
-            // pasar directamente a la generacion, firma y transmision.
-            $estado = strtoupper((string) $dte->estado);
-            if (in_array($estado, ['FIRMADO', 'RECHAZADO'], true)) {
-                try {
-                    $consulta = app(ConsultaDteHaciendaService::class)->consultarYReconciliar($dte);
-                } catch (Throwable $e) {
-                    report($e);
-                    $consulta = ConsultaDteHaciendaService::INDETERMINADO;
-                }
-
-                if ($consulta === ConsultaDteHaciendaService::ENCONTRADO) {
-                    return self::YA_PROCESADO;
-                }
-
-                // Una respuesta indeterminada nunca autoriza a retransmitir:
-                // podria existir un DTE aceptado cuyo sello aun no devolvio la
-                // consulta. Se deja pendiente para reintentar la consulta,
-                // sin marcarlo como procesado ni perder el estado real.
-                if ($consulta === ConsultaDteHaciendaService::INDETERMINADO) {
-                    return self::CONSULTA_NO_DISPONIBLE;
-                }
+            // Antes de firmar o transmitir se consulta SIEMPRE a Hacienda, en
+            // cualquier estado no finalizado. Si ya tiene el DTE con sello, se
+            // toma ese sello (DTE, venta y caja) y no se vuelve a enviar.
+            try {
+                $consulta = app(ConsultaDteHaciendaService::class)->consultarYReconciliar($dte);
+            } catch (Throwable $e) {
+                report($e);
+                $consulta = ConsultaDteHaciendaService::INDETERMINADO;
             }
+
+            if ($consulta === ConsultaDteHaciendaService::ENCONTRADO) {
+                return self::YA_PROCESADO;
+            }
+
+            // Sin sello confirmado se continua con la generacion y el envio,
+            // incluso si la consulta no respondio: Hacienda rechaza un
+            // codigoGeneracion repetido como "ya existe" y ese caso se
+            // reconcilia en resolverRespuestaRechazada.
 
             $resultadoProceso = $procesar();
 
@@ -79,10 +73,13 @@ class ProcesamientoDteService
         }
     }
 
+    /**
+     * Lo que manda es el sello: un DTE invalidado tambien lo tiene y no se
+     * vuelve a transmitir.
+     */
     private function estaFinalizado(dte $dte): bool
     {
-        return strtoupper((string) $dte->estado) === 'PROCESADO'
-            && trim((string) $dte->sello) !== '';
+        return trim((string) $dte->sello) !== '';
     }
 
     /** Una respuesta tardia nunca puede degradar un DTE ya aceptado. */
@@ -110,13 +107,14 @@ class ProcesamientoDteService
                 $dte = dte::findOrFail($id);
                 $consulta = app(ConsultaDteHaciendaService::class)->consultarYReconciliar($dte);
 
-                return $consulta === ConsultaDteHaciendaService::ENCONTRADO
-                    ? self::YA_PROCESADO
-                    : self::CONSULTA_NO_DISPONIBLE;
+                if ($consulta === ConsultaDteHaciendaService::ENCONTRADO) {
+                    return self::YA_PROCESADO;
+                }
             } catch (Throwable $e) {
                 report($e);
-                return self::CONSULTA_NO_DISPONIBLE;
             }
+            // Sin sello confirmado queda como rechazado y el proceso de
+            // pendientes lo vuelve a intentar.
         }
 
         $estado = (string) ($respuesta['estado'] ?? 'RECHAZADO');

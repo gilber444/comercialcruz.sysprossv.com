@@ -5,6 +5,68 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.38] - 2026-11-11
+
+Normativa DTE 2.0: se aplicaron los tres prompts de servimangueras.cpc.lat (actualización DTE 2.0; catálogos, esquemas y eventos; libros de IVA y anexos F07), con los ajustes pedidos por el usuario. Sin cambiar la lógica del POS.
+
+### Envío a Hacienda
+- `ProcesamientoDteService`: antes de firmar o transmitir consulta **siempre** a Hacienda, en cualquier estado sin sello. Si Hacienda ya tiene el DTE con sello, toma ese sello y deja el DTE en PROCESADO, con el sello en ventas y caja; no lo vuelve a enviar. Si no, lo envía.
+- `app:procesar-dtes-pendientes`:
+  - Usa esa consulta y un candado por DTE, para que dos procesos no envíen el mismo.
+  - Reintenta también RECHAZADO y ERROR, atendiendo primero los nuevos.
+  - Despacha por código CAT-002: 01 factura, 03 CCF y 05 nota con su propio generador (antes la nota salía por el del CCF). El 14 se envía desde su pantalla.
+- Un rechazo "ya existe" (HTTP 400 o 200) se consulta y reconcilia en factura, CCF y nota.
+- La nota rechazada fallaba por una variable sin definir y ya no degrada una nota que tiene sello.
+
+### Receptor
+- Factura a consumidor final con identificación NIT (36): va el NIT real del cliente, solo dígitos (9 o 14), no el DUI. Si el NIT no es válido, se pide corregirlo.
+- Crédito fiscal sin NRC (registro): el POS no guarda la venta y avisa "no se puede emitir Crédito Fiscal". Son 6 líneas agregadas en `SaveFiscal`. El generador del CCF tiene el mismo resguardo.
+
+### Invalidación v3 y contingencia v4
+- La invalidación sale en el esquema v3 y la contingencia en el v4: `codPuntoVentaMH`, sin `codPuntoVenta`. La versión del sobre y la del documento salen del mismo lugar (`VersionEventoDte`, con `esquema_dtes` y respaldo 3 y 4).
+- Reglas de motivo y reemplazo, y de la fecha del evento. La invalidación solo se marca aceptada con PROCESADO y sello.
+- Correo de invalidación con adjuntos y botón para reenviarlo.
+- Filtros por empresa. La contingencia ya no dice "Procesada" si Hacienda la rechaza.
+
+### PDF
+- Logo más grande en el PDF del DTE y en el de invalidación.
+- Departamento, municipio y distrito del emisor y del receptor también en la invalidación. Si falta el municipio o el departamento, se toma del distrito.
+- "Ventas no sujetas" del PDF del DTE salía siempre en 0.
+
+### Catálogos
+- Importador del Excel oficial de Hacienda en Catálogos DTE > Actualizar Catálogos, con vista previa y confirmación. Comandos `catalogos:diagnostico` y `catalogos:fusionar`.
+- **Incluye departamentos, municipios y distritos:**
+  - Se emparejan por nombre dentro del departamento y se corrige el código, sin cambiar ids ni padres.
+  - Lo que no empata se reporta y no se toca.
+- `catalogos:bajar-desde-vps`, cada hora en las PC: copia los catálogos del VPS por id, para que las cajas emitan con los códigos vigentes.
+
+### Evento de Retorno (CAT-002 18)
+- Nuevo módulo en Documentos DTE > Nuevo Retorno y Eventos de Retorno:
+  - aplica sobre factura con sello, dentro de plazo y sin exceder el monto;
+  - reingresa el stock en proporción y lo registra en el kardex;
+  - genera PDF y JSON, validado contra `fe-eret-v1`.
+
+### Libros de IVA y anexos F07
+- Diseño de servimangueras, con la paleta de la empresa y sin tabla por día, en los libros de consumidor final, contribuyentes, invalidaciones y **compras** (nuevo).
+- CSV en cada libro, sin opción de menú aparte:
+  - consumidor → anexo 2, con B=4 y C=01;
+  - contribuyentes → anexos 1 y 7 (retención 1%);
+  - compras → anexo 3.
+- Formato según el manual F-07: `;` como separador, sin encabezados, DD/MM/AAAA y 2 decimales.
+- Solo entran DTE con sello del ambiente de la empresa, con la misma consulta en pantalla, PDF y CSV.
+- Compras guardan empresa y desglose fiscal (`App\Support\Decimal`, cuadre al centavo).
+- Se quitó la ruta duplicada de `libroVentasConsumidor`.
+
+### Correcciones de QA
+- Modelos con el `use` de `Str` mal escrito: `DomicilioFiscal`, `Parametros`, `TipoPagos`.
+- Rutas que apuntaban a métodos inexistentes: `productoAdmin/{imagen}` y `modal_nota`.
+- Pantallas con spinners y avisos.
+- 4 agentes de implementación y 3 de QA, en ciclo hasta cero errores: 115 pruebas Unit pasan, y las vistas y rutas compilan.
+
+### Migraciones nuevas
+- `2026_08_06_140000/140100/140200`: Evento de Retorno.
+- `2026_08_08_120000`: campos del anexo F07 en compras.
+
 ## [1.0.37] - 2026-11-11
 
 ### Agregado

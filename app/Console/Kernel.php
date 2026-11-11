@@ -49,6 +49,15 @@ class Kernel extends ConsoleKernel
                 ->withoutOverlapping(30)
                 ->appendOutputTo(storage_path('logs/esquemas_dte.log'));
 
+            // Catalogos de Hacienda (y departamentos, municipios y distritos): se
+            // actualizan en el VPS con el importador y se copian aqui por id.
+            $schedule->command('catalogos:bajar-desde-vps')
+                ->name('bajar catalogos dte desde vps')
+                ->hourly()
+                ->runInBackground()
+                ->withoutOverlapping(30)
+                ->appendOutputTo(storage_path('logs/catalogos_dte.log'));
+
             if ($sucursalId > 0) {
                 // Ventas "Fisico" de consumidor final → factura DTE con su fecha original,
                 // por lotes. Apagado hasta encender dte.convertir_fisicos.activo.

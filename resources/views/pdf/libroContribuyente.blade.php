@@ -1,198 +1,132 @@
+@php
+    $paletaDte = app(\App\Services\DtePaletteService::class)
+        ->obtener((int) $empresa->id);
+    $titulo = 'Libro de Ventas a Contribuyentes';
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Libro de Contribuyente</title>
+    <title>{{ $titulo }}</title>
+    @include('pdf.partials.libro-estilos')
 </head>
 
-<body style="font-family: sans-serif; margin: 0.5%; padding:0; margin-left: 0px; margin-top: 0px; margin-right: 0px; margin-bottom:0px;">
-    <table style="width: 100%;" style="border-bottom: 1px solid #00000">
-        <tr>
-            <td width="12%" style="padding-right: 10px; border-bottom:1px solid #0000">
-                <img src="{{ $imagenUrl }}" alt="" width="170" height="90" style="margin-bottom: 2px;">
-            </td>
-            <td width="88%">
-                <p style="font-size: 14px; margin: 0; font-weight: bold;">{{ $empresa->empresa }} / {{ $empresa->razon }}</p>
-                <p style="font-size: 11px; margin: 1px 0; line-height: 1.2;">NIT:{{ $empresa->nit }}, NCR: {{ $empresa->registro }}</p>
-                <p style="font-size: 11px; margin: 1px 0; line-height: 1.2;">DIRECCION: {{ $empresa->direccion }}, TEL.{{ $empresa->telefono }}
-                    EMAIL: {{ $empresa->correo }}</p>
-            </td>
-    </table>
-    <table style="width: 100%; border: 1px; ">
-        <thead>
-            <th style="text-align:center;">
-                Libro de Contribuyentes
-                <br>
-                DESDE {{ \Carbon\Carbon::parse($desde)->format('d/m/Y') }}
-                HASTA {{ \Carbon\Carbon::parse($hasta)->format('d/m/Y') }}
-            </th>
-        </thead>
-    </table>
-    <table width="100%" border="1" cellpadding="0" cellspacing="0" style="font-size:10px; margin:1%;">
-        <thead class="bg-dark text-white">
-            <th  style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Fecha Emi.</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Clase Doc.</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Tipo Doc.</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Num. Resolución</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Serie</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">DEL</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">AL</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">NIT o NRC</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Nombre, Razon Social</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Ventas Gravadas</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Debito Fiscal</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">Total Ventas</th>
-            <th style="text-align: center; border: 1px solid #000000; font-weight: bold; background-color: #233446;color: white; padding: 5px;">DUI Cliente</th>
-        </thead>
-        <tbody>
-            @foreach ($data as $d)
-            <tr>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ \Carbon\Carbon::parse( $d->fecha)->format('d/m/Y') }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    4. DOCUMENTO TRIBUTARIO ELECTRONICO (DTE)
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    03.COMPROBANTE DE CREDITO FISCAL
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->codigo }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->codigo }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->numero }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ $d->numero }}
-                </td>
-                <td style="text-align: center; border: 1px solid #000000;">
-                    {{ (isset($d->Rclientes->nit) && strlen($d->Rclientes->nit) === 14)
-                        ? $d->Rclientes->nit
-                        : '' }}
-                </td>
-                <td style="border: 1px solid #000000;">
-                    {{ $d->Rclientes->nombreCliente }}
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    $ {{ number_format(($d->total / 1.13) , 2)}}
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    $ {{ number_format($d->total -($d->total / 1.13) , 2)}}
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    $ {{ number_format($d->total, 2)}}
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    {{ (isset($d->Rclientes->nit) && strlen($d->Rclientes->nit) === 9)
-                        ? $d->Rclientes->nit
-                        : '' }}
-                </td>
-            </tr>
-            @endforeach
-            <tr>
-                <td colspan="8" style="text-align: right; border: 1px solid #000000;"><b>TOTALES</b></td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{-- '$ ' . number_format($totalVentasExentas, 2) --}}
-                    </b>
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{ '$ ' . number_format($totalVentas / 1.13, 2) }}
-                    </b>
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{ '$ ' . number_format($totalVentas - ($totalVentas/1.13), 2) }}
-                    </b>
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
-                    <b>
-                        {{ '$ ' . number_format($totalVentas, 2) }}
-                    </b>
-                </td>
-                <td style="text-align: right; border: 1px solid #000000;">
+<body>
+    @include('pdf.partials.libro-pie')
+    @include('pdf.partials.libro-encabezado')
 
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    <table width="100%" style="text-align: center; font-size: 10px; font-weight: bold; with: 100%">
+    {{-- Solo creditos fiscales DTE finalizados (Procesado + sello) del
+         ambiente de la empresa. Mismas filas que el anexo 1. --}}
+    <div class="lb-tabla-card">
+        <table cellpadding="0" cellspacing="0">
+            <thead>
+                <tr>
+                    <th style="width:3%;">N.</th>
+                    <th style="width:6%;">Fecha</th>
+                    <th style="width:14%;">Numero de control</th>
+                    <th style="width:15%;">Codigo de generacion</th>
+                    <th style="width:7%;">NIT / NRC / DUI</th>
+                    <th style="width:14%;">Cliente</th>
+                    <th style="width:6%;">Exentas</th>
+                    <th style="width:6%;">No sujetas</th>
+                    <th style="width:7%;">Gravadas</th>
+                    <th style="width:7%;">Debito fiscal</th>
+                    <th style="width:7%;">Total</th>
+                    <th style="width:8%;">Retencion 1% (cliente)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($data as $i => $d)
+                    @php
+                        [$nitNrc, $dui] = \App\Support\AnexosF07::identificacion($d['nit'], $d['nrc'], $d['dui']);
+                    @endphp
+                    <tr class="{{ $i % 2 ? 'par' : '' }}">
+                        <td class="c">{{ $i + 1 }}</td>
+                        <td class="c">{{ \Carbon\Carbon::parse($d['fecha'])->format('d/m/Y') }}</td>
+                        <td class="mono">{{ \App\Support\AnexosF07::sinGuiones($d['numero_control']) }}</td>
+                        <td class="mono">{{ \App\Support\AnexosF07::documentoDte($d['fecha'], $d['codigo'], $d['numero_control']) }}</td>
+                        <td class="c">{{ $nitNrc !== '' ? $nitNrc : $dui }}</td>
+                        <td>{{ $d['cliente'] }}</td>
+                        <td class="r">$ {{ number_format((float) $d['exentas'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['no_sujetas'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['gravada'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['debito'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['total'], 2) }}</td>
+                        <td class="r">$ {{ number_format((float) $d['retencion'], 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="12" class="lb-vacio">No hay datos en las fechas seleccionadas.</td>
+                    </tr>
+                @endforelse
+                <tr class="lb-totales">
+                    <td colspan="6" class="r">TOTALES ({{ count($data) }} documentos)</td>
+                    <td class="r">$ {{ number_format((float) $totales['exentas'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['no_sujetas'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['gravada'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['debito'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['total'], 2) }}</td>
+                    <td class="r">$ {{ number_format((float) $totales['retencion'], 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <table style="width:100%; border-collapse:separate; border-spacing:0;">
         <tr>
-            <td>
-                <table>
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            RESUMEN DE OPERACIONES
-                        </td>
-                    </tr>
-                </table>
-                <table>
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            DETALLE
-                        </td>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">TOTAL VTAS. NETAS</td>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">DEBITO FISCAL</td>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">TOTAL VENTAS</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            VENTAS NO SUJETAS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentasNetas, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($debitoFiscal, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentas, 2) --}}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            VENTAS EXENTAS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentasNetas, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($debitoFiscal, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentas, 2) --}}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            IMP. RETENIDOS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentasNetas, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($debitoFiscal, 2) --}}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$ {{-- number_format($totalVentas, 2) --}}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: 10px; font-weight: bold;">
-                            VENTAS GRAVADAS
-                        </td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$
-                            {{ number_format($totalVentas, 2) }}</td>
-                        <td style="font-size: 10px; font-weight: bold; text-align: right;">$
-                            {{ number_format($totalVentas - $totalVentas / 1.13, 2) }}</td>
-                        <td style=" font-size: 10px; font-weight: bold;text-align: right;">$
-                            {{ number_format($totalVentas, 2) }}</td>
-                    </tr>
-                </table>
+            <td style="width:68%; vertical-align:top; padding-right:8px;">
+                <div class="lb-resumen">
+                    <p class="titulo">Resumen del periodo</p>
+                    <table>
+                        <tr>
+                            <th>Detalle</th>
+                            <th>Valor neto</th>
+                            <th>Debito fiscal</th>
+                            <th>Total</th>
+                        </tr>
+                        {{-- El negocio NO genera ventas exentas ni no sujetas: se
+                             informan en 0.00 en vez de dejar la celda vacia. --}}
+                        <tr>
+                            <td>Ventas exentas</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                        </tr>
+                        <tr>
+                            <td>Ventas no sujetas</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                            <td>$ 0.00</td>
+                        </tr>
+                        <tr>
+                            <td>Ventas gravadas locales</td>
+                            <td>$ {{ number_format((float) $totales['gravada'], 2) }}</td>
+                            <td>$ {{ number_format((float) $totales['debito'], 2) }}</td>
+                            <td>$ {{ number_format((float) $totales['total'], 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Retencion 1% IVA efectuada por clientes (anexo 7)</td>
+                            <td></td>
+                            <td></td>
+                            <td>$ {{ number_format((float) $totales['retencion'], 2) }}</td>
+                        </tr>
+                        <tr class="total">
+                            <td>Total ventas a contribuyentes</td>
+                            <td>$ {{ number_format((float) $totales['gravada'], 2) }}</td>
+                            <td>$ {{ number_format((float) $totales['debito'], 2) }}</td>
+                            <td>$ {{ number_format((float) $totales['total'], 2) }}</td>
+                        </tr>
+                    </table>
+                    <p class="lb-nota">Montos con IVA antes de la retencion del 1%. Solo DTE procesados y sellados por Hacienda, del ambiente configurado en la empresa.</p>
+                </div>
             </td>
-            <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                <table width="100%">
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            ___________________________________
-                        </td>
-                    </tr>
-                </table>
-                <table width="100%">
-                    <tr>
-                        <td style="text-align: center; font-size: 10px; font-weight: bold;">
-                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; F. Contador</td>
-                    </tr>
-                </table>
+            <td style="width:32%; vertical-align:top;">
+                <div class="lb-firma">
+                    <p class="titulo">Firma</p>
+                    <div class="linea"></div>
+                    <p class="rol">Contador</p>
+                </div>
             </td>
         </tr>
     </table>

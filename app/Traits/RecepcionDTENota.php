@@ -220,10 +220,16 @@ trait RecepcionDTENota
             }
         }
 
+        // Si la consulta a Hacienda reconcilio el sello ("ya existe"), la nota ya
+        // quedo PROCESADO: no se le vuelve a poner el rechazo ni se borra el sello.
         $nota = NotaCredito::where('codigo', $dte->codigoGeneracion)->first();
-        if ($nota) {
+        if ($nota && trim((string) optional(dte::find($id))->sello) === '') {
             $nota->estado = $responseData['estado'] ?? 'ERROR';
             $nota->sello = $responseData['selloRecibido'] ?? null;
+            $nota->save();
+        } elseif ($nota && trim((string) $sello) !== '') {
+            $nota->estado = $estadoMh;
+            $nota->sello = $sello;
             $nota->save();
         }
     }
@@ -256,16 +262,17 @@ trait RecepcionDTENota
             'josn' => json_encode($errorResponseData),
         ]);
 
-        // Una respuesta tardia no puede degradar un DTE que Hacienda ya sello.
-        // La actualizacion es condicional: solo escribe si sigue sin sello y en
-        // un estado no final. Antes bastaba con que llegara tarde un RECHAZADO
-        // para marcar como rechazado un documento ya procesado.
-        app(\App\Services\ProcesamientoDteService::class)
-            ->guardarEstadoNoFinalizado((int) $id, (string) ($errorResponseData['estado'] ?? 'RECHAZADO'));
+        // Una respuesta tardia no puede degradar un DTE que Hacienda ya sello:
+        // el estado solo se escribe si sigue sin sello. Si el rechazo es "ya
+        // existe", se consulta a Hacienda y se toma el sello (apartado 28).
+        $resultado = app(\App\Services\ProcesamientoDteService::class)
+            ->resolverRespuestaRechazada((int) $id, $errorResponseData);
 
-
-        $nota = NotaCredito::where('codigo', $dte?->codigoGeneracion)->first();
-        if ($nota) {
+        // $dte no existia en este metodo: el "Undefined variable" cortaba el
+        // registro del rechazo de la nota con una excepcion.
+        $dte = dte::find($id);
+        $nota = $dte ? NotaCredito::where('codigo', $dte->codigoGeneracion)->first() : null;
+        if ($nota && $resultado === 'RECHAZADO') {
             $nota->estado = $errorResponseData['estado'] ?? 'RECHAZADO';
             $nota->save();
         }

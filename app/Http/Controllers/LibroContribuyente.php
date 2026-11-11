@@ -3,69 +3,33 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empresas;
-use App\Models\Parametros;
 use App\Models\Sucursales;
-use App\Models\Ventas;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use PDF;
+use App\Services\LibrosIvaService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 
 class LibroContribuyente extends Controller
 {
+    /**
+     * PDF del libro de ventas a contribuyentes. Usa la MISMA consulta que la
+     * pantalla (LibrosIvaService::ventasContribuyentes): solo creditos
+     * fiscales DTE finalizados del ambiente de la empresa.
+     */
     public function generarPDF($empresa, $sucursal, $caja, $desde, $hasta)
     {
+        $servicio = app(LibrosIvaService::class);
+        abort_unless($servicio->puedeVerEmpresa(Auth::user(), $empresa), 403);
 
-        $data = Ventas::select(
-            'fecha',
-            'empresa',
-            'sucursal',
-            'caja',
-            'tipo',
-            'cliente',
-            'numero',
-            'sello',
-            'codigo',
-            'total'
-        )
-        ->with([
-            'Rsucursal:id,nombre',
-            'Rcajas:id,caja,tresolucion,conresolucion,tserie,conserie',
-            'Rfacturadors:id,facturador',
-            'Rclientes:id,nombreCliente,registro,dui,nit',
-        ])
-        ->where('empresa', $empresa)
-        ->when($sucursal != '0', function ($query) use ($sucursal) {
-            return $query->where('sucursal', $sucursal);
-        })
-        ->when($caja != '0', function ($query) use ($caja) {
-            return $query->where('caja', $caja);
-        })
-        ->whereNotNull('sello')         //asegura que no sea NULL
-        ->where('sello', '!=', '')      //asegura que no esté vacío
-        ->where('facturador', 3)
-        ->whereIn('estado', ['Cancelado', 'Credito'])
-        ->whereBetween('fecha', [$desde, $hasta])
-        ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                ->from('dtes')                         // ajusta si tu tabla se llama distinto
-                ->whereColumn('dtes.venta', 'ventas.id')
-                ->where('dtes.estado', 'Procesado');
-            })
-        ->orderBy('fecha', 'asc')
-        ->get();
+        $data = $servicio->ventasContribuyentes($empresa, $sucursal, $caja, $desde, $hasta);
+        $totales = $servicio->totales($data, ['exentas', 'no_sujetas', 'gravada', 'debito', 'total', 'retencion']);
 
-        $totalVentas = $data->sum('total');
-
-        $empresa = Empresas::find($empresa);
+        $empresa = Empresas::findOrFail($empresa);
         $imagenUrl = asset('logo/' . $empresa->image);
+        $sucursales = Sucursales::where('empresa', $empresa->id)->find($sucursal);
 
-        $sucursales = Sucursales::find($sucursal);
-
-        $pdf = PDF::loadView('pdf.libroContribuyente', compact('data', 'sucursales', 'empresa', 'imagenUrl', 'desde', 'hasta', 'totalVentas')) ->setPaper('letter', 'landscape');
+        $pdf = Pdf::loadView('pdf.libroContribuyente', compact('data', 'totales', 'sucursales', 'empresa', 'imagenUrl', 'desde', 'hasta'))
+            ->setPaper('letter', 'landscape');
 
         return $pdf->stream('LibroContribuyente.pdf');
-        /*return view('pdf.libroContribuyente', compact(
-            'data', 'sucursales', 'empresa', 'imagenUrl', 'desde', 'hasta', 'totalVentas'
-        ));*/
     }
 }

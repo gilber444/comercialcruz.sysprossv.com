@@ -14,6 +14,9 @@ use App\Models\Proveedores;
 use App\Models\Sucursales;
 use App\Models\tipoCompras;
 use App\Models\TipoPersona;
+use App\Support\AnexosF07;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Livewire\Component;
@@ -92,7 +95,9 @@ class EditarCompraController extends Component
         ]);
 
         //dd($kar);
+        $compraId = $detalle->compra;
         $detalle->delete();
+        $this->recalcularDesgloseAnexoF07(Compras::find($compraId));
         $this->emit('item-deleted', 'Producto Eliminado');
     }
 
@@ -120,8 +125,35 @@ class EditarCompraController extends Component
         $up->vendedor = $this->vendedor;
         $up->proveedor = $this->proveedorCompras;
         $up->save();
+        // Si cambio el tipo de documento, el desglose fiscal debe recalcularse.
+        $this->recalcularDesgloseAnexoF07($up);
         $this->emit('item-updated', 'Datos de la Compra Actualizada');
         $this->ResetUI();
         return Redirect::to('/compras');
+    }
+
+    /**
+     * Anexo 3 del F07: vuelve a calcular empresa y desglose fiscal de la
+     * compra con sus detalles actuales y su tipo de documento, igual que al
+     * crearla. Una compra editada que conserva el desglose viejo descuadra el
+     * anexo sin dejar rastro. No toca inventario ni kardex.
+     */
+    private function recalcularDesgloseAnexoF07(?Compras $compra): void
+    {
+        if (!$compra || !Schema::hasColumn('compras', 'total_compra')) {
+            return;
+        }
+
+        $totales = ComprasDetalles::where('compra', $compra->id)->pluck('total')->all();
+        $subtotal = $totales ? \App\Support\Decimal::add(...$totales) : '0';
+
+        // tipo 1 = credito fiscal (el costo se captura sin IVA).
+        $datos = AnexosF07::desgloseCompra($compra->tipo == 1, $subtotal, $compra->correlativo);
+
+        if (empty($compra->empresa)) {
+            $datos['empresa'] = Sucursales::where('id', $compra->sucursal)->value('empresa') ?? Auth::user()->empresa;
+        }
+
+        $compra->fill($datos)->save();
     }
 }

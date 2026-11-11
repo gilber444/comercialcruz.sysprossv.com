@@ -3,10 +3,133 @@ namespace App\Traits;
 use App\Http\Controllers\ExportDteController;
 use App\Models\dte;
 use App\Models\Empresas;
+use App\Models\InvalidacionDte;
 use App\Models\Ventas;
+use App\Services\InvalidacionEntregaService;
 use PHPMailer\PHPMailer\PHPMailer;
 trait enviarCorreoDTE
 {
+    /**
+     * Reenvio manual del evento de invalidacion a partir del id del DTE.
+     */
+    public function enviarCorreoInvalidado($dteId)
+    {
+        $invalidacion = InvalidacionDte::where('dte', $dteId)
+            ->whereNotNull('selloRecibido')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$invalidacion) {
+            $resultado = 'Error: no existe una invalidacion aceptada por MH para este DTE.';
+
+            if (method_exists($this, 'emit')) {
+                $this->emit('item-error', $resultado);
+            }
+
+            return $resultado;
+        }
+
+        $resultado = $this->enviarCorreoEventoInvalidacion($invalidacion->id);
+
+        if (method_exists($this, 'emit')) {
+            $evento = str_starts_with($resultado, 'Error') ? 'item-error' : 'item-added';
+            $this->emit($evento, $resultado);
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Entrega el JSON firmado del evento y su PDF, mas el JSON y PDF del DTE
+     * original cuando esten disponibles. Todo se arma en memoria. Si falla un
+     * adjunto opcional (el DTE original) el correo del evento sale igual.
+     */
+    public function enviarCorreoEventoInvalidacion($invalidacionId)
+    {
+        try {
+            $entrega = app(InvalidacionEntregaService::class)->generar((int) $invalidacionId);
+            $invalidacion = $entrega['invalidacion'];
+            $dte = $entrega['dte'];
+            $empresa = $entrega['empresa'];
+            $cliente = $entrega['cliente'];
+
+            if (empty($cliente->email)) {
+                throw new \RuntimeException('El receptor no tiene correo electronico registrado.');
+            }
+
+            $baseEvento = 'INVALIDACION-' . $invalidacion->codigoGeneracion;
+
+            $mail = new PHPMailer(true);
+            $mail->addStringAttachment($entrega['json'], $baseEvento . '.json', 'base64', 'application/json');
+            $mail->addStringAttachment($entrega['pdf'], $baseEvento . '.pdf', 'base64', 'application/pdf');
+
+            try {
+                $jsonOriginal = $this->inflateJsonFromBin($dte->jsonDte);
+
+                if ($jsonOriginal !== null && $jsonOriginal !== '') {
+                    $mail->addStringAttachment($jsonOriginal, $dte->numeroControl . '.json', 'base64', 'application/json');
+                }
+            } catch (\Throwable $e) {
+                // Adjunto opcional: no impide la entrega del evento.
+            }
+
+            try {
+                // La representacion grafica se regenera por codigoGeneracion, nunca por id.
+                $pdfOriginal = (new ExportDteController())->generarPDF($dte->codigoGeneracion);
+                $mail->addStringAttachment($pdfOriginal, $dte->numeroControl . '.pdf', 'base64', 'application/pdf');
+            } catch (\Throwable $e) {
+                // Adjunto opcional: no impide la entrega del evento.
+            }
+
+            $mail->setFrom($empresa->correo, $empresa->razon . ' Facturacion DTE');
+            $mail->addAddress(\App\Support\NormalizadorCorreoDte::normalizar($cliente->email), $cliente->nombreCliente);
+            $mail->isHTML(true);
+            $mail->CharSet = 'UTF-8';
+            $mail->Subject = 'Evento de Invalidación DTE - ' . $empresa->razon;
+            $mail->Body = $this->contenidoCorreoInvalidacion($empresa, $cliente, $dte, $invalidacion);
+            $mail->send();
+
+            return 'Correo de invalidación enviado con JSON y representación gráfica.';
+        } catch (\Throwable $e) {
+            return 'Error al enviar correo de invalidación: ' . $e->getMessage();
+        }
+    }
+
+    private function contenidoCorreoInvalidacion($empresa, $cliente, $dte, $invalidacion): string
+    {
+        $imagenUrl = asset('logo/' . $empresa->image);
+        $contenido = '<html><head><meta charset="UTF-8"></head>';
+        $contenido .= '<body style="font-family:Arial,sans-serif;background-color:#f5f5f9;margin:0;padding:0;">';
+        $contenido .= '<div style="max-width:620px;margin:0 auto;padding:20px;">';
+        $contenido .= '<div style="text-align:center;margin-bottom:16px;"><img src="' . e($imagenUrl) . '" alt="Logo" width="150" height="100" style="object-fit:contain;"></div>';
+        $contenido .= '<div style="background:#f8d7da;border:1px solid #d99aa2;border-radius:6px;padding:16px;margin-bottom:16px;">';
+        $contenido .= '<h2 style="color:#721c24;margin:0;text-align:center;">Documento Tributario INVALIDADO</h2></div>';
+        $contenido .= '<p>Estimado/a <strong>' . e($cliente->nombreCliente) . '</strong>,</p>';
+        $contenido .= '<p>Le informamos que el siguiente DTE fue invalidado ante el Ministerio de Hacienda. Se adjuntan el JSON firmado del Evento de Invalidación, su representación gráfica y, para referencia, el DTE relacionado.</p>';
+        $contenido .= '<table style="width:100%;border-collapse:collapse;margin:16px 0;">';
+        $contenido .= $this->filaCorreoInvalidacion('N.º de control del DTE', $dte->numeroControl);
+        $contenido .= $this->filaCorreoInvalidacion('Código del DTE', $dte->codigoGeneracion);
+        $contenido .= $this->filaCorreoInvalidacion('Código del evento', $invalidacion->codigoGeneracion);
+        $contenido .= $this->filaCorreoInvalidacion('Sello del evento', $invalidacion->selloRecibido);
+        $contenido .= $this->filaCorreoInvalidacion('Procesado por MH', $invalidacion->fhProcesamiento);
+        $contenido .= $this->filaCorreoInvalidacion('Estado', 'INVALIDADO');
+        $contenido .= '</table>';
+        $contenido .= '<p>Conserve los archivos adjuntos para sus registros.</p>';
+        $contenido .= '<p style="margin-top:20px;background:#dcdcdc;font-size:12px;text-align:center;padding:8px;">Este es un mensaje automático.</p>';
+        $contenido .= '</div></body></html>';
+
+        return $contenido;
+    }
+
+    private function filaCorreoInvalidacion(string $etiqueta, $valor): string
+    {
+        return '<tr><td style="padding:8px;border:1px solid #dee2e6;background:#f8f9fa;width:38%;"><strong>'
+            . e($etiqueta)
+            . '</strong></td><td style="padding:8px;border:1px solid #dee2e6;word-break:break-all;">'
+            . e((string) $valor)
+            . '</td></tr>';
+    }
+
     public function enviarCorreoDTE($id)
     {
         $dte = dte::find($id);

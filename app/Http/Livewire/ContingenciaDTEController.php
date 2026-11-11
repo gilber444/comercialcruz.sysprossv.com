@@ -20,6 +20,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use PDOException;
 use App\Traits\CatalogoRequerido;
+use App\Support\VersionEventoDte;
 
 class ContingenciaDTEController extends Component
 {
@@ -148,7 +149,8 @@ class ContingenciaDTEController extends Component
 
             $contin = ContingenciaDte::create([
                 'numero' => $numero,
-                'version' => 3,
+                // Evento de contingencia v4: misma fuente que identificacion.version.
+                'version' => VersionEventoDte::contingencia(),
                 'ambiente' => $ambiente->id,
                 'codigoGeneracion' => strtoupper(Str::uuid()->toString()),
                 'fTransmision' => date('Y-m-d'),
@@ -172,7 +174,12 @@ class ContingenciaDTEController extends Component
             ]);
 
             foreach ($this->selectedDtes as $index => $dteId) {
-                $estado = dte::find($dteId)->estado;
+                // selectedDtes llega del navegador: solo DTE de esta empresa.
+                $dteSeleccionado = dte::whereKey($dteId)->where('empresa', $user->empresa)->first();
+                if (!$dteSeleccionado) {
+                    throw new \RuntimeException('El DTE ' . $dteId . ' no existe o no pertenece a la empresa.');
+                }
+                $estado = $dteSeleccionado->estado;
                 $detalle = ContingenciadteDetalles::create([
                     'contingencia' => $contin->id,
                     'noItem' => $index + 1,
@@ -189,10 +196,15 @@ class ContingenciaDTEController extends Component
             $contin->save();
             $this->RecepcionContingencia($contin->id);
 
-            $this->emit('item-added', 'Contingencia Realizada y Procesada');
+            // El mensaje sale de lo que respondio Hacienda: antes decia
+            // "Procesada" aunque el evento hubiera sido rechazado.
+            [$aceptada, $mensaje] = $this->resultadoContingencia($contin->id);
+            $this->emit($aceptada ? 'item-added' : 'item-error', $mensaje);
             $this->resetUI();
-        } catch (Exception $e) {
-            DB::rollBack();
+        } catch (\Throwable $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             $this->emit('item-error', 'Error al realizar la contingencia: ' . $e->getMessage());
         }
     }
@@ -208,13 +220,49 @@ class ContingenciaDTEController extends Component
 
     public function Procesar($id)
     {
-        $json = $this->GenerarJsonContingencia($id);
-        $firm = $this->Firmador2($json);
+        try {
+            $con = ContingenciaDte::whereKey($id)
+                ->where('empresa', Auth::user()->empresa)
+                ->firstOrFail();
 
+            $json = $this->GenerarJsonContingencia($con->id);
+            $firm = $this->Firmador2($json);
+
+            $con->refresh();
+            $con->jsonFirmado = $firm;
+            $con->save();
+
+            $this->RecepcionContingencia($con->id);
+
+            [$aceptada, $mensaje] = $this->resultadoContingencia($con->id);
+            $this->emit($aceptada ? 'item-added' : 'item-error', $mensaje);
+        } catch (\Throwable $e) {
+            $this->emit('item-error', 'Error al procesar la contingencia: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Aceptada solo con sello de Hacienda; si no, el mensaje lleva el estado y
+     * las observaciones que devolvio.
+     *
+     * @return array{0: bool, 1: string}
+     */
+    private function resultadoContingencia($id): array
+    {
         $con = ContingenciaDte::find($id);
-        $con->jsonFirmado = $firm;
-        $con->save();
+        $sello = trim((string) optional($con)->selloRecibido);
 
-        $this->RecepcionContingencia($id);
+        if ($sello !== '') {
+            return [true, 'Contingencia recibida por Hacienda. Sello: ' . $sello];
+        }
+
+        $estado = trim((string) optional($con)->estado) ?: 'SIN RESPUESTA';
+        $detalle = optional($con)->observaciones;
+        if (is_array($detalle)) {
+            $detalle = implode(' ', array_map(fn ($o) => is_scalar($o) ? (string) $o : json_encode($o), $detalle));
+        }
+        $detalle = trim((string) ($detalle ?: optional($con)->mensaje));
+
+        return [false, 'Hacienda no acepto la contingencia (' . $estado . ')' . ($detalle !== '' ? ': ' . $detalle : '.')];
     }
 }

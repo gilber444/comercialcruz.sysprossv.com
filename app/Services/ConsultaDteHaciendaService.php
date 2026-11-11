@@ -154,17 +154,17 @@ class ConsultaDteHaciendaService
                 return;
             }
 
+            // Si el DTE aun no tiene JSON guardado (se transmitio desde otro
+            // equipo o se perdio la respuesta), igual se toma el sello.
             $json = json_decode((string) $actual->jsonDte, true);
-            if (!is_array($json)) {
-                throw new RuntimeException('No se pudo actualizar el sello porque el JSON del DTE no es valido.');
-            }
-
-            $json['selloRecibido'] = $sello;
             $fechaProceso = $this->fechaProcesamiento($respuesta);
 
             $actual->estado = 'PROCESADO';
             $actual->sello = $sello;
-            $actual->jsonDte = json_encode($json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (is_array($json)) {
+                $json['selloRecibido'] = $sello;
+                $actual->jsonDte = json_encode($json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
             $actual->save();
 
             RecepcionDte::updateOrCreate(
