@@ -272,9 +272,13 @@
                     <ul class="mb-0 mt-2">
                         @foreach ($aplicado as $cod => $n)
                             <li>
-                                {{ $cod }}: {{ $n['nuevos'] }} nuevos,
-                                {{ $n['actualizados'] }} actualizados,
-                                {{ $n['retirados'] }} retirados
+                                @if (!empty($n['error']))
+                                    {{ $cod }}: <span class="text-danger">{{ $n['error'] }}</span>
+                                @else
+                                    {{ $cod }}: {{ $n['nuevos'] ?? 0 }} nuevos,
+                                    {{ $n['actualizados'] ?? 0 }} actualizados,
+                                    {{ $n['retirados'] ?? 0 }} retirados
+                                @endif
                             </li>
                         @endforeach
                     </ul>

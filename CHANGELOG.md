@@ -5,6 +5,12 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.40] - 2026-11-11
+
+### Corregido
+- Importador de catálogos: fallaba con "Unknown column 'sincro_id'" al insertar en `pais`. Los modelos agregan `sincro_id` al crear, pero no todas las tablas de catálogo tienen esa columna, y como todo va en una transacción no se aplicaba ningún cambio. Ahora inserta solo con las columnas que existen en la tabla.
+- Una tabla de catálogo con otra estructura (sin `codigo`, `valor` o `status`) ya no cancela toda la importación: se salta y la pantalla muestra el motivo.
+
 ## [1.0.39] - 2026-11-11
 
 ### Corregido

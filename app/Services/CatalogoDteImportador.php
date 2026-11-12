@@ -206,11 +206,14 @@ class CatalogoDteImportador
                     $modelo = self::MAPA[$codigo];
                     $faltan = $this->columnasFaltantes($modelo);
 
+                    // Una tabla con otra estructura se salta y se informa; no
+                    // impide actualizar el resto de catalogos.
                     if ($faltan !== []) {
-                        throw new RuntimeException(
-                            $codigo . ': la tabla ' . (new $modelo)->getTable()
-                            . ' no tiene la(s) columna(s) ' . implode(', ', $faltan) . '. No se aplico ningun catalogo.'
-                        );
+                        $aplicado[$codigo] = [
+                            'error' => 'La tabla ' . (new $modelo)->getTable()
+                                . ' no tiene la(s) columna(s) ' . implode(', ', $faltan) . '; no se actualizo.',
+                        ];
+                        continue;
                     }
 
                     $aplicado[$codigo] = $this->aplicarTabla($codigo, $catalogos[$codigo]);
@@ -362,6 +365,32 @@ class CatalogoDteImportador
      * registro. Devuelve cadena vacia para las filas internas sin codigo, que
      * quedan excluidas tanto del match como del retiro.
      */
+    /**
+     * Inserta una fila con solo las columnas que existen en la tabla real. Los
+     * modelos agregan sincro_id al crear, pero no todas las tablas de catalogo
+     * tienen esa columna (p. ej. pais): con create() la insercion fallaba y la
+     * transaccion revertia toda la importacion.
+     */
+    private function insertarFila(string $modelo, array $datos): void
+    {
+        $tabla = (new $modelo())->getTable();
+        $columnas = $this->columnasTabla[$tabla] ??= Schema::getColumnListing($tabla);
+
+        if (in_array('sincro_id', $columnas, true) && empty($datos['sincro_id'])) {
+            $datos['sincro_id'] = (string) \Illuminate\Support\Str::uuid();
+        }
+        foreach (['created_at', 'updated_at'] as $fecha) {
+            if (in_array($fecha, $columnas, true)) {
+                $datos[$fecha] = now();
+            }
+        }
+
+        DB::table($tabla)->insert(array_intersect_key($datos, array_flip($columnas)));
+    }
+
+    /** @var array<string, array<int, string>> columnas por tabla (memo por corrida) */
+    private array $columnasTabla = [];
+
     public static function claveCodigo($codigo): string
     {
         $texto = trim((string) $codigo);
@@ -520,7 +549,7 @@ class CatalogoDteImportador
             $fila = $indice[$clave] ?? null;
 
             if (!$fila) {
-                $modelo::create([
+                $this->insertarFila($modelo, [
                     'codigo' => $this->codigoOriginal($cat['registros'], $clave),
                     'valor' => $valor,
                     'status' => 'Activo',
@@ -581,10 +610,15 @@ class CatalogoDteImportador
     {
         $conteo = ['nuevos' => 0, 'actualizados' => 0, 'retirados' => 0, 'conservados' => 0];
 
-        $catalogo = catalagos::firstOrCreate(
-            ['codigo' => $codigo],
-            ['catalago' => mb_substr($cat['nombre'], 0, 50), 'descripcion' => mb_substr($cat['nombre'], 0, 300)]
-        );
+        $catalogo = catalagos::where('codigo', $codigo)->first();
+        if (!$catalogo) {
+            $this->insertarFila(catalagos::class, [
+                'codigo' => $codigo,
+                'catalago' => mb_substr($cat['nombre'], 0, 50),
+                'descripcion' => mb_substr($cat['nombre'], 0, 300),
+            ]);
+            $catalogo = catalagos::where('codigo', $codigo)->firstOrFail();
+        }
 
         $filas = catalagosEstructura::where('catalago', $catalogo->id)->get();
         $indice = $this->indexarFilas($filas, 'codigo');
@@ -594,7 +628,7 @@ class CatalogoDteImportador
             $fila = $indice[$clave] ?? null;
 
             if (!$fila) {
-                catalagosEstructura::create([
+                $this->insertarFila(catalagosEstructura::class, [
                     'catalago' => $catalogo->id,
                     'codigo' => mb_substr($this->codigoOriginal($cat['registros'], $clave), 0, 10),
                     'valores' => mb_substr($valor, 0, 255),
