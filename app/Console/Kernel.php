@@ -188,6 +188,13 @@ class Kernel extends ConsoleKernel
         // =====================================================================
         if ($modo === 'vps') {
 
+            // Monitor de sync por API: borra los registros de mas de 15 dias
+            $schedule->call(function () {
+                if (\Illuminate\Support\Facades\Schema::hasTable('api_sync_registros')) {
+                    \Illuminate\Support\Facades\DB::table('api_sync_registros')->where('created_at', '<', now()->subDays(15))->delete();
+                }
+            })->name('limpiar monitor sync api')->dailyAt('03:30')->withoutOverlapping(60);
+
             // Maestro VPS: consolida correos de DTEs + procesado en un solo proceso
             $schedule->command('sync:maestro-vps --limit-correos=30 --limit-dtes=50')
                 ->everyTwoMinutes()

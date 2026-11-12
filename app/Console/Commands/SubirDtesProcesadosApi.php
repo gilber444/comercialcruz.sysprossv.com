@@ -20,6 +20,8 @@ use Illuminate\Support\Str;
  */
 class SubirDtesProcesadosApi extends Command
 {
+    use \App\Console\Concerns\ReportaLatido;
+
     protected $signature = 'sync:dtes-procesados-api
         {--limit=100 : DTE a revisar por lote}
         {--lotes=10 : Lotes por corrida}
@@ -31,7 +33,7 @@ class SubirDtesProcesadosApi extends Command
 
     private const CONN = 'localmysql';
 
-    public function handle(): int
+    protected function ejecutar(): int
     {
         if (config('app.modo', 'local') === 'vps') {
             $this->error('Este comando es para las PC locales (APP_MODO=local).');
@@ -50,6 +52,7 @@ class SubirDtesProcesadosApi extends Command
         // flock lo suelta el sistema aunque el proceso se cierre de golpe.
         $candado = fopen(storage_path("app/api_dtes_procesados_{$sucursal}.lock"), 'c');
         if (!$candado || !flock($candado, LOCK_EX | LOCK_NB)) {
+            $this->omitirLatido = true;
             $this->info('Ya hay otra corrida subiendo DTE en esta PC; esta se salta.');
             return self::SUCCESS;
         }
@@ -94,6 +97,7 @@ class SubirDtesProcesadosApi extends Command
 
             // 1) Cuales le faltan al VPS
             $resp = $this->post($url . '/api/sync/dtes-procesados/faltantes', $token, [
+                'sucursal' => $sucursal,
                 'items' => $dtes->map(fn ($d) => ['sincro_id' => $d->sincro_id, 'sello' => $d->sello])->values(),
             ]);
             $faltan = array_flip((array) ($resp['faltantes'] ?? []));

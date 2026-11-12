@@ -21,6 +21,8 @@ use Illuminate\Support\Str;
  */
 class SubirVentasApi extends Command
 {
+    use \App\Console\Concerns\ReportaLatido;
+
     protected $signature = 'sync:ventas-api
         {--limit=500 : Filas por peticion}
         {--lotes=0 : Peticiones maximas por tabla en cada corrida (0 = hasta terminar)}
@@ -36,7 +38,7 @@ class SubirVentasApi extends Command
     /** Tope de filas por peticion en tablas con JSON grandes (limite de tamano del POST). */
     private const TOPE = ['dtes' => 200, 'resumen_dtes' => 300, 'firmadors' => 100, 'recepcion_dtes' => 200];
 
-    public function handle(): int
+    protected function ejecutar(): int
     {
         if (config('app.modo', 'local') === 'vps') {
             $this->error('Este comando es para las PC locales (APP_MODO=local).');
@@ -54,6 +56,7 @@ class SubirVentasApi extends Command
         // Una sola corrida a la vez por PC (la manual y la programada no se cruzan)
         $candado = fopen(storage_path("app/api_ventas_{$sucursal}.lock"), 'c');
         if (!$candado || !flock($candado, LOCK_EX | LOCK_NB)) {
+            $this->omitirLatido = true;
             $this->info('Ya hay otra corrida de sync:ventas-api en esta PC; esta se salta.');
             return self::SUCCESS;
         }

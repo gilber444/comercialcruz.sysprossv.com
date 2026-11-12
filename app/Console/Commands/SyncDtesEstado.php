@@ -23,6 +23,8 @@ use Throwable;
  */
 class SyncDtesEstado extends Command
 {
+    use \App\Console\Concerns\ReportaLatido;
+
     protected $signature = 'sync:dtes-estado
         {--local=localmysql : Conexión local}
         {--vps=vpsmysql : Conexión VPS}
@@ -30,7 +32,7 @@ class SyncDtesEstado extends Command
 
     protected $description = 'Baja del VPS los DTE que alla estan PROCESADO/INVALIDADO y en la local siguen sin sello (RECHAZADO, ELIMINADO, ERROR, Creado, Firmado): estado, sello, numero de control y JSON, con su venta y caja.';
 
-    public function handle()
+    protected function ejecutar(): int
     {
         if (config('app.modo', 'local') === 'vps') {
             $this->error('❌ sync:dtes-estado NO debe ejecutarse en VPS (APP_MODO=vps). Abortando.');
@@ -160,7 +162,7 @@ class SyncDtesEstado extends Command
         if ((string) config('sync.api_token') !== '') {
             $r = \Illuminate\Support\Facades\Http::withHeaders(['X-Sync-Token' => (string) config('sync.api_token'), 'Accept' => 'application/json'])
                 ->timeout(120)->retry(2, 2000, throw: false)
-                ->post(rtrim((string) config('sync.api_url'), '/') . '/api/sync/dtes-resueltos', ['codigos' => $codigos, 'sincros' => $sincros]);
+                ->post(rtrim((string) config('sync.api_url'), '/') . '/api/sync/dtes-resueltos', ['sucursal' => (int) config('app.sucursal_id', 0), 'codigos' => $codigos, 'sincros' => $sincros]);
             if (!$r->successful()) {
                 throw new \RuntimeException("El VPS respondio HTTP {$r->status()}: " . mb_substr($r->body(), 0, 300));
             }

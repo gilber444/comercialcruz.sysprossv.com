@@ -1113,6 +1113,16 @@
 
                 @endcan
 
+                @can('MonitorSyncApi_Index')
+                    @if(\App\Models\Feature::isEnabled('monitor_sync_api'))
+                    <li class="menu-item {{ Request::is('monitor-sync-api') ? 'active' : '' }}">
+                        <a href="{{ route('monitor-sync-api') }}" class="menu-link">
+                            <div data-i18n="Monitor Sync API">Monitor Sync API</div>
+                        </a>
+                    </li>
+                    @endif
+                @endcan
+
                 @can('ReconciliarSincroId_Index')
 
                     <li class="menu-item {{ Request::is('reconciliar-sincro-id') ? 'active' : '' }}">

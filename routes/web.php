@@ -60,6 +60,7 @@ use App\Http\Livewire\ClientesController;
 use App\Http\Livewire\ConciliacionInventarioController;
 
 use App\Http\Livewire\ReconciliarSincroIdController;
+use App\Http\Livewire\MonitorSyncApiController;
 
 use App\Http\Livewire\ComprasController;
 
@@ -574,6 +575,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('conciliacion-inventario', ConciliacionInventarioController::class)->middleware('auth')->name('conciliacion-inventario')->can('ConciliacionInventario_Index');
 
+    Route::get('monitor-sync-api', MonitorSyncApiController::class)->middleware('auth')->name('monitor-sync-api')->can('MonitorSyncApi_Index');
     Route::get('reconciliar-sincro-id', ReconciliarSincroIdController::class)->middleware('auth')->name('reconciliar-sincro-id')->can('ReconciliarSincroId_Index');
 
     Route::get('comparar-inventario', \App\Http\Livewire\CompararInventarioController::class)->middleware('auth')->name('comparar-inventario')->can('CompararInventario_Index');

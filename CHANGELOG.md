@@ -5,6 +5,14 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.58] - 2026-11-12
+
+### Agregado
+- Pantalla **Monitor Sync API** (`monitor-sync-api`, en el VPS): estado de cada caja por comando de sync por API (al día / atrasado / con error / sin contacto), lo que recibió el VPS por servicio y tabla (peticiones, filas, guardadas, esperando padre, errores, tiempo) y los últimos errores. Se actualiza sola cada 30 segundos.
+  - Permiso `MonitorSyncApi_Index` (se asigna a los roles con `AdminCatalagos_Index`) y feature flag `monitor_sync_api` (en prueba: el owner lo libera con `produccion = 1`).
+- Middleware `RegistrarSyncApi`: anota en `api_sync_registros` cada petición de `api/sync/*`. Toda ruta nueva dentro de ese grupo aparece sola en el monitor. Los registros de más de 15 días se borran a diario.
+- `POST api/sync/latido` y tabla `api_sync_latidos`: `sync:ventas-api`, `sync:inventario-api`, `sync:dtes-procesados-api` y `sync:dtes-estado` reportan al terminar si salieron bien y su resumen, aunque no hayan tenido nada que subir.
+
 ## [1.0.57] - 2026-11-12
 
 ### Agregado

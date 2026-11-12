@@ -21,6 +21,8 @@ use Illuminate\Support\Str;
  */
 class SubirInventarioApi extends Command
 {
+    use \App\Console\Concerns\ReportaLatido;
+
     protected $signature = 'sync:inventario-api
         {--sucursal= : Sucursal (por defecto APP_SUCURSAL_ID)}
         {--limit=500 : Filas por peticion}
@@ -43,7 +45,7 @@ class SubirInventarioApi extends Command
 
     private int $sucursal = 0;
 
-    public function handle(): int
+    protected function ejecutar(): int
     {
         if (config('app.modo', 'local') === 'vps') {
             $this->error('Este comando es para las PC locales (APP_MODO=local).');
@@ -66,6 +68,7 @@ class SubirInventarioApi extends Command
         // Una sola corrida a la vez por PC
         $candado = fopen(storage_path("app/api_inventario_{$this->sucursal}.lock"), 'c');
         if (!$candado || !flock($candado, LOCK_EX | LOCK_NB)) {
+            $this->omitirLatido = true;
             $this->info('Ya hay otra corrida de sync:inventario-api en esta PC; esta se salta.');
             return self::SUCCESS;
         }
