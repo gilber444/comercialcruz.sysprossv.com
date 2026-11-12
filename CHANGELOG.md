@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.53] - 2026-11-12
+
+### Cambiado
+- `sync:dtes-estado` (VPS → caja) ahora también baja los DTE que en el VPS ya están PROCESADO o INVALIDADO y en la caja siguen sin sello (RECHAZADO, ELIMINADO, ERROR, Creado, Firmado):
+  - Baja estado, sello, número de control, código de generación y JSON, y actualiza número, código y sello en la venta y la caja.
+  - Busca por `codigoGeneracion` y, si no lo encuentra, por `sincro_id`.
+  - Recorre todos los pendientes por lotes de 500 (`--limit=5000` por corrida); antes repetía siempre los mismos 500.
+  - Al terminar sube el contador de la caja por encima de los números que bajaron.
+  - Usa `config('app.modo')` en lugar de `env()`, que fallaba con la configuración en caché.
+
 ## [1.0.52] - 2026-11-12
 
 ### Corregido

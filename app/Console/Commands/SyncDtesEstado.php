@@ -26,13 +26,13 @@ class SyncDtesEstado extends Command
     protected $signature = 'sync:dtes-estado
         {--local=localmysql : Conexión local}
         {--vps=vpsmysql : Conexión VPS}
-        {--limit=500 : Máximo de DTE a revisar por corrida}';
+        {--limit=5000 : Máximo de DTE a revisar por corrida}';
 
-    protected $description = 'Reconcilia los DTE RECHAZADO de la local contra el VPS: si allá están PROCESADO/INVALIDADO, actualiza estado+sello en la local.';
+    protected $description = 'Baja del VPS los DTE que alla estan PROCESADO/INVALIDADO y en la local siguen sin sello (RECHAZADO, ELIMINADO, ERROR, Creado, Firmado): estado, sello, numero de control y JSON, con su venta y caja.';
 
     public function handle()
     {
-        if (env('APP_MODO', 'local') === 'vps') {
+        if (config('app.modo', 'local') === 'vps') {
             $this->error('❌ sync:dtes-estado NO debe ejecutarse en VPS (APP_MODO=vps). Abortando.');
             return self::FAILURE;
         }
@@ -46,65 +46,106 @@ class SyncDtesEstado extends Command
             return self::FAILURE;
         }
 
-        $this->info('== RECONCILIAR ESTADO DTEs (local RECHAZADO ↔ VPS) == ' . now()->toDateTimeString());
+        $this->info('== RECONCILIAR DTEs (local sin sello ↔ VPS) == ' . now()->toDateTimeString());
 
-        $pendientes = DB::connection($connLocal)->table('dtes')
-            ->select('id', 'codigoGeneracion', 'estado', 'venta')
-            ->where('estado', 'RECHAZADO')
-            ->whereNotNull('codigoGeneracion')
-            ->where('codigoGeneracion', '!=', '')
-            ->limit($limit)
-            ->get();
-
-        if ($pendientes->isEmpty()) {
-            $this->line('   • Sin DTE RECHAZADO en la local. Nada que reconciliar.');
-            return self::SUCCESS;
-        }
+        // Locales sin sello (RECHAZADO, ELIMINADO, ERROR, Creado, Firmado). Se buscan en el
+        // VPS por codigoGeneracion y, si no, por sincro_id (por si alla se cambio el codigo).
+        $estados = ['RECHAZADO', 'ELIMINADO', 'ERROR', 'CREADO', 'FIRMADO'];
+        $colsLocal = array_flip(Schema::connection($connLocal)->getColumnListing('dtes'));
+        $colsVps = array_flip(Schema::connection($connVps)->getColumnListing('dtes'));
+        $conSincro = isset($colsLocal['sincro_id']) && isset($colsVps['sincro_id']);
 
         $actualizados = 0;
         $revisados    = 0;
+        $ultimoId     = 0;
+        $sucursales   = [];
 
-        foreach ($pendientes as $dteLocal) {
-            $revisados++;
+        while ($revisados < $limit) {
+            $lote = DB::connection($connLocal)->table('dtes')
+                ->select(array_values(array_filter(['id', 'codigoGeneracion', 'numeroControl', 'estado', 'venta', 'sucursal', $conSincro ? 'sincro_id' : null])))
+                ->where('id', '>', $ultimoId)
+                ->whereIn(DB::raw('UPPER(TRIM(estado))'), $estados)
+                ->where(fn ($q) => $q->whereNull('sello')->orWhere('sello', ''))
+                ->orderBy('id')
+                ->limit(min(500, $limit - $revisados))
+                ->get();
+            if ($lote->isEmpty()) {
+                break;
+            }
+            $ultimoId = (int) $lote->last()->id;
+            $revisados += $lote->count();
 
-            try {
-                $vps = DB::connection($connVps)->table('dtes')
-                    ->select('estado', 'sello')
-                    ->where('codigoGeneracion', $dteLocal->codigoGeneracion)
-                    ->first();
-
-                if (!$vps) {
-                    continue; // no está en el VPS → no se puede reconciliar
-                }
-
-                $estadoVps = strtoupper((string) $vps->estado);
-                if (!in_array($estadoVps, ['PROCESADO', 'INVALIDADO'], true)) {
-                    continue; // el VPS tampoco lo resolvió
-                }
-
-                $data = ['estado' => $estadoVps, 'updated_at' => now()];
-                if ($estadoVps === 'PROCESADO' && !empty($vps->sello)) {
-                    $data['sello'] = $vps->sello;
-                }
-
-                DB::connection($connLocal)->transaction(function () use ($connLocal, $dteLocal, $data, $estadoVps, $vps) {
-                    DB::connection($connLocal)->table('dtes')
-                        ->where('id', $dteLocal->id)
-                        ->update($data);
-
-                    // Propagar el sello a la venta y la caja (igual que el pull)
-                    if ($estadoVps === 'PROCESADO' && !empty($vps->sello) && !empty($dteLocal->venta)) {
-                        DB::connection($connLocal)->table('ventas')
-                            ->where('id', $dteLocal->venta)->update(['sello' => $vps->sello]);
-                        DB::connection($connLocal)->table('cajas')
-                            ->where('venta', $dteLocal->venta)->update(['sello' => $vps->sello]);
+            // Una consulta al VPS por lote
+            $colsTraer = array_values(array_filter(['codigoGeneracion', 'numeroControl', 'estado', 'sello', 'jsonDte', $conSincro ? 'sincro_id' : null]));
+            $vpsFilas = DB::connection($connVps)->table('dtes')->select($colsTraer)
+                ->whereIn(DB::raw('UPPER(TRIM(estado))'), ['PROCESADO', 'INVALIDADO'])
+                ->where(function ($q) use ($lote, $conSincro) {
+                    $q->whereIn('codigoGeneracion', $lote->pluck('codigoGeneracion')->filter()->values()->all());
+                    if ($conSincro) {
+                        $q->orWhereIn('sincro_id', $lote->pluck('sincro_id')->filter()->values()->all());
                     }
-                });
+                })
+                ->get();
+            $porCodigo = $vpsFilas->keyBy('codigoGeneracion');
+            $porSincro = $conSincro ? $vpsFilas->filter(fn ($v) => !empty($v->sincro_id))->keyBy('sincro_id') : collect();
 
-                $this->line("   ✓ DTE local id={$dteLocal->id} ({$dteLocal->codigoGeneracion}): RECHAZADO → {$estadoVps}");
-                $actualizados++;
-            } catch (Throwable $e) {
-                $this->error("   ✘ DTE local id={$dteLocal->id}: " . $e->getMessage());
+            foreach ($lote as $dteLocal) {
+                try {
+                    $vps = $porCodigo[$dteLocal->codigoGeneracion] ?? ($conSincro && $dteLocal->sincro_id ? ($porSincro[$dteLocal->sincro_id] ?? null) : null);
+                    if (!$vps) {
+                        continue; // el VPS no lo tiene resuelto
+                    }
+                    $estadoVps = strtoupper(trim((string) $vps->estado));
+                    $sello = trim((string) $vps->sello);
+                    if ($estadoVps === 'PROCESADO' && $sello === '') {
+                        continue;
+                    }
+
+                    $data = ['estado' => $estadoVps, 'updated_at' => now()];
+                    if ($sello !== '') {
+                        $data['sello'] = $sello;
+                    }
+                    // Si alla se corrigio el numero de control (o el codigo), se baja tambien
+                    foreach (['numeroControl', 'codigoGeneracion', 'jsonDte'] as $c) {
+                        if (!empty($vps->{$c})) {
+                            $data[$c] = $vps->{$c};
+                        }
+                    }
+
+                    DB::connection($connLocal)->transaction(function () use ($connLocal, $dteLocal, $data) {
+                        DB::connection($connLocal)->table('dtes')->where('id', $dteLocal->id)->update($data);
+
+                        if (!empty($dteLocal->venta)) {
+                            $venta = ['numero' => $data['numeroControl'] ?? $dteLocal->numeroControl, 'codigo' => $data['codigoGeneracion'] ?? $dteLocal->codigoGeneracion];
+                            if (!empty($data['sello'])) {
+                                $venta['sello'] = $data['sello'];
+                            }
+                            DB::connection($connLocal)->table('ventas')->where('id', $dteLocal->venta)->update($venta);
+                            DB::connection($connLocal)->table('cajas')->where('venta', $dteLocal->venta)->update($venta);
+                        }
+                    });
+
+                    $cambioNumero = isset($data['numeroControl']) && $data['numeroControl'] !== $dteLocal->numeroControl
+                        ? " | numero {$dteLocal->numeroControl} → {$data['numeroControl']}" : '';
+                    $this->line("   ✓ DTE local id={$dteLocal->id}: {$dteLocal->estado} → {$estadoVps}{$cambioNumero}");
+                    $actualizados++;
+                    $sucursales[(int) $dteLocal->sucursal] = true;
+                } catch (Throwable $e) {
+                    $this->error("   ✘ DTE local id={$dteLocal->id}: " . $e->getMessage());
+                }
+            }
+        }
+
+        // El contador de esta PC queda por encima de los numeros que bajaron del VPS
+        if ($actualizados > 0) {
+            foreach (array_keys($sucursales) as $suc) {
+                foreach ([1, 2, 4] as $facturador) {
+                    try {
+                        \App\Support\CorrelativoDte::asegurar($suc, $facturador);
+                    } catch (Throwable $e) {
+                        $this->warn("   ⚠ No se pudo ajustar el contador (sucursal {$suc}): " . $e->getMessage());
+                    }
+                }
             }
         }
 
