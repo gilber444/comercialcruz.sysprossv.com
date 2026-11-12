@@ -275,6 +275,10 @@ class DteController extends Component
                 return null;
             });
 
+            // Rastro de cada clic en storage/logs/dte_consulta-AAAA-MM-DD.log
+            \Illuminate\Support\Facades\Log::build(['driver' => 'daily', 'path' => storage_path('logs/dte_consulta.log'), 'level' => 'info', 'days' => 30])
+                ->info('Boton procesar DTE', ['dte' => $id, 'resultado' => $resultado, 'usuario' => optional(\Auth::user())->id]);
+
             switch ($resultado) {
                 case \App\Services\ProcesamientoDteService::EN_PROCESO:
                     $this->emit('item-errorr', 'Este DTE ya se esta procesando desde otra sesion. Espere unos segundos y vuelva a consultarlo.');

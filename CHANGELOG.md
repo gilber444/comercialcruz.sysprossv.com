@@ -5,6 +5,15 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.45] - 2026-11-11
+
+### Agregado
+- Log propio `storage/logs/dte_consulta-AAAA-MM-DD.log`, que no depende de `LOG_LEVEL`. Registra:
+  - cada consulta a Hacienda sin sello (URL, HTTP y respuesta);
+  - cada sello tomado por consulta;
+  - cada clic del botón "Firmar y Procesar" de la pantalla DTE, con su resultado.
+- Antes el aviso iba a `laravel.log` como warning y con `LOG_LEVEL=error` no se escribía.
+
 ## [1.0.44] - 2026-11-11
 
 ### Corregido

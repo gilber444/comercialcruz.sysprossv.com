@@ -32,7 +32,7 @@ class ConsultaDteHaciendaService
         if ($resultado['estado'] !== self::ENCONTRADO) {
             // Queda en el log lo que respondio Hacienda, para saber por que no
             // se tomo el sello (respuesta con otro formato, URL, token...).
-            \Illuminate\Support\Facades\Log::warning('Consulta DTE en Hacienda sin sello', [
+            $this->log()->warning('Consulta DTE en Hacienda sin sello', [
                 'dte' => $dte->id,
                 'codigoGeneracion' => $dte->codigoGeneracion,
                 'resultado' => $resultado['estado'],
@@ -45,8 +45,27 @@ class ConsultaDteHaciendaService
         }
 
         $this->reconciliar($dte, $resultado['sello'], $resultado['respuesta']);
+        $this->log()->info('Sello tomado por consulta a Hacienda', [
+            'dte' => $dte->id,
+            'codigoGeneracion' => $dte->codigoGeneracion,
+            'sello' => $resultado['sello'],
+        ]);
 
         return self::ENCONTRADO;
+    }
+
+    /**
+     * Canal propio storage/logs/dte_consulta-AAAA-MM-DD.log: no depende de
+     * LOG_LEVEL (en produccion es error y un warning no quedaba escrito).
+     */
+    private function log()
+    {
+        return \Illuminate\Support\Facades\Log::build([
+            'driver' => 'daily',
+            'path' => storage_path('logs/dte_consulta.log'),
+            'level' => 'info',
+            'days' => 30,
+        ]);
     }
 
     /**
