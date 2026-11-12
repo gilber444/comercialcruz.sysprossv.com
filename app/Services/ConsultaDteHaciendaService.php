@@ -30,6 +30,17 @@ class ConsultaDteHaciendaService
         $resultado = $this->consultar($dte);
 
         if ($resultado['estado'] !== self::ENCONTRADO) {
+            // Queda en el log lo que respondio Hacienda, para saber por que no
+            // se tomo el sello (respuesta con otro formato, URL, token...).
+            \Illuminate\Support\Facades\Log::warning('Consulta DTE en Hacienda sin sello', [
+                'dte' => $dte->id,
+                'codigoGeneracion' => $dte->codigoGeneracion,
+                'resultado' => $resultado['estado'],
+                'url' => $resultado['url'] ?? null,
+                'http' => $resultado['http'] ?? null,
+                'respuesta' => mb_substr(is_string($resultado['respuesta']) ? $resultado['respuesta'] : json_encode($resultado['respuesta'], JSON_UNESCAPED_UNICODE), 0, 2000),
+            ]);
+
             return $resultado['estado'];
         }
 

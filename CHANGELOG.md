@@ -5,6 +5,12 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.42] - 2026-11-11
+
+### Agregado
+- Si la consulta a Hacienda no devuelve sello, queda en `storage/logs/laravel.log` ("Consulta DTE en Hacienda sin sello"): resultado, URL, HTTP y la respuesta. Sirve para diagnosticar un rechazo "YA EXISTE" cuyo sello no se toma.
+- `dte:consultar-hacienda` acepta el código de generación además del id.
+
 ## [1.0.41] - 2026-11-11
 
 ### Cambiado

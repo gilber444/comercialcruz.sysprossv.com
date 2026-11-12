@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
 class ConsultarDteHacienda extends Command
 {
     protected $signature = 'dte:consultar-hacienda
-        {ids* : Id(s) del DTE (tabla dtes)}
+        {ids* : Id(s) o codigo(s) de generacion del DTE}
         {--tomar : Si Hacienda tiene el sello, actualizar DTE, venta y caja}';
 
     protected $description = 'Consulta DTE en Hacienda y muestra la respuesta (con --tomar reconcilia el sello)';
@@ -22,7 +22,10 @@ class ConsultarDteHacienda extends Command
     public function handle(ConsultaDteHaciendaService $consulta): int
     {
         foreach ($this->argument('ids') as $id) {
-            $dte = dte::find((int) $id);
+            // Acepta el id o el codigo de generacion (UUID)
+            $dte = ctype_digit((string) $id)
+                ? dte::find((int) $id)
+                : dte::where('codigoGeneracion', strtoupper(trim((string) $id)))->first();
             if (!$dte) {
                 $this->error("DTE {$id}: no existe.");
                 continue;
