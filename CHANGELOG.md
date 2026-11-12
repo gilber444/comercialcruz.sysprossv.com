@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.46] - 2026-11-11
+
+### Cambiado
+- `dte:consultar-hacienda` sin códigos revisa todos los DTE sin sello (Creado, Firmado, RECHAZADO, ERROR), hasta `--limit` (por defecto 500) por corrida. Los consulta en Hacienda y toma el sello de los que Hacienda ya procesó: DTE PROCESADO y sello en ventas y caja. Los que Hacienda no tiene no se tocan; los envía `app:procesar-dtes-pendientes`.
+
 ## [1.0.45] - 2026-11-11
 
 ### Agregado

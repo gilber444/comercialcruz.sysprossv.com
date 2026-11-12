@@ -7,21 +7,35 @@ use App\Services\ConsultaDteHaciendaService;
 use Illuminate\Console\Command;
 
 /**
- * Diagnostico: consulta en Hacienda uno o varios DTE y muestra la respuesta.
- * Con --tomar, si Hacienda tiene el DTE con sello lo reconcilia (DTE
- * PROCESADO, sello en venta y caja). Sin --tomar no modifica nada.
+ * Consulta DTE en Hacienda y toma el sello de los que Hacienda ya tiene.
+ *
+ * - Con ids o codigos: muestra la respuesta de cada uno; con --tomar aplica el
+ *   sello si Hacienda lo tiene.
+ * - Sin ids: recorre todos los DTE sin sello (Creado, Firmado, RECHAZADO,
+ *   ERROR) y toma el sello de los que Hacienda tiene procesados. Los que
+ *   Hacienda no tiene no se tocan (los envia app:procesar-dtes-pendientes).
+ *
+ * Tomar un sello confirmado por Hacienda es seguro: deja el DTE PROCESADO y
+ * pone el sello en la venta y la caja, igual que una recepcion exitosa.
  */
 class ConsultarDteHacienda extends Command
 {
     protected $signature = 'dte:consultar-hacienda
-        {ids* : Id(s) o codigo(s) de generacion del DTE}
-        {--tomar : Si Hacienda tiene el sello, actualizar DTE, venta y caja}';
+        {ids?* : Id(s) o codigo(s) de generacion; sin ids revisa todos los DTE sin sello}
+        {--tomar : Con ids: si Hacienda tiene el sello, actualizar DTE, venta y caja}
+        {--limit=500 : Sin ids: maximo de DTE a revisar por corrida}';
 
-    protected $description = 'Consulta DTE en Hacienda y muestra la respuesta (con --tomar reconcilia el sello)';
+    protected $description = 'Consulta DTE en Hacienda y toma el sello de los que ya estan procesados (sin ids revisa todos los pendientes)';
 
     public function handle(ConsultaDteHaciendaService $consulta): int
     {
-        foreach ($this->argument('ids') as $id) {
+        $ids = $this->argument('ids');
+
+        if (empty($ids)) {
+            return $this->revisarPendientes($consulta);
+        }
+
+        foreach ($ids as $id) {
             // Acepta el id o el codigo de generacion (UUID)
             $dte = ctype_digit((string) $id)
                 ? dte::find((int) $id)
@@ -31,7 +45,7 @@ class ConsultarDteHacienda extends Command
                 continue;
             }
 
-            $this->info("DTE {$id} | {$dte->codigoGeneracion} | estado local: {$dte->estado} | sello local: " . ($dte->sello ?: '—'));
+            $this->info("DTE {$dte->id} | {$dte->codigoGeneracion} | estado local: {$dte->estado} | sello local: " . ($dte->sello ?: '—'));
 
             try {
                 $r = $consulta->consultar($dte);
@@ -49,6 +63,44 @@ class ConsultarDteHacienda extends Command
                 $this->info("  Tomado: estado {$dte->estado}, sello {$dte->sello} (venta y caja actualizadas).");
             }
         }
+
+        return self::SUCCESS;
+    }
+
+    private function revisarPendientes(ConsultaDteHaciendaService $consulta): int
+    {
+        $pendientes = dte::whereIn('estado', ['Creado', 'Firmado', 'RECHAZADO', 'ERROR'])
+            ->where(function ($q) {
+                $q->whereNull('sello')->orWhere('sello', '');
+            })
+            ->whereNotNull('codigoGeneracion')
+            ->orderBy('id')
+            ->limit(max(1, (int) $this->option('limit')))
+            ->get();
+
+        $this->info("Revisando {$pendientes->count()} DTE sin sello en Hacienda...");
+        $tomados = $noEstan = $sinRespuesta = 0;
+
+        foreach ($pendientes as $dte) {
+            try {
+                $resultado = $consulta->consultarYReconciliar($dte);
+            } catch (\Throwable $e) {
+                $sinRespuesta++;
+                $this->warn("  DTE {$dte->id}: no se pudo consultar ({$e->getMessage()})");
+                continue;
+            }
+
+            if ($resultado === ConsultaDteHaciendaService::ENCONTRADO) {
+                $tomados++;
+                $this->line("  DTE {$dte->id} {$dte->codigoGeneracion}: sello tomado ({$dte->fresh()->sello})");
+            } elseif ($resultado === ConsultaDteHaciendaService::NO_ENCONTRADO) {
+                $noEstan++;
+            } else {
+                $sinRespuesta++;
+            }
+        }
+
+        $this->info("Listo: {$tomados} con sello tomado, {$noEstan} que Hacienda no tiene (se envian en pendientes), {$sinRespuesta} sin respuesta clara.");
 
         return self::SUCCESS;
     }
