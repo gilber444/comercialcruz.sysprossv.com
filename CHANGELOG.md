@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.48] - 2026-11-11
+
+### Cambiado
+- `sync:dtes-procesados-api` usa un candado por PC (`storage/app/api_dtes_procesados_{sucursal}.lock`). Así se puede dejar una corrida larga a mano (`--lotes=100000`) sin que se cruce con la programada de cada minuto, que se salta mientras tanto.
+
 ## [1.0.47] - 2026-11-11
 
 ### Agregado

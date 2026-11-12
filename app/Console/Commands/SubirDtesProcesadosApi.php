@@ -46,6 +46,14 @@ class SubirDtesProcesadosApi extends Command
             return self::FAILURE;
         }
 
+        // Una sola corrida a la vez por PC (la manual y la programada no se cruzan).
+        // flock lo suelta el sistema aunque el proceso se cierre de golpe.
+        $candado = fopen(storage_path("app/api_dtes_procesados_{$sucursal}.lock"), 'c');
+        if (!$candado || !flock($candado, LOCK_EX | LOCK_NB)) {
+            $this->info('Ya hay otra corrida subiendo DTE en esta PC; esta se salta.');
+            return self::SUCCESS;
+        }
+
         $marcaArchivo = storage_path("app/api_dtes_procesados_{$sucursal}.json");
         $marca = !$this->option('reiniciar') && is_file($marcaArchivo)
             ? (json_decode((string) file_get_contents($marcaArchivo), true) ?: [])
