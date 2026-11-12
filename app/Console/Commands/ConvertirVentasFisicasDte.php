@@ -122,6 +122,10 @@ class ConvertirVentasFisicasDte extends Command
         }
         $tocken = Tocken::latest('id')->first();
 
+        // El contador nunca por debajo de un numero ya usado en el anio (si estaba
+        // atrasado, las ventas convertidas repetian numeros de enero y Hacienda las rechazaba)
+        \App\Support\CorrelativoDte::asegurar($sucursalId, 1);
+
         $convertidas = 0;
         foreach ($pendientes->orderBy('id')->limit($limit)->get() as $venta) {
             try {

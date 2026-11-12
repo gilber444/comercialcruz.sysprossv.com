@@ -42,6 +42,8 @@ class RepararDtesDuplicados extends Command
     /** DTE que el paso 1 manda a ELIMINADO (para que la revision sin --aplicar cuadre). */
     private array $sobrantes = [];
 
+    private array $contadorRevisado = [];
+
     public function handle(): int
     {
         $sucursal = (int) ($this->option('sucursal') ?: config('app.sucursal_id', 0));
@@ -87,28 +89,28 @@ class RepararDtesDuplicados extends Command
         }
         $this->line("   Total: {$ventasRepetidas->count()} ventas, {$eliminados} DTE sobrantes a ELIMINADO.");
 
-        // ---- 2) Mismo numero de control ----
+        // ---- 2) Mismo numero de control (contra cualquier DTE, de cualquier fecha) ----
         $this->line('');
         $this->info('2) Numeros de control repetidos:');
-        $numeros = $base()->whereRaw('UPPER(TRIM(estado)) <> ?', [self::ELIMINADO])
-            ->select('numeroControl')->groupBy('numeroControl')->havingRaw('COUNT(*) > 1')->pluck('numeroControl');
+        // Sin sello, desde --desde, y con otro DTE del mismo numero que tiene sello o es anterior
+        $repetidos = $base()->whereRaw('UPPER(TRIM(estado)) <> ?', [self::ELIMINADO])
+            ->where(fn ($q) => $q->whereNull('sello')->orWhere('sello', ''))
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))->from('dtes as otro')
+                    ->whereColumn('otro.numeroControl', 'dtes.numeroControl')
+                    ->whereColumn('otro.id', '<>', 'dtes.id')
+                    ->whereNull('otro.deleted_at')
+                    ->where(fn ($w) => $w->where(fn ($w1) => $w1->whereNotNull('otro.sello')->where('otro.sello', '<>', ''))
+                        ->orWhere(fn ($w2) => $w2->whereColumn('otro.id', '<', 'dtes.id')->whereRaw('UPPER(TRIM(otro.estado)) <> ?', [self::ELIMINADO])));
+            })
+            ->orderBy('id')->get()
+            ->reject(fn ($d) => isset($this->sobrantes[$d->id]));
         $renumerados = 0;
-        foreach ($numeros as $numero) {
-            $grupo = $base()->where('numeroControl', $numero)->whereRaw('UPPER(TRIM(estado)) <> ?', [self::ELIMINADO])->orderBy('id')->get()
-                ->reject(fn ($d) => isset($this->sobrantes[$d->id]));
-            if ($grupo->count() < 2) {
-                continue;
-            }
-            $conSello = $grupo->filter($tieneSello);
-            $queda = $conSello->first() ?: $grupo->first();
-            foreach ($grupo as $d) {
-                if ($d->id === $queda->id || $tieneSello($d)) {
-                    continue;
-                }
-                $renumerados += $this->renumerar($d, "mismo numero que DTE {$queda->id}") ? 1 : 0;
-            }
+        foreach ($repetidos as $d) {
+            $otro = dte::where('numeroControl', $d->numeroControl)->where('id', '<>', $d->id)->orderByRaw("CASE WHEN sello IS NULL OR sello = '' THEN 1 ELSE 0 END")->orderBy('id')->first();
+            $renumerados += $this->renumerar($d, 'mismo numero que DTE ' . ($otro->id ?? '?') . ' (' . ($otro->estado ?? '') . ', ' . ($otro->fecEmi ?? '') . ')') ? 1 : 0;
         }
-        $this->line("   Total: {$numeros->count()} numeros repetidos, {$renumerados} DTE con numero nuevo.");
+        $this->line("   Total: {$renumerados} DTE con numero nuevo.");
 
         // ---- 3) Ventas que quedaron sin DTE vivo (eliminados a mano) ----
         $this->line('');
@@ -161,6 +163,12 @@ class RepararDtesDuplicados extends Command
         } catch (\Throwable $e) {
             $this->warn("   DTE {$d->id}: no se pudo consultar a Hacienda ({$e->getMessage()}); no se cambia.");
             return false;
+        }
+
+        // Primero se sube el contador al numero mas alto ya usado en el anio
+        if (!isset($this->contadorRevisado[$d->sucursal][$facturador])) {
+            \App\Support\CorrelativoDte::asegurar((int) $d->sucursal, $facturador);
+            $this->contadorRevisado[$d->sucursal][$facturador] = true;
         }
 
         $nuevo = DB::transaction(function () use ($d, $facturador) {

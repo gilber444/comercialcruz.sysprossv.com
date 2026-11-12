@@ -5,6 +5,13 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.52] - 2026-11-12
+
+### Corregido
+- Números de control repetidos con DTE de enero: en enero el contador no se reinició y siguió con los números de 2025, pero ya con el año 2026. Después de reiniciarlo, los DTE nuevos vuelven a pasar por esos números y Hacienda los rechaza.
+  - Nuevo `App\Support\CorrelativoDte::asegurar()`: sube `control_numeraciones` al número más alto ya usado en el año para esa sucursal y tipo. Lo usan `ventas:convertir-fisicos-dte` (en cada corrida) y `dte:reparar-duplicados`. No cambia el POS, pero como el contador es compartido, el POS también deja de repetir números.
+  - `dte:reparar-duplicados` paso 2: compara contra cualquier DTE con el mismo número, de cualquier fecha (antes solo desde `--desde`).
+
 ## [1.0.51] - 2026-11-12
 
 ### Agregado
