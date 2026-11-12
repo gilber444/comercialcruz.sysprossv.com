@@ -53,4 +53,15 @@ return [
     | esas 8 tablas (las sube la API). 'off' = vuelve a como era antes.
     */
     'api_ventas' => env('SYNC_API_VENTAS', 'on'),
+
+    /*
+    | Subida por API de la existencia (inventarios) y el kardex (sync:inventario-api).
+    | Con SYNC_API_TOKEN puesto y esto en 'on', sync:local-vps deja de subir
+    | inventarios/kardexes y sync:existencias-vps no corre. 'off' = como antes.
+    |   inventario_completo_min: cada cuantos minutos se manda la existencia de
+    |   todos los productos (por si en el VPS quedo distinta); entre medio solo
+    |   se mandan los que cambiaron.
+    */
+    'api_inventario' => env('SYNC_API_INVENTARIO', 'on'),
+    'inventario_completo_min' => (int) env('SYNC_INVENTARIO_COMPLETO_MIN', 60),
 ];

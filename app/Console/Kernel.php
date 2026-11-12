@@ -70,6 +70,17 @@ class Kernel extends ConsoleKernel
                     ->when(fn () => \App\Support\SyncApi::ventasActiva())
                     ->appendOutputTo(storage_path('logs/ventas_api.log'));
 
+                // Existencia (inventarios) y kardex al VPS por API: cada minuto sube lo que
+                // cambio. Con esto activo sync:local-vps no sube esas tablas y
+                // sync:existencias-vps no corre (SYNC_API_INVENTARIO=off para volver).
+                $schedule->command("sync:inventario-api --sucursal={$sucursalId}")
+                    ->name('subir inventario y kardex por api')
+                    ->everyMinute()
+                    ->runInBackground()
+                    ->withoutOverlapping(30)
+                    ->when(fn () => \App\Support\SyncApi::inventarioActiva())
+                    ->appendOutputTo(storage_path('logs/inventario_api.log'));
+
                 // Solo DTE PROCESADOS (con sello) por API: queda para cuando la subida
                 // de ventas por API esta apagada (SYNC_API_VENTAS=off).
                 $schedule->command("sync:dtes-procesados-api --sucursal={$sucursalId}")

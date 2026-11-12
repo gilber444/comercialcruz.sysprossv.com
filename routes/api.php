@@ -25,6 +25,9 @@ Route::post('sync/dtes-resueltos', [\App\Http\Controllers\Api\SyncDtesProcesados
 // Subida por API de ventas, cajas, detalles, tockens, dtes, resumen, firmadors y recepcion
 Route::post('sync/tablas-ventas', [\App\Http\Controllers\Api\SyncTablasVentasController::class, 'recibir'])
     ->middleware('throttle:600,1')->name('api.sync.tablas.ventas');
+// sync:inventario-api: existencia (inventarios) y kardex de la caja
+Route::post('sync/inventario', [\App\Http\Controllers\Api\SyncInventarioController::class, 'recibir'])
+    ->middleware('throttle:600,1')->name('api.sync.inventario');
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user()->only([

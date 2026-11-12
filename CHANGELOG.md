@@ -5,6 +5,18 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.57] - 2026-11-12
+
+### Agregado
+- `sync:inventario-api`: sube al VPS por API la existencia (`inventarios`) y el kardex (`kardexes`/`kardexes2`) de la sucursal de la caja, cada minuto.
+  - Existencia: manda solo los inventarios cuya existencia cambió (suba o baje) desde lo último que el VPS confirmó, aunque el cambio no haya tocado `updated_at`. Cada `SYNC_INVENTARIO_COMPLETO_MIN` minutos (60 por defecto) manda todos.
+  - En el VPS busca el inventario por `sincro_id` y, si no, por producto + sucursal: nunca crea un segundo inventario del mismo producto.
+  - Kardex: filas nuevas por id y modificadas por `updated_at`, con producto e inventario traducidos al id del VPS.
+- API `POST api/sync/inventario` (token `X-Sync-Token`); rechaza filas de otra sucursal.
+
+### Cambiado
+- Con `SYNC_API_TOKEN` puesto y `SYNC_API_INVENTARIO=on` (por defecto), `sync:local-vps` ya no sube `inventarios`/`kardexes` y `sync:existencias-vps` no hace nada (ya no usan la conexión directa al MySQL del VPS para esto). `SYNC_API_INVENTARIO=off` vuelve a como era.
+
 ## [1.0.56] - 2026-11-12
 
 ### Corregido

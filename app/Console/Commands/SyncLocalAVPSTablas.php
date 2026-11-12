@@ -261,6 +261,10 @@ class SyncLocalAVPSTablas extends Command
         if (!$tablesOpt && \App\Support\SyncApi::ventasActiva()) {
             $tables = array_values(array_diff($tables, \App\Support\SyncApi::TABLAS_VENTAS));
         }
+        // Existencia y kardex los sube sync:inventario-api
+        if (!$tablesOpt && \App\Support\SyncApi::inventarioActiva()) {
+            $tables = array_values(array_diff($tables, \App\Support\SyncApi::TABLAS_INVENTARIO));
+        }
         // Normaliza variantes de tablas de detalle si se dieran nombres alternos
         $tables = $this->normalizeDetailTableList($tables, $connLocal);
         foreach ($tables as $table) {

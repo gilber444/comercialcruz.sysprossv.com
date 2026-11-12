@@ -22,6 +22,12 @@ class SyncExistenciasVPS extends Command
         $connVps    = $this->option('conn-vps');
         $sucursalId = (int) config('app.sucursal_id', 0);
 
+        // Con la API de inventario activa, la existencia la sube sync:inventario-api
+        if (\App\Support\SyncApi::inventarioActiva()) {
+            $this->line('La existencia se sube por API (sync:inventario-api); este comando no hace nada.');
+            return self::SUCCESS;
+        }
+
         if (!$sucursalId) {
             $msg = 'APP_SUCURSAL_ID no está configurado en .env';
             $this->error($msg);
