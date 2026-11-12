@@ -5,6 +5,17 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.51] - 2026-11-12
+
+### Agregado
+- Comando `dte:reparar-duplicados {--sucursal=} {--desde=2026-10-01} {--aplicar}`. Sin `--aplicar` solo muestra lo que encontró. Con `--aplicar` corrige:
+  - Misma venta con varios DTE: se queda el que tiene sello (o el más antiguo) y los demás sin sello pasan a ELIMINADO. Si dos tienen sello solo se reporta (hay que invalidar).
+  - Mismo número de control en varios DTE: los que no tienen sello reciben un número nuevo y vuelven a Creado (se regenera y firma el JSON). Antes consulta a Hacienda y, si ya tiene el DTE, toma el sello.
+  - Venta con todos sus DTE en ELIMINADO y sin sello: se reactiva uno con número nuevo.
+
+### Corregido
+- `ventas:convertir-fisicos-dte`: candado por PC y nueva revisión, con la venta bloqueada, de que no tenga DTE. Correrlo varias veces a la vez ya no convierte la misma venta más de una vez.
+
 ## [1.0.50] - 2026-11-11
 
 ### Agregado

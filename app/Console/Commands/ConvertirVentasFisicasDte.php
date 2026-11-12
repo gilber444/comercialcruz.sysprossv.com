@@ -59,6 +59,14 @@ class ConvertirVentasFisicasDte extends Command
             return self::FAILURE;
         }
 
+        // Una sola corrida a la vez por PC: correrlo varias veces al mismo tiempo
+        // convertia la misma venta mas de una vez.
+        $candado = fopen(storage_path("app/convertir_fisicos_{$sucursalId}.lock"), 'c');
+        if (!$candado || !flock($candado, LOCK_EX | LOCK_NB)) {
+            $this->warn('Ya hay otra conversion corriendo en esta PC; esta se salta.');
+            return self::SUCCESS;
+        }
+
         $pendientes = Ventas::where('sucursal', $sucursalId)
             ->where('tipo', 'Fisico')
             ->where('facturador', 1)
@@ -117,7 +125,12 @@ class ConvertirVentasFisicasDte extends Command
         $convertidas = 0;
         foreach ($pendientes->orderBy('id')->limit($limit)->get() as $venta) {
             try {
-                DB::transaction(function () use ($venta, $catalogos, $tocken) {
+                $creado = DB::transaction(function () use ($venta, $catalogos, $tocken) {
+                    // Se bloquea la venta y se revisa otra vez que no tenga DTE
+                    Ventas::whereKey($venta->id)->lockForUpdate()->first();
+                    if (dte::where('venta', $venta->id)->exists()) {
+                        return false;
+                    }
                     // obtenerCodigoDTE toma la sucursal y la caja de la sesion
                     session(['sucursal' => $venta->sucursal, 'caja' => $venta->caja]);
                     $control = $this->obtenerCodigoDTE(1);
@@ -152,8 +165,12 @@ class ConvertirVentasFisicasDte extends Command
                     ]);
 
                     $venta->update(['tipo' => 'DTE', 'codigo' => $codigoGeneracion, 'numero' => $control]);
+
+                    return true;
                 });
-                $convertidas++;
+                if ($creado) {
+                    $convertidas++;
+                }
             } catch (\Throwable $e) {
                 $this->error("Venta {$venta->id}: " . $e->getMessage());
             }
