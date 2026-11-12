@@ -82,6 +82,38 @@ class ProcesamientoDteService
         return trim((string) $dte->sello) !== '';
     }
 
+    /**
+     * Error de envio sin respuesta controlada (timeout, red): tambien se
+     * consulta antes de marcarlo ERROR, por si Hacienda si lo recibio.
+     */
+    public function resolverError(int $id): string
+    {
+        if ($this->tomarSelloSiExiste($id)) {
+            return self::YA_PROCESADO;
+        }
+
+        $this->guardarEstadoNoFinalizado($id, 'ERROR');
+
+        return 'ERROR';
+    }
+
+    /** Consulta a Hacienda y, si tiene el DTE con sello, lo reconcilia. */
+    private function tomarSelloSiExiste(int $id): bool
+    {
+        try {
+            $dte = dte::find($id);
+            if (!$dte) {
+                return false;
+            }
+
+            return app(ConsultaDteHaciendaService::class)->consultarYReconciliar($dte)
+                === ConsultaDteHaciendaService::ENCONTRADO;
+        } catch (Throwable $e) {
+            report($e);
+            return false;
+        }
+    }
+
     /** Una respuesta tardia nunca puede degradar un DTE ya aceptado. */
     public function guardarEstadoNoFinalizado(int $id, string $estado): bool
     {
@@ -96,27 +128,15 @@ class ProcesamientoDteService
 
     public function resolverRespuestaRechazada(int $id, array $respuesta): string
     {
-        $mensaje = strtoupper((string) ($respuesta['descripcionMsg'] ?? $respuesta['mensaje'] ?? ''));
-        $esDuplicado = str_contains($mensaje, 'YA EXISTE')
-            || str_contains($mensaje, 'DUPLIC')
-            || str_contains($mensaje, 'DTE EXISTE')
-            || str_contains($mensaje, 'DOCUMENTO EXISTE');
-
-        if ($esDuplicado) {
-            try {
-                $dte = dte::findOrFail($id);
-                $consulta = app(ConsultaDteHaciendaService::class)->consultarYReconciliar($dte);
-
-                if ($consulta === ConsultaDteHaciendaService::ENCONTRADO) {
-                    return self::YA_PROCESADO;
-                }
-            } catch (Throwable $e) {
-                report($e);
-            }
-            // Sin sello confirmado queda como rechazado y el proceso de
-            // pendientes lo vuelve a intentar.
+        // Ante CUALQUIER rechazo se consulta a Hacienda: si alla el DTE ya
+        // tiene sello de recepcion, se toma (DTE PROCESADO, sello en venta y
+        // caja) en vez de dejarlo rechazado.
+        if ($this->tomarSelloSiExiste($id)) {
+            return self::YA_PROCESADO;
         }
 
+        // Sin sello confirmado queda como rechazado y el proceso de pendientes
+        // lo vuelve a intentar.
         $estado = (string) ($respuesta['estado'] ?? 'RECHAZADO');
 
         return $this->guardarEstadoNoFinalizado($id, $estado)

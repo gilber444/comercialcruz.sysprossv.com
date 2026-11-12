@@ -5,6 +5,15 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.41] - 2026-11-11
+
+### Cambiado
+- Ante **cualquier** rechazo de Hacienda (no solo "ya existe") y ante un error de envío (timeout o red), se consulta a Hacienda. Si allá el DTE tiene sello de recepción, se toma: DTE en PROCESADO y sello en ventas y caja. Si no, queda RECHAZADO o ERROR y el proceso de pendientes lo reintenta. Aplica al envío de factura, CCF y nota, incluido el que hace el POS, sin cambiar el código del POS.
+
+### Agregado
+- Comando de diagnóstico `dte:consultar-hacienda {ids*} {--tomar}`: muestra la URL de consulta y la respuesta de Hacienda de cada DTE. Con `--tomar`, si Hacienda tiene el sello, lo aplica al DTE, la venta y la caja.
+- `ConsultaDteHaciendaService::consultar()`: consulta sin modificar nada.
+
 ## [1.0.40] - 2026-11-11
 
 ### Corregido

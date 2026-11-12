@@ -278,6 +278,6 @@ trait RecepcionDTEC
         // un estado no final. Antes bastaba con que llegara tarde un RECHAZADO
         // para marcar como rechazado un documento ya procesado.
         app(\App\Services\ProcesamientoDteService::class)
-            ->guardarEstadoNoFinalizado((int) $id, 'ERROR');
+            ->resolverError((int) $id);
     }
 }

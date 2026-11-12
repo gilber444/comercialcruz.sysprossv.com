@@ -27,6 +27,25 @@ class ConsultaDteHaciendaService
 
     public function consultarYReconciliar(dte $dte): string
     {
+        $resultado = $this->consultar($dte);
+
+        if ($resultado['estado'] !== self::ENCONTRADO) {
+            return $resultado['estado'];
+        }
+
+        $this->reconciliar($dte, $resultado['sello'], $resultado['respuesta']);
+
+        return self::ENCONTRADO;
+    }
+
+    /**
+     * Consulta el DTE en Hacienda sin modificar nada. Devuelve la
+     * interpretacion y la respuesta cruda (para diagnostico).
+     *
+     * @return array{estado: string, sello: ?string, respuesta: mixed, http: ?int, url: string}
+     */
+    public function consultar(dte $dte): array
+    {
         $empresa = Empresas::findOrFail($dte->empresa);
         $codigoTipo = optional($dte->tipoDte()->first())->codigo;
 
@@ -51,9 +70,10 @@ class ConsultaDteHaciendaService
             'http_errors' => false,
         ]);
 
-        $respuesta = json_decode((string) $response->getBody(), true);
+        $cuerpo = (string) $response->getBody();
+        $respuesta = json_decode($cuerpo, true);
         if (!is_array($respuesta)) {
-            return self::INDETERMINADO;
+            return ['estado' => self::INDETERMINADO, 'sello' => null, 'respuesta' => $cuerpo, 'http' => $response->getStatusCode(), 'url' => $api];
         }
 
         $interpretacion = $this->interpretarRespuesta(
@@ -62,13 +82,7 @@ class ConsultaDteHaciendaService
             $response->getStatusCode()
         );
 
-        if ($interpretacion['estado'] !== self::ENCONTRADO) {
-            return $interpretacion['estado'];
-        }
-
-        $this->reconciliar($dte, $interpretacion['sello'], $interpretacion['respuesta']);
-
-        return self::ENCONTRADO;
+        return $interpretacion + ['http' => $response->getStatusCode(), 'url' => $api];
     }
 
     public function interpretarRespuesta(array $respuesta, string $codigoEsperado, int $httpStatus = 200): array
