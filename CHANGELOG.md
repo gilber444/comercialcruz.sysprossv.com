@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.54] - 2026-11-12
+
+### Agregado
+- `sync:dtes-estado` consulta al VPS por API cuando la caja tiene `SYNC_API_TOKEN` (nueva ruta `POST api/sync/dtes-resueltos`, una petición por lote de 500). Sin token sigue por MySQL directo.
+
 ## [1.0.53] - 2026-11-12
 
 ### Cambiado

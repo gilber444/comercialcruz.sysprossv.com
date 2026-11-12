@@ -50,6 +50,38 @@ class SyncDtesProcesadosController extends Controller
         return response()->json(['faltantes' => $faltan]);
     }
 
+    /**
+     * Para sync:dtes-estado: de los codigos / sincro_id que manda la caja, devuelve
+     * los DTE que en el VPS ya estan PROCESADO o INVALIDADO (estado, sello, numero
+     * de control, codigo y JSON).
+     */
+    public function resueltos(Request $request)
+    {
+        if ($error = $this->autorizar($request)) {
+            return $error;
+        }
+
+        $codigos = array_slice(array_values(array_filter((array) $request->input('codigos', []))), 0, 1000);
+        $sincros = array_slice(array_values(array_filter((array) $request->input('sincros', []))), 0, 1000);
+        if (!$codigos && !$sincros) {
+            return response()->json(['dtes' => []]);
+        }
+        $conSincro = Schema::hasColumn('dtes', 'sincro_id');
+
+        $filas = DB::table('dtes')
+            ->select(array_values(array_filter(['codigoGeneracion', 'numeroControl', 'estado', 'sello', 'jsonDte', $conSincro ? 'sincro_id' : null])))
+            ->whereIn(DB::raw('UPPER(TRIM(estado))'), ['PROCESADO', 'INVALIDADO'])
+            ->where(function ($q) use ($codigos, $sincros, $conSincro) {
+                $q->whereIn('codigoGeneracion', $codigos ?: ['-']);
+                if ($conSincro && $sincros) {
+                    $q->orWhereIn('sincro_id', $sincros);
+                }
+            })
+            ->get();
+
+        return response()->json(['dtes' => $filas]);
+    }
+
     /** Guarda los paquetes (venta + detalles + caja + dte + resumen + firma + recepcion). */
     public function recibir(Request $request)
     {
