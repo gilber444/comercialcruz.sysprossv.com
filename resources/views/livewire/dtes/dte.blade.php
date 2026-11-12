@@ -400,7 +400,7 @@
 
 
 
-                                @elseif(in_array($dte->estado, ['Creado', 'Firmado', 'RECHAZADO']))
+                                @elseif(in_array($dte->estado, ['Creado', 'Firmado', 'RECHAZADO', 'ERROR']))
 
                                     <button class="btn btn-icon btn-sm btn-label-warning"
 

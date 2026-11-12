@@ -382,6 +382,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('esquemas_dte', EsquemasDteController::class)->name('esquemas_dte')->can('AdminCatalagos_Index');
     Route::get('catalogos_importar', CatalagosImportarController::class)->name('catalogos_importar')->can('AdminCatalagos_Index');
 
+    // Limpia el OPcache del PHP web: tras subir archivos por FTP la pagina puede
+    // seguir ejecutando el codigo viejo aunque la terminal ya use el nuevo.
+    Route::get('admin/limpiar-cache-php', function () {
+        $opcache = function_exists('opcache_reset') ? (opcache_reset() ? 'OPcache limpiado.' : 'OPcache no se pudo limpiar.') : 'OPcache no esta activo.';
+        \Illuminate\Support\Facades\Artisan::call('view:clear');
+
+        return response($opcache . ' Vistas limpiadas.', 200)->header('Content-Type', 'text/plain; charset=UTF-8');
+    })->name('admin.limpiar_cache_php')->can('AdminCatalagos_Index');
+
     Route::get('modelo_facturacion', ModeloFacturacionController::class)->name('modelo_facturacion')->can('ModeloFacturacion_Index');
 
     Route::get('tipo_transmision', TipoTransmisionController::class)->name('tipo_transmision')->can('TipoTransmision_Index');

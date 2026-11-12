@@ -80,7 +80,7 @@
 
                         <a class="btn btn-icon btn-label-dark" onclick="handleJson({{ $dte->id }}, '{{ $dte->codigoGeneracion }}')"><i class="fa-solid fa-file-code"></i></a>
 
-                    @elseif(in_array($dte->estado, ['Creado','Firmado','RECHAZADO']))
+                    @elseif(in_array($dte->estado, ['Creado','Firmado','RECHAZADO', 'ERROR']))
 
                         <button class="btn btn-icon btn-label-warning" onclick="startProcessing({{ $dte->id }})">
 

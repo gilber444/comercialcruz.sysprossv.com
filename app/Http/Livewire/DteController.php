@@ -21,6 +21,7 @@ use App\Traits\GeneraJsonC;
 use App\Traits\RecepcionDTEC;
 
 use App\Traits\RecepcionDTEF;
+use App\Traits\RecepcionDTENota;
 
 use Illuminate\Support\Facades\Auth;
 
@@ -43,6 +44,8 @@ class DteController extends Component
     use RecepcionDTEC;
 
     use RecepcionDTEF;
+
+    use RecepcionDTENota;
 
     use enviarCorreoDTE;
 
@@ -251,14 +254,22 @@ class DteController extends Component
                     throw new \Exception("No se encontro el DTE con ID {$id}.");
                 }
 
-                if ($dte->tipoDte == 1) {
+                // Por codigo del CAT-002: cada tipo con su generador (antes una
+                // nota de credito se armaba como CCF).
+                $codigo = str_pad((string) optional($dte->tipoDte()->first())->codigo, 2, '0', STR_PAD_LEFT);
+
+                if ($codigo === '01') {
                     $json = $this->GeneraJsonF($dte->id);
                     $this->FirmadorLocal($dte->id, $json);
                     $this->RecepcionDTEF($dte->id);
-                } else {
+                } elseif ($codigo === '05') {
+                    $this->RecepcionDTENota($dte->id);
+                } elseif ($codigo === '03') {
                     $json = $this->GeneraJsonC($dte->id);
                     $this->FirmadorLocal($dte->id, $json);
                     $this->RecepcionDTEC($dte->id);
+                } else {
+                    throw new \Exception("El DTE tipo {$codigo} se procesa desde su propia pantalla.");
                 }
 
                 return null;

@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.44] - 2026-11-11
+
+### Corregido
+- Botón "Firmar y Procesar" de la pantalla DTE:
+  - Despacha por código CAT-002 (01 factura, 03 CCF, 05 nota con su propio generador); antes una nota se armaba como CCF.
+  - Aparece también en DTE con estado ERROR.
+
+### Agregado
+- Ruta `admin/limpiar-cache-php` (permiso `AdminCatalagos_Index`): limpia el OPcache del PHP web y las vistas compiladas. Tras subir archivos por FTP la página podía seguir con el código viejo aunque la terminal ya usara el nuevo (el botón seguía consultando la URL anterior, con 401).
+
 ## [1.0.43] - 2026-11-11
 
 ### Corregido
