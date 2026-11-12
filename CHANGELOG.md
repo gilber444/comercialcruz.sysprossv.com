@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.56] - 2026-11-12
+
+### Corregido
+- `dte:reparar-duplicados` fallaba al iniciar (`file_put_contents ... dbg.txt`): se quitaron líneas de depuración que quedaron en la 1.0.55.
+
 ## [1.0.55] - 2026-11-12
 
 ### Corregido

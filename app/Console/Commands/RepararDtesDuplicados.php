@@ -46,8 +46,6 @@ class RepararDtesDuplicados extends Command
 
     public function handle(): int
     {
-        file_put_contents("C:/Users/LOQ/AppData/Local/Temp/dbg.txt","inicio
-",FILE_APPEND);
         $sucursal = (int) ($this->option('sucursal') ?: config('app.sucursal_id', 0));
         if ($sucursal <= 0) {
             $this->error('Falta la sucursal (APP_SUCURSAL_ID o --sucursal).');
@@ -94,16 +92,12 @@ class RepararDtesDuplicados extends Command
         // ---- 2) Mismo numero de control (contra cualquier DTE, de cualquier fecha) ----
         $this->line('');
         $this->info('2) Numeros de control repetidos:');
-        file_put_contents("C:/Users/LOQ/AppData/Local/Temp/dbg.txt","paso2
-",FILE_APPEND);
         // Una sola pasada por la tabla: numeros de control usados mas de una vez (de
         // cualquier fecha). Antes era una subconsulta por fila y sin indice tardaba horas.
         $numeros = DB::table('dtes')->whereNull('deleted_at')
             ->select('numeroControl')->groupBy('numeroControl')->havingRaw('COUNT(*) > 1')
             ->pluck('numeroControl');
         $this->line("   Numeros usados mas de una vez: {$numeros->count()}");
-        file_put_contents("C:/Users/LOQ/AppData/Local/Temp/dbg.txt","numeros
-",FILE_APPEND);
 
         $repetidos = collect();
         foreach ($numeros->chunk(500) as $trozo) {
