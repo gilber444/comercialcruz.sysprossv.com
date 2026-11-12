@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.49] - 2026-11-11
+
+### Cambiado
+- `ventas:convertir-fisicos-dte` ya no se detiene cuando Hacienda rechaza ventas convertidas: avisa cuántas son y muestra los 5 motivos más comunes (de `recepcion_dtes`), y sigue convirtiendo.
+
 ## [1.0.48] - 2026-11-11
 
 ### Cambiado
