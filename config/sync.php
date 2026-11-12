@@ -45,4 +45,12 @@ return [
     */
     'api_url' => env('SYNC_API_URL', 'https://comercialcruz.sysprossv.com'),
     'api_token' => env('SYNC_API_TOKEN', ''),
+
+    /*
+    | Subida por API de ventas, cajas, ventas_detalles, tockens, dtes,
+    | resumen_dtes, firmadors y recepcion_dtes (sync:ventas-api).
+    | Con SYNC_API_TOKEN puesto y esto en 'on', sync:local-vps deja de subir
+    | esas 8 tablas (las sube la API). 'off' = vuelve a como era antes.
+    */
+    'api_ventas' => env('SYNC_API_VENTAS', 'on'),
 ];

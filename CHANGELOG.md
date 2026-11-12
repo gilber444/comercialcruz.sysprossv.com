@@ -5,6 +5,17 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.50] - 2026-11-11
+
+### Agregado
+- **Subida por API de ventas, cajas, ventas_detalles, tockens, dtes, resumen_dtes, firmadors y recepcion_dtes** (todas las filas nuevas o cambiadas de la sucursal, no solo los DTE procesados):
+  - VPS: `POST api/sync/tablas-ventas` (token `X-Sync-Token`). Recibe cientos de filas por petición y hace el upsert por `sincro_id` con pocas consultas por lote, traduciendo las llaves (venta, producto, corte, tocken, dte) por el `sincro_id` del padre.
+  - Caja: comando `sync:ventas-api`, cada minuto, hasta terminar. Sube en orden padres → hijos, con su propia marca por tabla (`storage/app/api_ventas_marcas_{sucursal}.json`) y un candado por PC.
+  - Mismas reglas que `sync:local-vps`: solo la sucursal de la PC (el VPS lo vuelve a revisar), sin borrados lógicos y sin DTE RECHAZADO. El VPS no borra un sello que ya tiene.
+  - Un hijo cuyo padre aún no llega al VPS se reintenta en la siguiente corrida.
+  - El `sincro_id` se genera solo si sigue vacío, así dos procesos no le ponen valores distintos a la misma fila.
+- Con `SYNC_API_TOKEN` puesto y `SYNC_API_VENTAS=on` (por defecto), `sync:local-vps` deja de subir esas 8 tablas y `sync:dtes-procesados-api` deja de programarse. `SYNC_API_VENTAS=off` vuelve a como era antes.
+
 ## [1.0.49] - 2026-11-11
 
 ### Cambiado

@@ -59,14 +59,25 @@ class Kernel extends ConsoleKernel
                 ->appendOutputTo(storage_path('logs/catalogos_dte.log'));
 
             if ($sucursalId > 0) {
-                // DTE PROCESADOS (con sello) al VPS por API, con su venta, detalles,
-                // caja, resumen, firma y recepcion. Apagado si no hay SYNC_API_TOKEN.
+                // Ventas, cajas, detalles, tockens, dtes, resumen, firmadors y recepcion
+                // al VPS por API, por lotes. Activa con SYNC_API_TOKEN y SYNC_API_VENTAS=on;
+                // mientras tanto sync:local-vps no sube esas tablas.
+                $schedule->command("sync:ventas-api --sucursal={$sucursalId}")
+                    ->name('subir ventas y dtes por api')
+                    ->everyMinute()
+                    ->runInBackground()
+                    ->withoutOverlapping(60)
+                    ->when(fn () => \App\Support\SyncApi::ventasActiva())
+                    ->appendOutputTo(storage_path('logs/ventas_api.log'));
+
+                // Solo DTE PROCESADOS (con sello) por API: queda para cuando la subida
+                // de ventas por API esta apagada (SYNC_API_VENTAS=off).
                 $schedule->command("sync:dtes-procesados-api --sucursal={$sucursalId}")
                     ->name('subir dtes procesados por api')
                     ->everyMinute()
                     ->runInBackground()
                     ->withoutOverlapping(15)
-                    ->when(fn () => (string) config('sync.api_token') !== '')
+                    ->when(fn () => (string) config('sync.api_token') !== '' && !\App\Support\SyncApi::ventasActiva())
                     ->appendOutputTo(storage_path('logs/dtes_procesados_api.log'));
 
                 // Ventas "Fisico" de consumidor final → factura DTE con su fecha original,

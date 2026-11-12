@@ -257,6 +257,10 @@ class SyncLocalAVPSTablas extends Command
         $tables = $tablesOpt
             ? array_map('trim', explode(',', $tablesOpt))
             : $defaultOrder;
+        // Con la subida por API activa (sync:ventas-api) estas tablas las sube la API
+        if (!$tablesOpt && \App\Support\SyncApi::ventasActiva()) {
+            $tables = array_values(array_diff($tables, \App\Support\SyncApi::TABLAS_VENTAS));
+        }
         // Normaliza variantes de tablas de detalle si se dieran nombres alternos
         $tables = $this->normalizeDetailTableList($tables, $connLocal);
         foreach ($tables as $table) {

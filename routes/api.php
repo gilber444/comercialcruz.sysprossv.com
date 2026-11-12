@@ -19,6 +19,9 @@ Route::post('sync/dtes-procesados/faltantes', [\App\Http\Controllers\Api\SyncDte
     ->middleware('throttle:600,1')->name('api.sync.dtes.faltantes');
 Route::post('sync/dtes-procesados', [\App\Http\Controllers\Api\SyncDtesProcesadosController::class, 'recibir'])
     ->middleware('throttle:600,1')->name('api.sync.dtes.recibir');
+// Subida por API de ventas, cajas, detalles, tockens, dtes, resumen, firmadors y recepcion
+Route::post('sync/tablas-ventas', [\App\Http\Controllers\Api\SyncTablasVentasController::class, 'recibir'])
+    ->middleware('throttle:600,1')->name('api.sync.tablas.ventas');
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user()->only([
