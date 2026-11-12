@@ -36,4 +36,13 @@ return [
         'existencias'  => ['comando' => 'sync:existencias-vps', 'args' => [],                                       'cada' => (int) env('SYNC_CADA_EXISTENCIAS', 600)],
         'dtes_estado'  => ['comando' => 'sync:dtes-estado',     'args' => ['--limit=500'],                          'cada' => (int) env('SYNC_CADA_DTES_ESTADO', 1800)],
     ],
+
+    /*
+    | Subida por API de los DTE PROCESADOS (sync:dtes-procesados-api).
+    |   api_url   (SYNC_API_URL)   URL del VPS que recibe.
+    |   api_token (SYNC_API_TOKEN) el mismo valor en el VPS y en cada caja.
+    |                              Vacio = la API y el comando quedan apagados.
+    */
+    'api_url' => env('SYNC_API_URL', 'https://comercialcruz.sysprossv.com'),
+    'api_token' => env('SYNC_API_TOKEN', ''),
 ];

@@ -59,6 +59,16 @@ class Kernel extends ConsoleKernel
                 ->appendOutputTo(storage_path('logs/catalogos_dte.log'));
 
             if ($sucursalId > 0) {
+                // DTE PROCESADOS (con sello) al VPS por API, con su venta, detalles,
+                // caja, resumen, firma y recepcion. Apagado si no hay SYNC_API_TOKEN.
+                $schedule->command("sync:dtes-procesados-api --sucursal={$sucursalId}")
+                    ->name('subir dtes procesados por api')
+                    ->everyMinute()
+                    ->runInBackground()
+                    ->withoutOverlapping(15)
+                    ->when(fn () => (string) config('sync.api_token') !== '')
+                    ->appendOutputTo(storage_path('logs/dtes_procesados_api.log'));
+
                 // Ventas "Fisico" de consumidor final → factura DTE con su fecha original,
                 // por lotes. Apagado hasta encender dte.convertir_fisicos.activo.
                 $schedule->command("ventas:convertir-fisicos-dte --sucursal={$sucursalId} --limit=" . (int) config('dte.convertir_fisicos.lote', 100))

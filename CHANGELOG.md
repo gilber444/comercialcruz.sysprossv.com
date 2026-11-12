@@ -5,6 +5,16 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.47] - 2026-11-11
+
+### Agregado
+- **Subida por API de los DTE PROCESADOS** desde las cajas al VPS:
+  - VPS: `POST api/sync/dtes-procesados/faltantes` (devuelve qué DTE no tiene o tiene sin ese sello) y `POST api/sync/dtes-procesados` (guarda los paquetes). Protegidas con el encabezado `X-Sync-Token`.
+  - Caja: comando `sync:dtes-procesados-api`, cada minuto. Sube solo factura y CCF de su sucursal con estado PROCESADO y sello, cada uno con su venta, detalles, caja, resumen, firma y recepción.
+- Guarda por `sincro_id` y traduce las llaves (producto, corte, token y los padres venta y DTE) igual que `sync:local-vps`. Por eso convive con la sincronización normal sin duplicar. Los ids del VPS se anotan en `id_vps` de la caja.
+- El VPS rechaza paquetes de otra sucursal o sin sello.
+- Configuración en `config/sync.php`: `SYNC_API_URL` (por defecto https://comercialcruz.sysprossv.com) y `SYNC_API_TOKEN`, que debe ser el mismo en el VPS y en cada caja. Vacío = apagado.
+
 ## [1.0.46] - 2026-11-11
 
 ### Cambiado
