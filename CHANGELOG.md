@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.43] - 2026-11-11
+
+### Corregido
+- **La consulta a Hacienda nunca encontraba el sello**: la URL de consulta salía `.../fesv/consultadte/` y Hacienda respondía HTTP 401. La oficial es `.../fesv/recepcion/consultadte/`. Se deriva bien desde la recepción configurada como `.../fesv/recepciondte` (un tramo) y se corrige también si en la tabla de APIs está registrada sin `/recepcion/`. Con esto, un rechazo "YA EXISTE UN REGISTRO CON ESE VALOR" toma el sello: DTE PROCESADO y sello en ventas y caja.
+
 ## [1.0.42] - 2026-11-11
 
 ### Agregado

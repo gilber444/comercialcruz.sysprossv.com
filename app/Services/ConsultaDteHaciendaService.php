@@ -134,7 +134,11 @@ class ConsultaDteHaciendaService
      */
     public function derivarUrlConsulta(string $urlRecepcion): string
     {
-        $url = preg_replace('~/(?:recepcion)?dte/?$~i', '/consultadte/', trim($urlRecepcion));
+        // La consulta oficial es .../fesv/recepcion/consultadte/. La recepcion
+        // puede estar como .../fesv/recepciondte (un tramo) o .../recepcion/dte;
+        // antes la primera forma quedaba en .../fesv/consultadte/ y Hacienda
+        // respondia 401, asi que nunca se tomaba un sello por consulta.
+        $url = preg_replace('~/recepcion/?dte/?$~i', '/recepcion/consultadte/', trim($urlRecepcion));
 
         if (!$url || $url === trim($urlRecepcion)) {
             throw new RuntimeException(
@@ -156,7 +160,8 @@ class ConsultaDteHaciendaService
             ->first();
 
         if ($consulta?->url) {
-            return $consulta->url;
+            // Una URL registrada sin el tramo /recepcion/ da 401: se corrige.
+            return preg_replace('~/fesv/consultadte/?$~i', '/fesv/recepcion/consultadte/', trim($consulta->url));
         }
 
         $recepcion = Apis::query()
