@@ -5,6 +5,11 @@ Todos los cambios notables de este proyecto se documentarán en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.0.55] - 2026-11-12
+
+### Corregido
+- `dte:reparar-duplicados` se quedaba quieto en el paso 2: hacía una subconsulta por cada DTE sobre `numeroControl`, que no tiene índice. Ahora saca en una sola pasada los números usados más de una vez y revisa solo esos.
+
 ## [1.0.54] - 2026-11-12
 
 ### Agregado

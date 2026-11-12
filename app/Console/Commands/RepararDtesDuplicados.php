@@ -46,6 +46,8 @@ class RepararDtesDuplicados extends Command
 
     public function handle(): int
     {
+        file_put_contents("C:/Users/LOQ/AppData/Local/Temp/dbg.txt","inicio
+",FILE_APPEND);
         $sucursal = (int) ($this->option('sucursal') ?: config('app.sucursal_id', 0));
         if ($sucursal <= 0) {
             $this->error('Falta la sucursal (APP_SUCURSAL_ID o --sucursal).');
@@ -92,19 +94,36 @@ class RepararDtesDuplicados extends Command
         // ---- 2) Mismo numero de control (contra cualquier DTE, de cualquier fecha) ----
         $this->line('');
         $this->info('2) Numeros de control repetidos:');
-        // Sin sello, desde --desde, y con otro DTE del mismo numero que tiene sello o es anterior
-        $repetidos = $base()->whereRaw('UPPER(TRIM(estado)) <> ?', [self::ELIMINADO])
-            ->where(fn ($q) => $q->whereNull('sello')->orWhere('sello', ''))
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))->from('dtes as otro')
-                    ->whereColumn('otro.numeroControl', 'dtes.numeroControl')
-                    ->whereColumn('otro.id', '<>', 'dtes.id')
-                    ->whereNull('otro.deleted_at')
-                    ->where(fn ($w) => $w->where(fn ($w1) => $w1->whereNotNull('otro.sello')->where('otro.sello', '<>', ''))
-                        ->orWhere(fn ($w2) => $w2->whereColumn('otro.id', '<', 'dtes.id')->whereRaw('UPPER(TRIM(otro.estado)) <> ?', [self::ELIMINADO])));
-            })
-            ->orderBy('id')->get()
-            ->reject(fn ($d) => isset($this->sobrantes[$d->id]));
+        file_put_contents("C:/Users/LOQ/AppData/Local/Temp/dbg.txt","paso2
+",FILE_APPEND);
+        // Una sola pasada por la tabla: numeros de control usados mas de una vez (de
+        // cualquier fecha). Antes era una subconsulta por fila y sin indice tardaba horas.
+        $numeros = DB::table('dtes')->whereNull('deleted_at')
+            ->select('numeroControl')->groupBy('numeroControl')->havingRaw('COUNT(*) > 1')
+            ->pluck('numeroControl');
+        $this->line("   Numeros usados mas de una vez: {$numeros->count()}");
+        file_put_contents("C:/Users/LOQ/AppData/Local/Temp/dbg.txt","numeros
+",FILE_APPEND);
+
+        $repetidos = collect();
+        foreach ($numeros->chunk(500) as $trozo) {
+            $todos = dte::whereIn('numeroControl', $trozo->values()->all())->orderBy('id')->get()->groupBy('numeroControl');
+            foreach ($todos as $grupo) {
+                foreach ($grupo as $d) {
+                    // Candidato: de esta sucursal, desde --desde, sin sello y no eliminado
+                    if ((int) $d->sucursal !== $sucursal || (string) $d->fecEmi < $desde || $tieneSello($d) || $eliminado($d) || isset($this->sobrantes[$d->id])) {
+                        continue;
+                    }
+                    // ...y hay otro con ese numero que tiene sello, o es anterior y no esta eliminado
+                    $choca = $grupo->contains(fn ($o) => $o->id !== $d->id && !isset($this->sobrantes[$o->id])
+                        && ($tieneSello($o) || ($o->id < $d->id && !$eliminado($o))));
+                    if ($choca) {
+                        $repetidos->push($d);
+                    }
+                }
+            }
+        }
+
         $renumerados = 0;
         foreach ($repetidos as $d) {
             $otro = dte::where('numeroControl', $d->numeroControl)->where('id', '<>', $d->id)->orderByRaw("CASE WHEN sello IS NULL OR sello = '' THEN 1 ELSE 0 END")->orderBy('id')->first();
